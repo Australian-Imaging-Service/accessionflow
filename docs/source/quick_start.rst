@@ -58,13 +58,13 @@ DICOM files here instead if you have some handy.
 4. Collate, label and store
 ------------------------------
 
-Collate the files into scans/resources:
+Collate the files into acquisitions/resources:
 
 .. code-block:: console
 
     $ accessionflow collate /path/to/dicom/series /tmp/accessionflow-quickstart/collated
 
-Label the session to your project. The sample data from step 3 doesn't have
+Label the accession to your project. The sample data from step 3 doesn't have
 ``StudyComments``/``AccessionNumber`` populated (the fields ``label`` uses by default
 for project/session), so we fix the project explicitly and use ``StudyInstanceUID`` for
 the session instead — real scanner data may populate these differently, or the same

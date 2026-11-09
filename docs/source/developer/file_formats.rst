@@ -15,9 +15,9 @@ Collating files into resources
 
 ``collate``'s ``--datatype`` option (see :doc:`/cli`) is a `FileFormats MIME-like
 identifier <https://arcanaframework.github.io/fileformats/mime.html>`_ (or a ``|``-separated union of several) that says which types of file to
-look for in the input paths at all. Within a matched session, ``--scan``/
+look for in the input paths at all. Within a matched accession, ``--scan``/
 ``--resource`` (:class:`~accessionflow.helpers.arg_types.IDSpec`) then decide which
-scan and resource each file belongs to, based on values read out of the file's own
+acquisition and resource each file belongs to, based on values read out of the file's own
 metadata (e.g. DICOM ``SeriesNumber``, ``ImageType``) — see
 :class:`~accessionflow.model.resource.Resource` and
 :class:`~accessionflow.model.acquisition.Acquisition`.
@@ -84,7 +84,7 @@ base signature. For example:
 
 If the argument is left unannotated, or annotated with a plain type (e.g.
 ``recipe: DeidRecipe`` or ``recipe: ty.Any``), *AccessionFlow* can't tell what to load
-the file as, so ``deidentify`` fails with a ``TypeError`` for every session with that
+the file as, so ``deidentify`` fails with a ``TypeError`` for every accession with that
 format rather than guessing. Things to watch out for:
 
 * Annotate with the *file format* class (a ``FileSet`` subclass) wrapped in

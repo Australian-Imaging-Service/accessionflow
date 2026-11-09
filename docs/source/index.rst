@@ -22,7 +22,7 @@ expects, and — particularly on clinical scanners — often still carry patient
 information that needs stripping before they leave clinical control. *AccessionFlow*
 contains tools for each step of this process:
 
-* Collating DICOM and non-DICOM files into sessions, scans and resources
+* Collating DICOM and non-DICOM files into accessions, acquisitions and resources
 * Determining which XNAT project each belongs to and assigning appropriate subject and session labels
 * De-identifying files using flexible, file-format-specific methods
 * Uploading the sorted data into the specified XNAT instance.
@@ -33,7 +33,7 @@ running continuously as a service, watching for new files as they arrive.
 See :doc:`quick_start` for a hands-on walkthrough using synthetic sample data or go through the
 different sections in more detail using the links below
 
-* :ref:`Basic ingest workflow` — collate, label and upload files to XNAT
+* :ref:`Basic accession workflow` — collate, label and upload files to XNAT
 * :ref:`Attach files without relevant metadata` — link in files by filename pattern instead
 * :ref:`Deidentification` — strip patient-identifying data first
 * :ref:`Deployment tips` — run the pipeline continuously via Docker/Kubernetes

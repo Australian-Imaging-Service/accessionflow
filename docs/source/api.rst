@@ -33,8 +33,8 @@ evoke the same modular behaviour via a Python workflow.
 Model classes
 ~~~~~~~~~~~~~
 
-These classes represent an imaging session as it moves through the pipeline stages
-above: a session contains scans, each of which contains one or more resources (e.g.
+These classes represent an accession (e.g. an imaging session) as it moves through the pipeline stages
+above: an accession contains acquisitions (e.g. scans), each of which contains one or more resources (e.g.
 the original DICOM files, a derived NIfTI conversion).
 
 .. autoclass:: accessionflow.model.accession.Accession
