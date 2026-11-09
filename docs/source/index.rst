@@ -2,16 +2,16 @@
 
 AccessionFlow
 =============
-.. image:: https://github.com/australian-imaging-service/xnat-ingest/actions/workflows/ci-cd.yml/badge.svg
-   :target: https://github.com/australian-imaging-service/xnat-ingest/actions/workflows/ci-cd.yml
-.. image:: https://codecov.io/gh/australian-imaging-service/xnat-ingest/branch/main/graph/badge.svg?token=UIS0OGPST7
-   :target: https://codecov.io/gh/australian-imaging-service/xnat-ingest
+.. image:: https://github.com/australian-imaging-service/accessionflow/actions/workflows/ci-cd.yml/badge.svg
+   :target: https://github.com/australian-imaging-service/accessionflow/actions/workflows/ci-cd.yml
+.. image:: https://codecov.io/gh/australian-imaging-service/accessionflow/branch/main/graph/badge.svg?token=UIS0OGPST7
+   :target: https://codecov.io/gh/australian-imaging-service/accessionflow
 .. image:: https://img.shields.io/pypi/v/accessionflow.svg
    :target: https://pypi.python.org/pypi/accessionflow/
    :alt: Latest Version
-.. image:: https://img.shields.io/github/stars/australian-imaging-service/xnat-ingest?label=GitHub
+.. image:: https://img.shields.io/github/stars/australian-imaging-service/accessionflow?label=GitHub
    :alt: GitHub stars
-   :target: https://github.com/australian-imaging-service/xnat-ingest
+   :target: https://github.com/australian-imaging-service/accessionflow
 
 
 *AccessionFlow* is a toolkit for capturing data from instruments and uploading them to an XNAT
@@ -49,7 +49,7 @@ external dependencies (e.g. dcm2niix, MRtrix3):
 
 .. code-block:: console
 
-    $ docker run ghcr.io/australian-imaging-service/xnat-ingest --help
+    $ docker run ghcr.io/australian-imaging-service/accessionflow --help
 
 See :ref:`Deployment tips` for how this fits into Docker Compose
 or Kubernetes.
