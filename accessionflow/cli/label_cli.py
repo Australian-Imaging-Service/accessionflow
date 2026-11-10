@@ -14,23 +14,23 @@ from .base import data_store_group
 
 label_group = data_store_group(
     name="label",
-    help="""Assigns the IDs a data store needs, extracted from session metadata, to
-sessions that have already been collated into acquisitions/resources""",
+    help="""Assigns the IDs a data store needs, extracted from accession metadata, to
+accessions that have already been collated into acquisitions/resources""",
 )
 
-LABEL_HELP = """Labels sessions for {title} data stores with their {levels} labels,
-extracted from session metadata, after they have been collated into
+LABEL_HELP = """Labels accessions for {title} data stores with their {levels} labels,
+extracted from accession metadata, after they have been collated into
 {acquisitions}/resources
 
 INPUT_DIR is the path to the directory containing the collated-but-not-yet-labelled
-sessions (the output of the 'collate' command)
+accessions (the output of the 'collate' command)
 
-OUTPUT_DIR is the directory that the labelled sessions will be written to, each in a
+OUTPUT_DIR is the directory that the labelled accessions will be written to, each in a
 directory named '{dirname}'
 
-If a label can't be resolved from a session's metadata, it is given a unique
+If a label can't be resolved from an accession's metadata, it is given a unique
 'INVALID_MISSING_<FIELD>_<random>' placeholder instead of being dropped, and the whole
-session is saved under an '__invalid__' subdirectory of OUTPUT_DIR instead of
+accession is saved under an '__invalid__' subdirectory of OUTPUT_DIR instead of
 alongside normally-labelled ones, so it can be found and manually
 reviewed/reprocessed rather than silently lost.
 """
