@@ -4,8 +4,8 @@ import pytest
 from pydicom.dataset import FileDataset, FileMetaDataset
 from pydicom.uid import ExplicitVRLittleEndian, MRImageStorage
 
-from accessionflow.model.accession import Accession
-from accessionflow.model.tests.test_from_orthanc import (
+from accessionflow.sources.orthanc.staging import stage_studies
+from accessionflow.sources.orthanc.tests.test_orthanc_staging import (
     FakeOrthanc,
     _patch_requests,
     _publication_kwargs,
@@ -52,9 +52,7 @@ def make_fake(tmp_path, number, description, series_uid="1.2.3.4"):
 def test_optional_series_tags_do_not_block_study(tmp_path, number, description, caplog):
     fake, store = make_fake(tmp_path, number, description)
     with _patch_requests(fake):
-        sessions = Accession.from_orthanc(
-            **_publication_kwargs(tmp_path / "staged", store)
-        )
+        sessions = stage_studies(**_publication_kwargs(tmp_path / "staged", store))
     assert len(sessions) == 1
     scan = next(iter(sessions[0].acquisitions.values()))
     assert scan.id and scan.type.strip()
@@ -83,9 +81,7 @@ def test_fallback_id_is_stable_for_a_repeated_series(tmp_path):
         root.mkdir()
         fake, store = make_fake(root, "", None)
         with _patch_requests(fake):
-            sessions = Accession.from_orthanc(
-                **_publication_kwargs(root / "staged", store)
-            )
+            sessions = stage_studies(**_publication_kwargs(root / "staged", store))
         ids.append(next(iter(sessions[0].acquisitions)))
     assert ids[0] == ids[1]
 
@@ -104,9 +100,7 @@ def test_two_unnumbered_series_remain_separate(tmp_path):
     )
     fake.studies["study"]["series"].extend(fake.studies.pop("second")["series"])
     with _patch_requests(fake):
-        sessions = Accession.from_orthanc(
-            **_publication_kwargs(tmp_path / "staged", store)
-        )
+        sessions = stage_studies(**_publication_kwargs(tmp_path / "staged", store))
     assert len(sessions) == 1
     assert len(sessions[0].acquisitions) == 2
     assert set(sessions[0].acquisitions) == {"1_2_3_4", "1_2_3_5"}
@@ -131,9 +125,7 @@ def test_missing_uid_uses_stable_orthanc_series_identity(tmp_path):
     fake, store = make_fake(tmp_path, "", None)
     del fake.series["study-series1"]["tags"]["SeriesInstanceUID"]
     with _patch_requests(fake):
-        sessions = Accession.from_orthanc(
-            **_publication_kwargs(tmp_path / "staged", store)
-        )
+        sessions = stage_studies(**_publication_kwargs(tmp_path / "staged", store))
     assert len(sessions[0].acquisitions) == 1
     assert next(iter(sessions[0].acquisitions)).startswith("series_")
 
@@ -141,9 +133,7 @@ def test_missing_uid_uses_stable_orthanc_series_identity(tmp_path):
 def test_normal_series_labels_stay_unchanged(tmp_path):
     fake, store = make_fake(tmp_path, "2", "T1")
     with _patch_requests(fake):
-        sessions = Accession.from_orthanc(
-            **_publication_kwargs(tmp_path / "staged", store)
-        )
+        sessions = stage_studies(**_publication_kwargs(tmp_path / "staged", store))
     assert sessions[0].acquisitions["2"].type == "T1"
 
 
@@ -151,9 +141,7 @@ def test_normal_series_labels_stay_unchanged(tmp_path):
 def test_missing_description_survives_following_label_stage(tmp_path, description):
     fake, store = make_fake(tmp_path, "", description)
     with _patch_requests(fake):
-        session = Accession.from_orthanc(
-            **_publication_kwargs(tmp_path / "staged", store)
-        )[0]
+        session = stage_studies(**_publication_kwargs(tmp_path / "staged", store))[0]
     missing = session.label(
         label_fields={
             "project": "Unused",

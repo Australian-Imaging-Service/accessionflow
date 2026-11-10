@@ -5,16 +5,18 @@ AccessionFlow's command line interface consists of a number of sub-commands unde
 `accessionflow` command. See :doc:`/how_to/pipeline` for how these fit together into a
 pipeline.
 
+The ``collate`` stage has a subcommand for each source, provided by the source's
+plugin, e.g. ``accessionflow collate folder`` or ``accessionflow collate orthanc``.
 The ``label``, ``store`` and ``check-store`` stages have a subcommand for each
 data store, provided by the store's plugin, e.g. ``accessionflow label xnat`` or
 ``accessionflow label folder``.
 
 
-.. click:: accessionflow.cli.collate_cli:collate_cmd
-   :prog: accessionflow collate
+.. click:: accessionflow.sources.folder.cli.collate_cli:collate_cmd
+   :prog: accessionflow collate folder
 
-.. click:: accessionflow.cli.collate_cli:collate_orthanc_cmd
-   :prog: accessionflow collate-orthanc
+.. click:: accessionflow.sources.orthanc.cli.collate_cli:collate_cmd
+   :prog: accessionflow collate orthanc
 
 
 .. click:: accessionflow.stores.xnat.cli.label_cli:label_cmd

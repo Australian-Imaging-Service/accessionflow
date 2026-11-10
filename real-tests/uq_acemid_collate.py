@@ -5,7 +5,7 @@ import traceback
 import click
 from click.testing import CliRunner
 
-from accessionflow.cli import collate_cmd
+from accessionflow.sources.folder.cli import collate_cmd
 
 
 def show_cli_trace(result: click.testing.Result) -> str:

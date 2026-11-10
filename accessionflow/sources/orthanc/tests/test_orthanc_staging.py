@@ -1,4 +1,4 @@
-"""Tests for Accession.from_orthanc's study-selection logic: which
+"""Tests for stage_studies's study-selection logic: which
 studies in Orthanc get staged is controlled by two labels --
 
 * to_process_label: applied *externally* (e.g. by the modality/scanner
@@ -13,7 +13,7 @@ and does NOT already have the processed_label.
 There's no Orthanc test server available (unlike xnat4tests for XNAT), so
 the Orthanc REST API is faked in-memory: FakeOrthanc below implements just
 enough of /tools/find, /studies, /series, /instances and study labels to
-drive from_orthanc end to end, including the hardlink step (real DICOM
+drive stage_studies end to end, including the hardlink step (real DICOM
 bytes are copied into the fake store_dir so checksums are genuine).
 """
 
@@ -36,8 +36,9 @@ from medimages4tests.dummy.dicom.pet.topogram.siemens.biograph_vision.vr20b impo
 )
 
 from accessionflow.exceptions import DifferingCheckumsException
-from accessionflow.model import accession as session_module
 from accessionflow.model.accession import Accession
+from accessionflow.sources.orthanc import staging as staging_module
+from accessionflow.sources.orthanc.staging import stage_studies
 
 ORTHANC_URL = "http://orthanc-test:8042"
 ORTHANC_USER = "orthanc-user"
@@ -46,7 +47,7 @@ ORTHANC_PASSWORD = "orthanc-pass"
 
 class FakeOrthanc:
     """Minimal in-memory stand-in for the Orthanc REST endpoints that
-    from_orthanc talks to."""
+    stage_studies talks to."""
 
     def __init__(self, store_dir: Path) -> None:
         self.store_dir = store_dir
@@ -173,7 +174,7 @@ def _patch_requests(fake: FakeOrthanc) -> ty.Any:
         return _mock_response(None)
 
     return patch.multiple(
-        "accessionflow.model.accession.requests",
+        "accessionflow.sources.orthanc.staging.requests",
         post=MagicMock(side_effect=fake_post),
         get=MagicMock(side_effect=fake_get),
         put=MagicMock(side_effect=fake_put),
@@ -237,14 +238,14 @@ def _make_fake_orthanc(tmp_path: Path) -> ty.Tuple[FakeOrthanc, Path]:
     return fake, store_dir
 
 
-def test_from_orthanc_stages_only_to_process_and_not_yet_processed(
+def test_stage_studies_stages_only_to_process_and_not_yet_processed(
     tmp_path: Path,
 ) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
     output_dir = tmp_path / "staged"
 
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=output_dir,
             store_dir=store_dir,
@@ -265,14 +266,14 @@ def test_from_orthanc_stages_only_to_process_and_not_yet_processed(
     assert not any(sid == "study-plain" for sid, _ in fake.labelled)
 
 
-def test_from_orthanc_processes_all_studies_when_to_process_label_is_none(
+def test_stage_studies_processes_all_studies_when_to_process_label_is_none(
     tmp_path: Path,
 ) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
     output_dir = tmp_path / "staged"
 
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=output_dir,
             store_dir=store_dir,
@@ -289,14 +290,14 @@ def test_from_orthanc_processes_all_studies_when_to_process_label_is_none(
     assert accessions == {"ACC-READY", "ACC-PLAIN"}
 
 
-def test_from_orthanc_stages_nothing_when_no_study_has_the_label(
+def test_stage_studies_stages_nothing_when_no_study_has_the_label(
     tmp_path: Path,
 ) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
     output_dir = tmp_path / "staged"
 
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=output_dir,
             store_dir=store_dir,
@@ -310,14 +311,14 @@ def test_from_orthanc_stages_nothing_when_no_study_has_the_label(
     assert _processed(fake) == []
 
 
-def test_from_orthanc_waits_for_recent_studies(tmp_path: Path) -> None:
+def test_stage_studies_waits_for_recent_studies(tmp_path: Path) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
     fake.studies["study-ready"]["last_update"] = datetime.now(UTC).strftime(
         "%Y%m%dT%H%M%S"
     )
 
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=tmp_path / "staged",
             store_dir=store_dir,
@@ -332,7 +333,7 @@ def test_from_orthanc_waits_for_recent_studies(tmp_path: Path) -> None:
     assert ("study-ready", "done") not in fake.labelled
 
 
-def test_from_orthanc_does_not_label_study_when_staged_session_is_invalid(
+def test_stage_studies_does_not_label_study_when_staged_session_is_invalid(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
@@ -345,7 +346,7 @@ def test_from_orthanc_does_not_label_study_when_staged_session_is_invalid(
             Accession, "load", side_effect=RuntimeError("invalid staged session")
         ),
     ):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=tmp_path / "staged",
             store_dir=store_dir,
@@ -365,7 +366,7 @@ def test_from_orthanc_does_not_label_study_when_staged_session_is_invalid(
     assert not list((tmp_path / "staged" / "__build__").glob("orthanc_*"))
 
 
-def test_from_orthanc_does_not_label_study_that_changes_during_staging(
+def test_stage_studies_does_not_label_study_that_changes_during_staging(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
@@ -381,7 +382,7 @@ def test_from_orthanc_does_not_label_study_that_changes_during_staging(
         _patch_requests(fake),
         patch.object(Accession, "load", side_effect=load_then_update_study),
     ):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=tmp_path / "staged",
             store_dir=store_dir,
@@ -408,14 +409,14 @@ def test_from_orthanc_does_not_label_study_that_changes_during_staging(
     assert not list((tmp_path / "staged").glob("_.*"))
 
 
-def test_from_orthanc_retry_keeps_existing_files_in_manifest(tmp_path: Path) -> None:
+def test_stage_studies_retry_keeps_existing_files_in_manifest(tmp_path: Path) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
     fake.studies = {"study-ready": fake.studies["study-ready"]}
     output_dir = tmp_path / "staged"
 
     for _ in range(2):
         with _patch_requests(fake):
-            Accession.from_orthanc(
+            stage_studies(
                 url=ORTHANC_URL,
                 output_dir=output_dir,
                 store_dir=store_dir,
@@ -447,7 +448,7 @@ def _fake_zip_converter(tmp_path: Path) -> ty.Callable[..., Zip]:
     return convert
 
 
-def test_from_orthanc_converts_series_before_labelling(tmp_path: Path) -> None:
+def test_stage_studies_converts_series_before_labelling(tmp_path: Path) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
     fake.studies = {"study-ready": fake.studies["study-ready"]}
     output_dir = tmp_path / "staged"
@@ -456,7 +457,7 @@ def test_from_orthanc_converts_series_before_labelling(tmp_path: Path) -> None:
         _patch_requests(fake),
         patch.object(Zip, "convert", side_effect=_fake_zip_converter(tmp_path)),
     ):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=output_dir,
             store_dir=store_dir,
@@ -479,7 +480,7 @@ def test_from_orthanc_converts_series_before_labelling(tmp_path: Path) -> None:
     assert ("study-ready", "done") in fake.labelled
 
 
-def test_from_orthanc_does_not_label_study_when_conversion_fails(
+def test_stage_studies_does_not_label_study_when_conversion_fails(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     fake, store_dir = _make_fake_orthanc(tmp_path)
@@ -491,7 +492,7 @@ def test_from_orthanc_does_not_label_study_when_conversion_fails(
         _patch_requests(fake),
         patch.object(Zip, "convert", side_effect=RuntimeError("conversion failed")),
     ):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             url=ORTHANC_URL,
             output_dir=output_dir,
             store_dir=store_dir,
@@ -575,7 +576,7 @@ def test_initial_build_is_hidden_from_label(tmp_path):
 
     fake.get = get
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_publication_kwargs(output, store))
+        staged = stage_studies(**_publication_kwargs(output, store))
     assert len(observations) == 2 and len(staged) == 1
     assert len(staged[0].acquisitions) == 2
     for resource in staged[0].resources:
@@ -597,7 +598,7 @@ def _pause_complete_build(fake, kwargs, writer, label_marker):
 
     fake.label = lambda *args: label_marker.write_text("label applied")
     with _patch_requests(fake), patch.object(Accession, "load", side_effect=pause):
-        Accession.from_orthanc(**kwargs)
+        stage_studies(**kwargs)
 
 
 def test_stopped_initial_build_is_hidden_and_retry_publishes_all_series(tmp_path):
@@ -624,7 +625,7 @@ def test_stopped_initial_build_is_hidden_and_retry_publishes_all_series(tmp_path
         assert list(list_session_dirs(output)) == [] and not marker.exists()
         assert len(list(build.rglob("*.dcm"))) == 2
         with _patch_requests(fake):
-            staged = Accession.from_orthanc(**kwargs)
+            staged = stage_studies(**kwargs)
         assert len(staged) == 1 and len(staged[0].acquisitions) == 2
         assert not build.exists() and len(list(output.glob("_.*"))) == 1
         for resource in staged[0].resources:
@@ -651,7 +652,7 @@ def test_existing_collate_destination_is_preserved_and_next_study_runs(
     kwargs = _publication_kwargs(output, store)
     kwargs["to_process_label"] = None
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**kwargs)
+        staged = stage_studies(**kwargs)
     assert [session.metadata["AccessionNumber"] for session in staged] == ["ACC-READY"]
     assert len(staged[0].acquisitions) == 2
     assert list(refused.iterdir()) == [sentinel]
@@ -660,14 +661,14 @@ def test_existing_collate_destination_is_preserved_and_next_study_runs(
     assert "study-plain" in caplog.text and str(refused) in caplog.text
 
 
-def test_from_orthanc_preserves_grouping_uid_through_label(tmp_path):
+def test_stage_studies_preserves_grouping_uid_through_label(tmp_path):
     from accessionflow.api.label_api import label
     from accessionflow.helpers.metadata import Metadata
 
     fake, store_dir = _make_fake_orthanc(tmp_path)
     collated = tmp_path / "collated"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_publication_kwargs(collated, store_dir))
+        staged = stage_studies(**_publication_kwargs(collated, store_dir))
 
     uid = "1_2_3_0"
     assert len(staged) == 1
@@ -696,7 +697,7 @@ def test_from_orthanc_preserves_grouping_uid_through_label(tmp_path):
     assert reloaded.metadata[Accession.UID_METADATA_KEY] == uid
 
 
-def test_from_orthanc_invalid_sessions_have_distinct_grouping_uids(tmp_path):
+def test_stage_studies_invalid_sessions_have_distinct_grouping_uids(tmp_path):
     from accessionflow.api.label_api import INVALID_DIRNAME, label
 
     fake, store_dir = _make_fake_orthanc(tmp_path)
@@ -704,7 +705,7 @@ def test_from_orthanc_invalid_sessions_have_distinct_grouping_uids(tmp_path):
     kwargs = _publication_kwargs(collated, store_dir)
     kwargs["to_process_label"] = None
     with _patch_requests(fake):
-        Accession.from_orthanc(**kwargs)
+        stage_studies(**kwargs)
 
     labelled = tmp_path / "labelled"
     errors = label(
@@ -734,7 +735,7 @@ def test_staging_writes_the_snapshot_label(tmp_path):
     fake, store = _make_fake_orthanc(tmp_path)
     fake.studies["study-ready"]["last_update"] = "20261019T011324"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert len(staged) == 1
     # Snapshot first, processed last: a processed study always has a snapshot.
     # The snapshot names the LastUpdate and a digest of the staged instance ids.
@@ -756,7 +757,7 @@ def test_processed_study_with_matching_snapshot_is_left_alone(tmp_path):
     done["labels"] = {"ready", "done", "done-20261019T011324-0123456789abcdef01234567"}
     done["last_update"] = "20261019T011324"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert [s.name for s in staged] != ["study-done"]
     assert not any(sid == "study-done" for sid, _ in fake.labelled)
     assert fake.unlabelled == []
@@ -768,7 +769,7 @@ def test_processed_study_changed_after_staging_is_staged_again(tmp_path):
     done["labels"] = {"ready", "done", "done-20261019T011324-0123456789abcdef01234567"}
     done["last_update"] = "20261019T014500"  # a series arrived after the staging
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert any(sid == "study-done" for sid, _ in fake.labelled)
     assert ("study-done", "done") in fake.unlabelled
     assert (
@@ -791,7 +792,7 @@ def test_processed_study_without_snapshot_is_staged_again(tmp_path):
     fake.studies["study-done"]["labels"] = {"ready", "done"}
     fake.studies["study-done"]["last_update"] = "20261019T011324"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert ("study-done", "done") in fake.unlabelled
     assert any(
         sid == "study-done" and lb.startswith("done-20261019T011324-")
@@ -808,7 +809,7 @@ def test_changed_processed_study_without_ready_label_is_not_staged(tmp_path):
     done["labels"] = {"done", "done-20261019T011324-0123456789abcdef01234567"}
     done["last_update"] = "20261019T014500"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert not any(sid == "study-done" for sid, _ in fake.labelled + fake.unlabelled)
     assert len(staged) == 1
 
@@ -820,7 +821,7 @@ def test_processed_study_with_a_malformed_snapshot_is_staged_again(tmp_path):
     done["labels"] = {"ready", "done", "done-20261019T011324"}
     done["last_update"] = "20261019T011324"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert ("study-done", "done-20261019T011324") in fake.unlabelled
     assert len(staged) == 2
 
@@ -836,7 +837,7 @@ def test_processed_study_with_two_snapshots_is_staged_again(tmp_path):
     }
     done["last_update"] = "20261019T011324"
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        staged = stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert len(staged) == 2
     assert len([lb for lb in done["labels"] if lb.startswith("done-")]) == 1
 
@@ -850,7 +851,7 @@ def test_malformed_expanded_find_reply_is_an_error(tmp_path):
 
     fake.find = bad_find
     with _patch_requests(fake), pytest.raises(ValueError, match="expanded study query"):
-        Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert fake.labelled == [] and fake.unlabelled == []
 
 
@@ -863,7 +864,7 @@ def test_processed_label_forces_a_one_second_wait(tmp_path, caplog):
     kwargs = _snapshot_kwargs(tmp_path / "staged", store)
     kwargs["wait_period"] = 0
     with _patch_requests(fake), caplog.at_level(logging.INFO):
-        staged = Accession.from_orthanc(**kwargs)
+        staged = stage_studies(**kwargs)
     assert [s.name for s in staged] == []
     assert "wait period of 1 second" in caplog.text
 
@@ -873,7 +874,7 @@ def test_too_long_processed_label_is_refused_before_staging(tmp_path):
     kwargs = _snapshot_kwargs(tmp_path / "staged", store)
     kwargs["processed_label"] = "p" * 45
     with _patch_requests(fake), pytest.raises(ValueError, match="too long"):
-        Accession.from_orthanc(**kwargs)
+        stage_studies(**kwargs)
     assert fake.labelled == []
 
 
@@ -914,7 +915,7 @@ def test_malformed_study_fields_in_the_expanded_reply_are_an_error(
         _patch_requests(fake),
         pytest.raises(ValueError, match="Unexpected Labels or LastUpdate"),
     ):
-        Accession.from_orthanc(**_snapshot_kwargs(tmp_path / "staged", store))
+        stage_studies(**_snapshot_kwargs(tmp_path / "staged", store))
     assert fake.labelled == [] and fake.unlabelled == []
 
 
@@ -952,7 +953,7 @@ def test_series_sharing_a_scan_directory_fail_the_study_and_the_stage_goes_on(
 
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(output_dir, store))
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store))
 
     # The clashing study is refused with a clear reason and left unlabelled.
     errors = [r for r in caplog.records if r.levelno == logging.ERROR]
@@ -987,7 +988,7 @@ def test_a_study_that_fails_to_load_does_not_stop_the_other_studies(
         _patch_requests(fake),
         patch.object(Accession, "load", side_effect=load_or_fail),
     ):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(output_dir, store))
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store))
 
     errors = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert [r.getMessage() for r in errors] == [
@@ -1013,9 +1014,7 @@ def test_series_with_one_number_and_two_descriptions_fail_the_study(
 
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
-            **_snapshot_kwargs(output_dir, store), errors=errors
-        )
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store), errors=errors)
 
     assert staged == [] and errors == ["study-ready"]
     [message] = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
@@ -1055,9 +1054,7 @@ def test_a_failing_study_first_in_the_pass_does_not_block_the_next_and_recovers(
 
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
-            **_snapshot_kwargs(output_dir, store), errors=errors
-        )
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store), errors=errors)
 
     # Pass 1: the first study fails, the second is staged.
     assert errors == ["study-plain"]
@@ -1074,9 +1071,7 @@ def test_a_failing_study_first_in_the_pass_does_not_block_the_next_and_recovers(
         shutil.rmtree(output_dir / f"_.{uid}")
     errors = []
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
-            **_snapshot_kwargs(output_dir, store), errors=errors
-        )
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store), errors=errors)
     assert errors == []
     assert [s.metadata["AccessionNumber"] for s in staged] == ["ACC-PLAIN"]
     assert ("study-plain", "done") in fake.labelled
@@ -1099,9 +1094,7 @@ def test_a_failed_processed_label_write_keeps_the_published_session(
     errors: ty.List[str] = []
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
-            **_snapshot_kwargs(output_dir, store), errors=errors
-        )
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store), errors=errors)
 
     # The session was published before the label write; it stays for the next
     # stage, the study is not certified, and the error names the study.
@@ -1131,7 +1124,7 @@ def test_a_failed_conversion_leaves_no_scratch_directory_behind(tmp_path, caplog
     errors: ty.List[str] = []
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             **_snapshot_kwargs(output_dir, store),
             conversion_map={DicomSeries: (Zip, {})},
             errors=errors,
@@ -1150,9 +1143,7 @@ def test_an_existing_destination_counts_as_a_failed_study(tmp_path, caplog):
     errors: ty.List[str] = []
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
-            **_snapshot_kwargs(output_dir, store), errors=errors
-        )
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store), errors=errors)
 
     assert staged == [] and errors == ["study-ready"]
     assert ("study-ready", "done") not in fake.labelled
@@ -1184,9 +1175,7 @@ def test_a_derived_series_of_the_same_scan_becomes_its_own_resource(tmp_path):
     output_dir = tmp_path / "staged"
     errors: ty.List[str] = []
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(
-            **_snapshot_kwargs(output_dir, store), errors=errors
-        )
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store), errors=errors)
 
     assert errors == []
     [session] = staged
@@ -1233,10 +1222,10 @@ def test_a_build_directory_that_cannot_be_removed_is_logged_and_the_stage_goes_o
             raise PermissionError(13, "Permission denied", str(path))
         return real_rmtree(path, *args, **kwargs)
 
-    monkeypatch.setattr(session_module.shutil, "rmtree", rmtree)
+    monkeypatch.setattr(staging_module.shutil, "rmtree", rmtree)
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        staged = Accession.from_orthanc(**_snapshot_kwargs(output_dir, store))
+        staged = stage_studies(**_snapshot_kwargs(output_dir, store))
 
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
@@ -1272,10 +1261,10 @@ def test_a_file_that_disappears_during_the_removal_does_not_stop_it(
             raise FileNotFoundError(2, "No such file or directory", str(path / "x"))
         return real_rmtree(path, *args, **kwargs)
 
-    monkeypatch.setattr(session_module.shutil, "rmtree", rmtree)
+    monkeypatch.setattr(staging_module.shutil, "rmtree", rmtree)
     caplog.set_level(logging.WARNING, logger="accessionflow")
     with _patch_requests(fake):
-        Accession.from_orthanc(**_snapshot_kwargs(output_dir, store))
+        stage_studies(**_snapshot_kwargs(output_dir, store))
 
     assert not build_dir.exists()
     assert not [
@@ -1299,7 +1288,7 @@ def test_a_converted_study_that_fails_later_logs_no_removal_warning(tmp_path, ca
         patch.object(Zip, "convert", side_effect=_fake_zip_converter(tmp_path)),
         patch.object(Accession, "load", side_effect=fail_load),
     ):
-        staged = Accession.from_orthanc(
+        staged = stage_studies(
             **_snapshot_kwargs(output_dir, store),
             conversion_map={DicomSeries: (Zip, {"compression": ZIP_STORED})},
         )

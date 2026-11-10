@@ -8,9 +8,9 @@ The following functions mirror the command line tools, and can be used to
 evoke the same modular behaviour via a Python workflow.
 
 
-.. autofunction:: accessionflow.api.collate
+.. autofunction:: accessionflow.sources.folder.api.collate
 
-.. autofunction:: accessionflow.api.collate_orthanc
+.. autofunction:: accessionflow.sources.orthanc.api.collate
 
 .. autofunction:: accessionflow.api.label
 

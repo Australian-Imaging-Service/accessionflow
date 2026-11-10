@@ -1,6 +1,9 @@
+import typing as ty
+
 import click
 
 from accessionflow.helpers import __version__
+from accessionflow.model.source import load_source_plugins, source_plugins
 from accessionflow.model.store import load_store_plugins, store_plugins
 
 
@@ -13,19 +16,46 @@ def cli() -> None:
     pass
 
 
-class DataStoreGroup(click.Group):
-    """A stage with one subcommand per store, e.g. 'label xnat'.
+class PluginGroup(click.Group):
+    """A stage with one subcommand per plugin, e.g. 'collate orthanc' for a source
+    plugin or 'label xnat' for a store plugin.
 
-    The subcommands are registered by the store plugins, which are loaded the
-    first time the group is asked for its subcommands.
+    The subcommands are registered by the plugins, which are loaded the first time
+    the group is asked for its subcommands.
+
+    Parameters
+    ----------
+    kind : str
+        what the plugins are, e.g. 'store', for the error messages
+    package : str
+        the namespace package the plugins are subpackages of
+    load_plugins : callable
+        imports the plugins' 'cli' subpackages so that they register their subcommands
+    plugin_names : callable
+        the names of the installed plugins
     """
 
+    def __init__(
+        self,
+        *args: ty.Any,
+        kind: str,
+        package: str,
+        load_plugins: ty.Callable[[], object],
+        plugin_names: ty.Callable[[], list[str]],
+        **kwargs: ty.Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.kind = kind
+        self.package = package
+        self.load_plugins = load_plugins
+        self.plugin_names = plugin_names
+
     def list_commands(self, ctx: click.Context) -> list[str]:
-        load_store_plugins()
+        self.load_plugins()
         return super().list_commands(ctx)
 
     def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
-        load_store_plugins()
+        self.load_plugins()
         return super().get_command(ctx, cmd_name)
 
     def resolve_command(
@@ -33,90 +63,50 @@ class DataStoreGroup(click.Group):
     ) -> tuple[str | None, click.Command | None, list[str]]:
         if args and not args[0].startswith("-") and not ctx.resilient_parsing:
             if self.get_command(ctx, args[0]) is None:
-                if args[0] in store_plugins():
+                if args[0] in self.plugin_names():
                     hint = (
-                        f"the '{args[0]}' store plugin does not provide a "
+                        f"the '{args[0]}' {self.kind} plugin does not provide a "
                         f"'{self.name}' command"
                     )
                 else:
                     hint = (
-                        f"no store plugin named '{args[0]}' is installed. "
-                        "Store plugins are subpackages of "
-                        f"'accessionflow.stores', e.g. "
-                        f"'accessionflow.stores.{args[0]}'"
+                        f"no {self.kind} plugin named '{args[0]}' is installed. "
+                        f"{self.kind.capitalize()} plugins are subpackages of "
+                        f"'{self.package}', e.g. '{self.package}.{args[0]}'"
                     )
                 available = ", ".join(self.list_commands(ctx)) or "none"
                 ctx.fail(
-                    f"Cannot run '{self.name} {args[0]}': {hint} (stores "
+                    f"Cannot run '{self.name} {args[0]}': {hint} ({self.kind}s "
                     f"available for '{self.name}': {available})"
                 )
         return super().resolve_command(ctx, args)
 
 
-def data_store_group(name: str, help: str) -> DataStoreGroup:
+def data_store_group(name: str, help: str) -> PluginGroup:
     """Add a stage to the CLI whose subcommands are provided by store plugins"""
-    group = DataStoreGroup(
+    group = PluginGroup(
         name=name,
         help=f"{help}\n\nRun 'accessionflow {name} <data-store> --help' for the "
         "options for each data store.",
+        kind="store",
+        package="accessionflow.stores",
+        load_plugins=load_store_plugins,
+        plugin_names=store_plugins,
     )
     cli.add_command(group)
     return group
 
 
-class DeprecatedAlias(DataStoreGroup):
-    """A hidden former name of a stage, e.g. 'upload' for 'store', which runs the
-    stage's subcommands after warning that the name is deprecated"""
-
-    def __init__(self, name: str, target: DataStoreGroup) -> None:
-        super().__init__(
-            name=name,
-            hidden=True,
-            help=f"Deprecated name of '{target.name}'",
-        )
-        self.target = target
-
-    def list_commands(self, ctx: click.Context) -> list[str]:
-        return self.target.list_commands(ctx)
-
-    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
-        return self.target.get_command(ctx, cmd_name)
-
-    def invoke(self, ctx: click.Context) -> object:
-        click.echo(
-            f"Warning: 'accessionflow {self.name}' is deprecated and will be removed "
-            f"in a future release, use 'accessionflow {self.target.name}' instead",
-            err=True,
-        )
-        return super().invoke(ctx)
-
-
-def deprecated_alias(name: str, target: DataStoreGroup) -> DeprecatedAlias:
-    """Add a hidden former name of a stage to the CLI"""
-    alias = DeprecatedAlias(name, target)
-    cli.add_command(alias)
-    return alias
-
-
-def deprecated_command_alias(name: str, target: click.Command) -> click.Command:
-    """Add a hidden former name of a command to the CLI, which runs the command after
-    warning that the name is deprecated"""
-
-    def callback(**kwargs: object) -> object:
-        click.echo(
-            f"Warning: 'accessionflow {name}' is deprecated and will be removed in a "
-            f"future release, use 'accessionflow {target.name}' instead",
-            err=True,
-        )
-        assert target.callback is not None
-        return target.callback(**kwargs)
-
-    alias = click.Command(
+def source_group(name: str, help: str) -> PluginGroup:
+    """Add a stage to the CLI whose subcommands are provided by source plugins"""
+    group = PluginGroup(
         name=name,
-        params=target.params,
-        callback=callback,
-        help=f"Deprecated name of '{target.name}'",
-        hidden=True,
+        help=f"{help}\n\nRun 'accessionflow {name} <source> --help' for the "
+        "options for each source.",
+        kind="source",
+        package="accessionflow.sources",
+        load_plugins=load_source_plugins,
+        plugin_names=source_plugins,
     )
-    cli.add_command(alias)
-    return alias
+    cli.add_command(group)
+    return group

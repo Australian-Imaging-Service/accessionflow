@@ -13,55 +13,87 @@ class StopLoop(Exception):
     pass
 
 
-# Commands provided by the XNAT plugin, and the module that the API they call is
-# looked up in
-XNAT_COMMANDS = {
-    "label": "accessionflow.cli.label_cli",
-    "store": "accessionflow.stores.xnat.cli.store_cli",
-}
-
+# (the module the command is defined in, the command, the module the API it calls
+# is looked up in, the API, its arguments besides INPUT/OUTPUT, and whether INPUT
+# and OUTPUT come first)
 CASES = [
-    ("label", "label", []),
-    ("attach", "attach", ["generic/file", "*", ".*"]),
-    ("deidentify", "deidentify", ["{spec}"]),
     (
-        "collate",
-        "collate_orthanc",
-        ["http://orthanc.test", "{in}", "{out}", "user", "password"],
+        "accessionflow.stores.xnat.cli.label_cli",
+        "label_cmd",
+        "accessionflow.cli.label_cli",
+        "label",
+        [],
+        True,
     ),
     (
-        "store",
+        "accessionflow.cli.attach_cli",
+        "attach_cmd",
+        "accessionflow.cli.attach_cli",
+        "attach",
+        ["generic/file", "*", ".*"],
+        True,
+    ),
+    (
+        "accessionflow.cli.deidentify_cli",
+        "deidentify_cmd",
+        "accessionflow.cli.deidentify_cli",
+        "deidentify",
+        ["{spec}"],
+        True,
+    ),
+    (
+        "accessionflow.sources.folder.cli.collate_cli",
+        "collate_cmd",
+        "accessionflow.sources.folder.cli.collate_cli",
+        "collate",
+        [],
+        True,
+    ),
+    (
+        "accessionflow.sources.orthanc.cli.collate_cli",
+        "collate_cmd",
+        "accessionflow.sources.orthanc.cli.collate_cli",
+        "collate",
+        ["http://orthanc.test", "{in}", "{out}", "user", "password"],
+        False,
+    ),
+    (
+        "accessionflow.stores.xnat.cli.store_cli",
+        "store_cmd",
+        "accessionflow.stores.xnat.cli.store_cli",
         "store",
         ["{in}", "https://xnat.test", "--user", "user", "--password", "password"],
+        False,
     ),
 ]
 
 
-@pytest.mark.parametrize("module_name,api_name,extra", CASES)
+@pytest.mark.parametrize(
+    "command_module,command_name,api_module,api_name,extra,in_out_first", CASES
+)
 @pytest.mark.parametrize(
     "elapsed,loop,expected_sleep", [(2, 10, 8), (12, 10, 0), (2, -1, None)]
 )
 def test_loop_interval(
-    module_name, api_name, extra, elapsed, loop, expected_sleep, tmp_path, monkeypatch
+    command_module,
+    command_name,
+    api_module,
+    api_name,
+    extra,
+    in_out_first,
+    elapsed,
+    loop,
+    expected_sleep,
+    tmp_path,
+    monkeypatch,
 ):
-    module = importlib.import_module("accessionflow.cli." + module_name + "_cli")
-    if module_name in XNAT_COMMANDS:
-        # The command is provided by the XNAT plugin, the API it calls is either the
-        # plugin's or the core one
-        command = getattr(
-            importlib.import_module(
-                "accessionflow.stores.xnat.cli." + module_name + "_cli"
-            ),
-            module_name + "_cmd",
-        )
-        module = importlib.import_module(XNAT_COMMANDS[module_name])
-    else:
-        command = getattr(module, api_name + "_cmd")
+    command = getattr(importlib.import_module(command_module), command_name)
+    module = importlib.import_module(api_module)
     paths = {name: str(tmp_path / name) for name in ["in", "out", "spec"]}
     for name in ["in", "spec"]:
         (tmp_path / name).mkdir()
     args = [arg.format(**paths) for arg in extra]
-    if api_name not in ("collate_orthanc", "store"):
+    if in_out_first:
         args = [paths["in"], paths["out"]] + args
     args += ["--loop", str(loop)]
     now = [100.0]

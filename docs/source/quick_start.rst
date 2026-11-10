@@ -62,7 +62,7 @@ Collate the files into acquisitions/resources:
 
 .. code-block:: console
 
-    $ accessionflow collate /path/to/dicom/series /tmp/accessionflow-quickstart/collated
+    $ accessionflow collate folder /path/to/dicom/series /tmp/accessionflow-quickstart/collated
 
 Label the accession to your project. The sample data from step 3 doesn't have
 ``StudyComments``/``AccessionNumber`` populated (the fields ``label`` uses by default

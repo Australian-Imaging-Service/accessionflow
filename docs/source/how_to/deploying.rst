@@ -24,7 +24,7 @@ the CLI as its entrypoint, so each stage becomes a single long-running container
         -v /data/incoming:/input \
         -v /data/staging:/staging \
         ghcr.io/australian-imaging-service/accessionflow \
-        collate /input /staging/collated --loop 300
+        collate folder /input /staging/collated --loop 300
 
 Repeat with ``label``, optionally ``deidentify``, and ``store`` as separate
 containers, each mounting the previous stage's output as its input, chained through a
@@ -42,7 +42,7 @@ a service sharing a named volume for the staging directories:
     services:
       collate:
         image: ghcr.io/australian-imaging-service/accessionflow
-        command: collate /input /staging/collated --loop 300
+        command: collate folder /input /staging/collated --loop 300
         volumes:
           - /data/incoming:/input
           - staging:/staging
@@ -85,5 +85,5 @@ charts for deploying *AccessionFlow* (alongside other edge-node components) to
 Kubernetes, and is a good starting point for a production setup.
 
 Orthanc collation builds each study below ``__build__`` before an atomic rename.
-Use one collate-orthanc producer per output directory. A retry removes its stale
+Use one ``collate orthanc`` producer per output directory. A retry removes its stale
 build; converter children that outlive their parent are outside this contract.

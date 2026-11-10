@@ -12,7 +12,7 @@ from accessionflow.helpers.arg_types import (
 )
 from accessionflow.helpers.logging import logger, set_logger_handling
 
-from .base import cli, deprecated_command_alias
+from .base import cli
 
 
 @cli.command(
@@ -110,8 +110,3 @@ def select_fields_cmd(
             sleep_time,
         )
         time.sleep(sleep_time)
-
-
-# The command's name before it was renamed, kept so that existing deployments keep
-# working while they move over
-deprecated_command_alias("fields", select_fields_cmd)

@@ -15,13 +15,13 @@ their own guides.)
 1. Collate files into accessions/acquisitions/resources
 --------------------------------------------------------
 
-``collate`` scans one or more input paths, reads each file's metadata (DICOM tags by
+``collate folder`` scans one or more input paths, reads each file's metadata (DICOM tags by
 default), and collates files into a directory structure of
 ``<session>/<scan>/<resource>`` under ``OUTPUT_DIR``, ready for the next stage.
 
 .. code-block:: console
 
-    $ accessionflow collate /data/incoming/*.dcm /data/staging/collated
+    $ accessionflow collate folder /data/incoming/*.dcm /data/staging/collated
 
 * ``INPUT_PATHS`` — one or more directories or glob patterns pointing at the raw files
   (``ACFLOW_INPUT_PATHS``)
@@ -59,7 +59,7 @@ doesn't write it anywhere in the file:
 
 .. code-block:: console
 
-    $ accessionflow collate /data/incoming/cohort-A /data/staging/collated \
+    $ accessionflow collate folder /data/incoming/cohort-A /data/staging/collated \
         --path-metadata-regex '.*/(?P<cohort>[^/]+)$' medimage/dicom-series
 
 Here, anything found under a ``.../cohort-A/...`` directory gets a ``cohort``
@@ -90,7 +90,7 @@ to compose an ID from more than one and/or apply formatting:
 
 .. code-block:: console
 
-    $ accessionflow collate ... --session '{PatientID}_{StudyDate:%Y%m%d}' all
+    $ accessionflow collate folder ... --session '{PatientID}_{StudyDate:%Y%m%d}' all
 
 This is detected automatically (a specifier is treated as a format string if it
 contains a ``{``, and as a plain field name otherwise, so existing specifiers like
@@ -115,7 +115,7 @@ larger vendor export:
 
 .. code-block:: console
 
-    $ accessionflow collate /data/incoming /data/staging/collated --recursive \
+    $ accessionflow collate folder /data/incoming /data/staging/collated --recursive \
         --datatype medimage/vnd.canfield.whole-body-analysis-dir \
         --datatype medimage/vnd.canfield.dexi-data-dir \
         --exclude-path '*/*/*.png'
@@ -165,20 +165,19 @@ Collating straight from an Orthanc server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If your scanner pushes to an `Orthanc <https://www.orthanc-server.com/>`_ instance
-rather than exporting to a plain directory, ``collate-orthanc`` replaces the ``collate``
-step: it queries Orthanc's REST API for studies and stages them into the same collated
+rather than exporting to a plain directory, ``collate orthanc`` replaces ``collate folder``: it queries Orthanc's REST API for studies and stages them into the same collated
 layout that ``label`` reads, hardlinking the DICOM files straight out of Orthanc's
 storage area rather than copying them.
 
 .. code-block:: console
 
-    $ accessionflow collate-orthanc http://localhost:8042 /var/lib/orthanc/db \
+    $ accessionflow collate orthanc http://localhost:8042 /var/lib/orthanc/db \
         /data/staging/collated orthanc-user orthanc-password
 
 * ``URL`` — the Orthanc REST endpoint (``ACFLOW_ORTHANC_URL``)
 * ``STORE_DIR`` — Orthanc's ``StorageDirectory``, as seen from wherever the command
   runs (``ACFLOW_ORTHANC_STORE_DIR``)
-* ``OUTPUT_DIR`` — where collated accessions are written, same as for ``collate``
+* ``OUTPUT_DIR`` — where collated accessions are written, same as for ``collate folder``
 * ``USER``/``PASSWORD`` — Orthanc credentials
   (``ACFLOW_ORTHANC_USER``/``ACFLOW_ORTHANC_PASSWORD``)
 
@@ -190,11 +189,11 @@ configuration.
 Accessions are collated by ``StudyInstanceUID``, acquisitions by ``SeriesNumber`` (described by
 ``SeriesDescription``) and resources by ``ImageType``, following Orthanc's own
 study/series/instance hierarchy. These groupings are currently fixed, there are no
-``--session``/``--scan``/``--resource`` overrides like ``collate``'s. What
+``--session``/``--scan``/``--resource`` overrides like ``collate folder``'s. What
 *metadata* is available for the later ``label`` stage can be extended through the
 Orthanc configuration however (see below).
 
-Like ``collate``, ``--convert <src-mime-like> <tgt-spec>`` converts matching series as
+Like ``collate folder``, ``--convert <src-mime-like> <tgt-spec>`` converts matching series as
 they are staged, e.g. ``--convert medimage/dicom-series medimage/nifti-gz-x``. The
 source is always ``medimage/dicom-series``. Conversion happens before the processed
 label is applied, so a study whose conversion fails is retried on the next run.
@@ -214,11 +213,11 @@ Which studies are staged (and staged only once) is controlled through Orthanc
 
 Removing the processed label from a study (e.g. through the Orthanc web UI) makes it
 eligible for re-staging. Note that ``--unlink-source`` is not yet implemented for
-``collate-orthanc`` — the source studies always stay in Orthanc, and the processed
+``collate orthanc`` — the source studies always stay in Orthanc, and the processed
 label is what stops them being staged again.
 
 A series that arrives after its study was staged is staged again without a manual
-step. When ``collate-orthanc`` applies the processed label, it also applies a
+step. When ``collate orthanc`` applies the processed label, it also applies a
 *snapshot label*, ``<processed-label>-<LastUpdate>-<digest>``: the ``LastUpdate``
 of the study at the time it was staged, and a digest of the instance IDs it
 exported. On every run, a processed study whose ``LastUpdate`` no longer matches
@@ -234,7 +233,7 @@ was staged.
 Missing series display tags
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``collate-orthanc`` does not refuse a study solely because ``SeriesDescription`` or
+``collate orthanc`` does not refuse a study solely because ``SeriesDescription`` or
 ``SeriesNumber`` is missing, empty or whitespace. A missing number becomes
 ``SeriesInstanceUID`` with dots replaced by underscores, matching XNAT's header
 importer so it updates the same scan. If that UID is not in Orthanc's indexed tags,
@@ -249,7 +248,7 @@ A numeric zero remains a valid number. Each fallback emits
 ``series_metadata_fallback`` with ``orthanc_series_id``. Normal series keep their
 current labels. These labels do not repair missing study or patient identity.
 
-The generic DICOM-files ``collate`` path still requires its configured ``--scan``
+The ``collate folder`` path still requires its configured ``--scan``
 expression to resolve. Its default ``SeriesNumber`` therefore needs an explicit
 ``--scan SeriesInstanceUID,medimage/dicom-collection`` for sources without numbers.
 Automatic number fallback on that configurable path is a separate follow-up;
@@ -269,7 +268,7 @@ warning and staged again on a later run.
 Available metadata fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Unlike ``collate``, which reads each file's full DICOM header, ``collate-orthanc`` only
+Unlike ``collate folder``, which reads each file's full DICOM header, ``collate orthanc`` only
 sees the tags Orthanc itself indexes: the study-level ``MainDicomTags`` and
 ``PatientMainDicomTags``. These are what end up in the accession's
 ``__METADATA__.json``, and therefore what ``label``'s
@@ -387,7 +386,7 @@ series directories are nested below the input path. The deidentify stage uses a
 
 .. code-block:: console
 
-    $ accessionflow collate /data/incoming /data/staging/collated \
+    $ accessionflow collate folder /data/incoming /data/staging/collated \
         --datatype medimage/dicom-dir --recursive
 
 After labelling and de-identifying the collated accessions, package them with the

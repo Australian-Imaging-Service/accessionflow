@@ -13,7 +13,7 @@ a format-specific branch for each one.
 Collating files into resources
 ----------------------------------
 
-``collate``'s ``--datatype`` option (see :doc:`/cli`) is a `FileFormats MIME-like
+``collate folder``'s ``--datatype`` option (see :doc:`/cli`) is a `FileFormats MIME-like
 identifier <https://arcanaframework.github.io/fileformats/mime.html>`_ (or a ``|``-separated union of several) that says which types of file to
 look for in the input paths at all. Within a matched accession, ``--scan``/
 ``--resource`` (:class:`~accessionflow.helpers.arg_types.IDSpec`) then decide which

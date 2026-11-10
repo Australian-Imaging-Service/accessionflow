@@ -1,4 +1,4 @@
-from .base import data_store_group, deprecated_alias
+from .base import data_store_group
 
 store_group = data_store_group(
     name="store",
@@ -12,8 +12,3 @@ check_store_group = data_store_group(
         "it was deposited from, and logs all files that haven't been"
     ),
 )
-
-# The stages' names before they were renamed, kept so that existing deployments
-# keep working while they move over
-deprecated_alias("upload", store_group)
-deprecated_alias("check-upload", check_store_group)
