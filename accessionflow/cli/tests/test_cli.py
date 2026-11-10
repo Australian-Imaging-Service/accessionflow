@@ -1458,8 +1458,8 @@ def test_check_upload_empty_scan(
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
             # --accession-uid/--acquisition-id specs don't apply - set them explicitly
-            "ACFLOW_SESSION": "StudyInstanceUID all",
-            "ACFLOW_SCAN": "SeriesNumber all",
+            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
         },
     )
 
@@ -1598,8 +1598,8 @@ def test_check_upload_missing_resource(
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
             # --accession-uid/--acquisition-id specs don't apply - set them explicitly
-            "ACFLOW_SESSION": "StudyInstanceUID all",
-            "ACFLOW_SCAN": "SeriesNumber all",
+            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
         },
     )
 
@@ -1736,8 +1736,8 @@ def test_check_upload_checksum_fail(
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # non-DICOM test formats: the default DICOM-scoped --accession-uid/--acquisition-id
             # specs don't apply, set them explicitly
-            "ACFLOW_SESSION": "StudyInstanceUID all",
-            "ACFLOW_SCAN": "SeriesNumber all",
+            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
         },
     )
 
