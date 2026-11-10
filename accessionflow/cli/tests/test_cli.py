@@ -292,6 +292,8 @@ def test_select_fields_cli_rejects_duplicate_field_names(
     assert not output_dir.exists()
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 def test_stage_and_upload(
     xnat_config: ty.Any,
     xnat_server: str,
@@ -1267,6 +1269,8 @@ def test_label_missing_id_field_collects_error(
     )
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 @mock_aws
 def test_check_upload_missing_scan(
     xnat_server: str,
@@ -1399,6 +1403,8 @@ def test_check_upload_missing_scan(
     assert "CHECKSUM FAIL" not in logs
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 @mock_aws
 def test_check_upload_empty_scan(
     xnat_server: str,
@@ -1680,6 +1686,8 @@ def test_check_upload_missing_resource(
     assert "CHECKSUM FAIL" not in logs
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 @mock_aws
 def test_check_upload_checksum_fail(
     xnat_server: str,
@@ -1828,6 +1836,8 @@ def test_check_upload_checksum_fail(
     assert "CHECKSUM FAIL" in logs
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 def test_upload_snapshots_display_in_xnat(
     xnat_server: str,
     cli_runner: ty.Any,
