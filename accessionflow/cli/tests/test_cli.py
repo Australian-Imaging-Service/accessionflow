@@ -1538,6 +1538,8 @@ def test_check_upload_empty_scan(
     assert "CHECKSUM FAIL" not in logs
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 @mock_aws
 def test_check_upload_missing_resource(
     xnat_server: str,
