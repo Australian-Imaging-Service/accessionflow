@@ -1,5 +1,4 @@
 import os
-import shutil
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -7,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fileformats.core import FileSet
 from fileformats.generic import File
-from fileformats.medimage import DicomDir, DicomSeries
+from fileformats.medimage import DicomSeries
 from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
     get_image as get_pet_image,  # type: ignore[import-untyped]
 )
@@ -438,7 +437,7 @@ def test_label_end_to_end_resolves_ids_from_collated_metadata(
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
     collate_errors = collate(
-        input_paths=[str(dicom_dir)],
+        input_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
@@ -476,47 +475,6 @@ def test_label_end_to_end_resolves_ids_from_collated_metadata(
     assert scan_dir.name == "4.PET SWB 8MIN"
 
 
-def test_label_loads_dicomdir_resource(dicom_dir: Path, tmp_path: Path) -> None:
-    input_dir = tmp_path / "incoming"
-    source_dir = input_dir / "dicom0"
-    shutil.copytree(dicom_dir, source_dir)
-
-    collated_dir = tmp_path / "collated"
-    assert (
-        collate(
-            input_paths=[str(input_dir)],
-            output_dir=collated_dir,
-            datatypes=[DicomDir],
-            recursive=True,
-            accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-            acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-            resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
-        )
-        == []
-    )
-
-    output_dir = tmp_path / "labelled"
-    assert (
-        label(
-            input_dir=collated_dir,
-            output_dir=output_dir,
-            label_fields={
-                "project": PROJECT_FIELD,
-                "subject": SUBJECT_FIELD,
-                "session": ACCESSION_UID_FIELD,
-            },
-        )
-        == []
-    )
-
-    labelled_session = Accession.load(next(iter(list_session_dirs(output_dir))))
-    resource = next(iter(labelled_session.resources))
-    assert isinstance(resource.fileset, DicomDir)
-    assert resource.fileset.fspath.name == source_dir.name
-    assert resource.fileset.fspath.is_dir()
-    assert len(resource.checksums) == len(list(source_dir.iterdir()))
-
-
 def test_label_end_to_end_routes_datatypes_to_separate_projects(
     dicom_dir: Path, tmp_path: Path
 ) -> None:
@@ -524,7 +482,7 @@ def test_label_end_to_end_routes_datatypes_to_separate_projects(
     collated_dir.mkdir()
     assert (
         collate(
-            input_paths=[str(dicom_dir)],
+            input_paths=sorted(dicom_dir.iterdir()),
             output_dir=collated_dir,
             datatypes=[DicomSeries],
             accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
@@ -590,7 +548,7 @@ def test_label_end_to_end_unresolvable_project_field_goes_to_invalid_dir(
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
     collate_errors = collate(
-        input_paths=[str(dicom_dir)],
+        input_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
@@ -632,7 +590,7 @@ def test_label_skips_duplicate_invalid_sessions(
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
     collate_errors = collate(
-        input_paths=[str(dicom_dir)],
+        input_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],

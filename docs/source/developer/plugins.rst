@@ -36,13 +36,13 @@ A source plugin
   ``collate mysource``
 * registers ``collate <name>`` with ``@accessionflow.cli.collate_group.command(...)``,
   decorated with ``@accessionflow.cli.collate_options`` for the options every source
-  shares (``--loop``, ``--wait-period``, ``--copy-mode``, ``--convert``, ``--logger``,
+  shares (``--loop``, ``--copy-mode``, ``--convert``, ``--logger``,
   ``--additional-logger`` and ``--raise-errors``)
 * saves the accessions it collates into the staging directory in the layout the later
   stages read (see :ref:`concepts-staging`), e.g. by building
   :class:`~accessionflow.model.accession.Accession` objects that reference the files at
   the source and passing them to :func:`accessionflow.api.save_accessions_to_dir`, which
-  builds each one under ``__build__`` and moves it into place once it is complete
+  saves each one directly into the staging directory
 
 For example:
 

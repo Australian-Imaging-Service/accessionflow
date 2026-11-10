@@ -99,8 +99,10 @@ description yet. Once labelled, it is named by its labels joined by ``.``, e.g.
 ``<project>.<subject>.<session>`` for XNAT. ``select-fields`` adds a ``__FIELDS__.json``
 alongside the accession's metadata (see :doc:`stages/select_fields`).
 
-Accessions are built in a ``__build__`` subdirectory of the output directory and moved
-into place once they are complete, so a later stage never sees a partly written one.
+The stages after ``collate`` build accessions in a ``__build__`` subdirectory of the
+output directory and move them into place once they are complete, so a later stage never
+sees a partly written one. ``collate`` saves accessions straight into its output
+directory, so the stage that reads it must not run while ``collate`` is still writing.
 The manifests let the stages check that files haven't changed since an earlier stage
 wrote them.
 
@@ -214,9 +216,10 @@ and exiting, the command runs again every ``<seconds>`` seconds, timed from the 
 one run to the start of the next, picking up whatever has arrived in its input since.
 See :doc:`deployment` for running the stages as services.
 
-``--wait-period <seconds>`` (on the sources and stores) skips anything modified more
-recently than that, so that files that are still being transferred aren't processed
-partially. Skipped accessions are picked up by a later run.
+``--wait-period <seconds>`` (on the stores) skips anything modified more recently than
+that, so that accessions that are still being written aren't processed partially.
+Skipped accessions are picked up by a later run. ``collate`` has no wait period: it
+collates every file it is given, so only pass it files that have finished arriving.
 
 An error processing one accession (a bad file, a missing field, a dropped connection) is
 logged, and the stage moves on to the next one. The failed accession's input stays, so

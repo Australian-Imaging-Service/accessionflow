@@ -25,8 +25,7 @@ Both write the same layout (see :ref:`concepts-staging`), so everything after
 
 The sources share these options:
 
-* ``--loop`` and ``--wait-period`` — run continuously, skipping anything still being
-  transferred (see :ref:`concepts-looping`)
+* ``--loop`` — run continuously (see :ref:`concepts-looping`)
 * ``--copy-mode`` — how files are copied into the staging directory, e.g. as hardlinks
   where possible (the default) or as copies
 * ``--convert <src-mime-like> <tgt-spec>`` — convert resources of one format to another

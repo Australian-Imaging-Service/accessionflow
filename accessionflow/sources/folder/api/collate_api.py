@@ -6,7 +6,7 @@ from pathlib import Path
 from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
-from accessionflow.api.collate_api import BUILD_NAME_DEFAULT, save_accessions_to_dir
+from accessionflow.api.collate_api import save_accessions_to_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -30,7 +30,7 @@ _DEFAULT_DATATYPES: tuple[type[FileSet], ...] = (DicomSeries,)
 
 
 def collate(
-    input_paths: list[str],
+    input_paths: list[Path],
     output_dir: Path,
     datatypes: ty.Sequence[type[FileSet]] = _DEFAULT_DATATYPES,
     accession_uid: ty.Sequence[IDSpec] = DEFAULT_ACCESSION_UID_FIELD,
@@ -40,32 +40,31 @@ def collate(
     unlink_source: str | None = None,
     raise_errors: bool = False,
     copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
-    wait_period: int = 0,
     collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None,
     conversion_map: (
         dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None
     ) = None,
     allow_unrecognised: ty.Sequence[str] = (),
-    exclude_paths: ty.Sequence[str] = (),
     ignore_datatypes: ty.Sequence[type[FileSet]] = (),
     on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
     metadata_tables: list[MetadataTable] | None = None,
-    recursive: bool = False,
 ) -> list[str]:
-    """Collates the input files into accessions/acquisitions/resources and stages them into the
-    staging directory. Project/subject/visit IDs and scan descriptions are not
+    """Collates the input files into accessions/acquisitions/resources and saves them
+    directly into the staging directory. Project/subject/visit IDs and scan descriptions are not
     labelled at this point, see the 'label' function for that.
 
     Parameters
     ----------
-    input_paths: list[str]
-        List of paths to search for input files: directories, or glob patterns that
-        select the files directly. They must be local or on a mounted file system.
+    input_paths: list[Path]
+        The files to collate. Each path must be an existing file, local or on a mounted
+        file system; directories are not walked (see
+        ``accessionflow.sources.folder.discovery.find_files``).
     output_dir: Path
         Path to the staging directory where the collated sessions will be saved. This should be a local path.
     datatypes: ty.Sequence[type[FileSet]]
         FileSet types to look for in the input files. Only files with these datatypes will be
-        considered for staging. Defaults to ``(DicomSeries,)`` to mirror the CLI.
+        considered for staging. Directory datatypes are not supported. Defaults to
+        ``(DicomSeries,)`` to mirror the CLI.
     accession_uid: ty.Sequence[IDSpec]
         Field specifications to extract the accession UIDs from the input files, to
         collate them into separate accessions. Defaults to ``DEFAULT_ACCESSION_UID_FIELD``
@@ -106,27 +105,16 @@ def collate(
         Regexes matched against the *basename* of any input path that no datatype recognised;
         matches are skipped instead of raising ``FormatRecognitionError``. ``[".*"]`` tolerates
         all unrecognised files. Does not affect recognised filesets.
-    exclude_paths: ty.Sequence[str]
-        Globs matched against each input path *relative to its input directory*, applied before
-        classification so a match is dropped even if a datatype would claim it (e.g. a vendor
-        thumbnail that is a valid ``image/png``). ``*`` does not cross ``/``, ``**`` does.
     ignore_datatypes: ty.Sequence[type[FileSet]]
         Datatypes expected in the input but not wanted: recognised filesets of these types are
-        dropped rather than raising, and (with ``recursive``) matching directories are skipped
-        without descending. A path matching neither ``datatypes`` nor ``ignore_datatypes`` (nor
-        ``allow_unrecognised`` / ``exclude_paths``) still raises.
-    wait_period: int
-        If provided, this is the number of seconds that must have passed since the last modification time of the session before
-        it will be staged. This can be used to avoid staging sessions that are still being modified or created.
+        dropped rather than raising. A file matching neither ``datatypes`` nor
+        ``ignore_datatypes`` (nor ``allow_unrecognised``) still raises.
     on_resource_clash: OnResourceClash or Sequence[ClashSpec]
         Behaviour when two filesets resolve to the same scan/resource name. A bare policy
         string ("error"/"avoid"/"merge"/"overwrite") applies to any clash. A sequence of
         ``ClashSpec`` (policy + datatype scope) resolves each clash with the first spec whose
         scope covers *both* filesets - a clash no spec covers raises. "avoid" suffixes,
         "merge" folds into one ``SetOf``, "overwrite" replaces. Default "error".
-    recursive: bool
-        If True, the input paths will be searched recursively for files to stage. If False, only the files directly within the
-        input paths will be considered for staging.
     metadata_tables: list[MetadataTable] | None
         Specify metadata tables to extract and join metadata from input files (ACFLOW_METADATA_TABLES env. var).
         The 'path' arg specifies the location of the metadata table file. Its format is auto-detected as CSV or
@@ -162,24 +150,14 @@ def collate(
             )
     """
 
-    errors = []
-
-    # Create sub-directory of the output directory to build sessions in before
-    # moving them into their final location
-    build_dir = output_dir / BUILD_NAME_DEFAULT
-
-    build_dir.mkdir(parents=True, exist_ok=True)
-
     sessions = Accession.from_paths(
-        files_path=input_paths,
+        files=input_paths,
         datatypes=datatypes,
         accession_uid_field=accession_uid,
         acquisition_id_field=acquisition_id,
         resource_field=resource,
-        recursive=recursive,
         on_resource_clash=on_resource_clash,
         allow_unrecognised=allow_unrecognised,
-        exclude_paths=exclude_paths,
         ignore_datatypes=ignore_datatypes,
         path_metadata_regex=path_metadata_regex,
         metadata_tables=metadata_tables,
@@ -187,9 +165,7 @@ def collate(
 
     errors = save_accessions_to_dir(
         sessions,
-        f"Collating files found in '{input_paths}' to {output_dir!s}",
-        wait_period=wait_period,
-        build_dir=build_dir,
+        f"Collating {len(input_paths)} files to {output_dir!s}",
         copy_mode=copy_mode,
         output_dir=output_dir,
         unlink_source=unlink_source,

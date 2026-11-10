@@ -16,7 +16,6 @@ from typing import Self
 
 import attrs
 import yaml
-from fileformats.application import Yaml
 from fileformats.core import (
     FileSet,
     LoadedMarker,
@@ -34,7 +33,6 @@ from fileformats.core.identification import to_mime_format_name
 from fileformats.core.utils import collate_metadata_series
 from fileformats.generic import Directory, SetOf
 from fileformats.medimage import DicomCollection, MedicalImagingData
-from filelock import SoftFileLock
 from frametree.core.exceptions import FrameTreeDataMatchError
 from frametree.core.frameset import FrameSet
 from tqdm import tqdm
@@ -186,78 +184,6 @@ def _datatype_resource_label(datatype: type[FileSet]) -> str:
     return IDSpec.xnat_id_escape_re.sub("_", format_name)
 
 
-def _glob_to_regex(pattern: str) -> re.Pattern[str]:
-    r"""Anchored regex for a ``/``-aware glob: ``*`` / ``?`` / ``[...]`` do not cross
-    ``/``, ``**`` (optionally followed by ``/``) matches across directory levels.
-    Equivalent to ``glob.translate(pattern, recursive=True)`` (py3.13+), spelled out
-    so 3.11/3.12 work too.
-    """
-    i, n = 0, len(pattern)
-    out = ["(?s:"]
-    while i < n:
-        c = pattern[i]
-        i += 1
-        if c == "*":
-            if i < n and pattern[i] == "*":
-                i += 1
-                if i < n and pattern[i] == "/":
-                    i += 1
-                    out.append("(?:[^/]*/)*")  # '**/' -> zero or more segments
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-        elif c == "?":
-            out.append("[^/]")
-        elif c == "[":
-            j = i + 1 if i < n and pattern[i] in "!^" else i
-            j = j + 1 if j < n and pattern[j] == "]" else j
-            while j < n and pattern[j] != "]":
-                j += 1
-            if j >= n:
-                out.append(r"\[")
-            else:
-                inner = pattern[i:j]
-                i = j + 1
-                if inner[:1] in ("!", "^"):
-                    inner = "^" + inner[1:]
-                out.append("[" + inner + "]")
-        else:
-            out.append(re.escape(c))
-    out.append(r")\Z")
-    return re.compile("".join(out))
-
-
-def _drop_excluded_paths(
-    fspaths: ty.Sequence[Path],
-    input_dirs: ty.Sequence[Path],
-    exclude_globs: ty.Sequence[str],
-) -> list[Path]:
-    """Drop every ``fspath`` whose path *relative to one of ``input_dirs``* matches
-    one of ``exclude_globs``. Unlike ``allow_unrecognised`` this fires before
-    classification, so it removes a path even if a ``--datatype`` would claim it
-    (e.g. a vendor thumbnail that is a valid ``image/png``). Globs use the standard
-    ``glob`` syntax - ``*`` does not cross ``/``, ``**`` does - and match the whole
-    relative path.
-    """
-    if not exclude_globs:
-        return list(fspaths)
-    matchers = [_glob_to_regex(g) for g in exclude_globs]
-    kept: list[Path] = []
-    for p in fspaths:
-        rels: list[str] = []
-        for base in input_dirs:
-            try:
-                rels.append(str(p.relative_to(base)))
-            except ValueError:
-                continue
-        if any(m.match(rel) for m in matchers for rel in rels):
-            logger.debug("Excluding '%s' (matched --exclude-path)", p)
-            continue
-        kept.append(p)
-    return kept
-
-
 def _fileset_in_scope(fileset: FileSet, scope: type[FileSet] | ty.Any) -> bool:
     """Whether ``fileset`` falls within a ``ClashSpec`` scope - either it is an
     instance of ``scope``, or it is a ``SetOf`` whose every content type is a
@@ -291,42 +217,6 @@ def _resolve_clash_policy(
         f"'--on-resource-clash avoid \"{to_mime(type(existing))}|{to_mime(type(incoming))}\"'), "
         "or tighten --acquisition-id / --resource so the two don't collide."
     )
-
-
-def _recursive_collect(
-    root: Path,
-    datatypes: ty.Sequence[type[FileSet]],
-    ignore_datatypes: ty.Sequence[type[FileSet]],
-) -> ty.Iterator[Path]:
-    """Walk ``root`` yielding paths for ``from_paths`` to classify.
-
-    A directory that validates as one of ``datatypes`` is yielded whole and *not*
-    descended into; a directory that validates only as an ``ignore_datatypes``
-    directory format is skipped whole (not yielded, not descended); any other
-    directory is descended. Every loose file is yielded, so an unlisted file type
-    still raises in ``from_paths`` as usual.
-
-    ``dt.matches()`` runs the datatype's full validation on each directory node,
-    which for rich directory formats (e.g. a Canfield export) is not free - fine
-    for the export-sized trees this is meant for.
-    """
-    want = tuple(d for d in datatypes if issubclass(d, Directory))
-    skip = tuple(d for d in ignore_datatypes if issubclass(d, Directory))
-    stack: list[Path] = [root]
-    seen: set[Path] = set()
-    while stack:
-        current = stack.pop()
-        resolved = current.resolve()
-        if resolved in seen:  # guard against symlink loops
-            continue
-        seen.add(resolved)
-        for child in sorted(current.iterdir()):
-            if not child.is_dir() or any(dt.matches(child) for dt in want):
-                yield child
-            elif any(dt.matches(child) for dt in skip):
-                continue
-            else:
-                stack.append(child)
 
 
 def recipe_formats_for(datatype: type[FileSet]) -> list[type[FileSet]] | None:
@@ -714,29 +604,28 @@ class Accession:
     @classmethod
     def from_paths(
         cls,
-        files_path: str | Path | ty.Sequence[str | Path],
+        files: ty.Sequence[Path],
         datatypes: type[FileSet] | ty.Sequence[type[FileSet]],
         accession_uid_field: ty.Sequence[IDSpec],
         acquisition_id_field: ty.Sequence[IDSpec] = (),
         resource_field: ty.Sequence[IDSpec] = (),
-        recursive: bool = False,
         on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
         allow_unrecognised: ty.Sequence[str] | None = None,
-        exclude_paths: ty.Sequence[str] | None = None,
         ignore_datatypes: ty.Sequence[type[FileSet]] | None = None,
         path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
         metadata_tables: list[MetadataTable] | None = None,
     ) -> list[Self]:
-        """Loads all imaging sessions from a list of DICOM files
+        """Collates a list of files into accessions, acquisitions and resources
 
         Parameters
         ----------
-        files_path : str or Path
-            Path to a directory containing the resources to load the sessions from, or a
-            glob string that selects the paths
+        files : Sequence[Path]
+            the files to collate. Each path must be an existing file, directories
+            are not walked (see ``accessionflow.sources.folder.discovery`` for
+            expanding directories and glob patterns into files)
         datatypes : type or list[type]
-            the fileformats to load from the paths, e.g. DicomSeries or
-            [DicomSeries, NiftiGz]
+            the fileformats to load from the files, e.g. DicomSeries or
+            [DicomSeries, NiftiGz]. Directory datatypes are not supported
         accession_uid_field: ty.Sequence[IDSpec]
             the metadata field that uniquely identifies the accession, used to collate
             files together before they are labelled (e.g. StudyInstanceUID)
@@ -749,14 +638,6 @@ class Accession:
             the value of this field is used to identify resources. If empty, the
             resource is labelled with the mime-like rendering of the fileset's type
             name, e.g. 'vectra-export', 'sqlite3-db'
-        recursive : bool, optional
-            recurse into directories passed as file paths. For file datatypes this
-            flattens the tree; when any ``datatypes`` / ``ignore_datatypes`` entry is
-            a directory format the walk stops descending into a directory as soon as
-            it validates as one of them (yielding a ``datatypes`` match whole,
-            skipping an ``ignore_datatypes`` match whole). ``generic/directory`` and
-            ``generic/file-set`` cannot be used as ``datatypes`` with ``recursive``.
-            By default False
         on_resource_clash : OnResourceClash or Sequence[ClashSpec], optional
             how to handle two filesets resolving to the same scan/resource name.
             A bare policy string ("error"/"avoid"/"merge"/"overwrite") applies to
@@ -765,21 +646,14 @@ class Accession:
             "merge" folds them into a ``SetOf``, "avoid" suffixes, "overwrite"
             replaces; a clash no spec covers raises. Default "error".
         allow_unrecognised : Sequence[str] or None, optional
-            regular expressions matched against the *basename* of any input path
+            regular expressions matched against the *basename* of any input file
             that no datatype recognised - matches are skipped instead of raising
             ``FormatRecognitionError``. Does not affect recognised filesets.
-        exclude_paths : Sequence[str] or None, optional
-            glob patterns matched against each input path *relative to its input
-            directory*, applied before classification so a match is dropped even if
-            a datatype would claim it (e.g. a vendor thumbnail that is a valid
-            ``image/png``). ``*`` does not cross ``/``, ``**`` does.
         ignore_datatypes : ty.Sequence[type[FileSet]] or None, optional
             datatypes that are expected in the input but not wanted: recognised
-            filesets of these types are dropped from the result rather than raising,
-            and (when ``recursive``) matching directories are skipped without
-            descending. An input path matching neither ``datatypes`` nor
-            ``ignore_datatypes`` (nor ``allow_unrecognised``/``exclude_paths``)
-            still raises.
+            filesets of these types are dropped from the result rather than raising.
+            An input file matching neither ``datatypes`` nor ``ignore_datatypes``
+            (nor ``allow_unrecognised``) still raises.
         path_metadata_regex : ty.Sequence[PathMetadataRegex], optional
             Regular expressions to extract "metadata" values from resource file paths as named groups. The named
             groups are used as metadata fields for the resource files, and the extracted values will be used to populate
@@ -792,10 +666,12 @@ class Accession:
         Returns
         -------
         list[Accession]
-            all imaging sessions that are present in list of dicom paths
+            all imaging sessions that are present in the files
 
         Raises
         ------
+        ValueError
+            if a path isn't an existing file, or a directory datatype is requested
         AccessionParseError
             if values extracted from IDs across the DICOM scans are not consistent across
             DICOM files within the session
@@ -811,86 +687,31 @@ class Accession:
                 "The following datatypes were listed for both inclusion (`datatypes`) and exclusion "
                 f"(`ignore_datatypes`): {list(contradicting)}"
             )
-
-        # When recursing, a directory format among datatypes/ignore_datatypes makes
-        # the walk prune-on-match (see _recursive_collect) rather than flatten. The
-        # bare generic types match every directory / path so they can't be used.
-        recurse_into_dirs = False
-        if recursive:
-            if Directory in datatypes or FileSet in datatypes:
-                raise ValueError(
-                    "Cannot use `generic/directory` or `generic/file-set` as a `--datatype` "
-                    "with `--recursive` (they match every directory / path at every depth). "
-                    f"Use a specific directory datatype instead (datatypes={datatypes})"
-                )
-            recurse_into_dirs = any(
-                isinstance(d, type) and issubclass(d, Directory)
-                for d in (*datatypes, *ignore_datatypes)
+        if dir_types := [
+            d
+            for d in (*datatypes, *ignore_datatypes)
+            if isinstance(d, type) and issubclass(d, Directory)
+        ]:
+            raise ValueError(
+                f"Directory datatypes are not supported, only file datatypes: {dir_types}"
             )
-            if not recurse_into_dirs:
-                # file-only recursion: flatten everything, and let a generic
-                # Directory soak up the bare directory nodes so from_paths doesn't
-                # choke on them
-                ignore_datatypes.append(Directory)
 
-        if isinstance(files_path, (Path, str)):
-            files_path = [files_path]
-        elif not isinstance(files_path, ty.Sequence):
+        if isinstance(files, (str, Path)):
             raise TypeError(
-                "Invalid type of 'files_path', must be a pathlib.Path, str or list of"
+                f"'files' must be a sequence of file paths, not a single path ({files!r})"
             )
-        fspaths: list[Path] = []
-        input_dirs: list[Path] = []
-        for fspath in files_path:
-            logger.debug("Searching for file types in '%s'", str(fspath))
-            if isinstance(fspath, Path) or "*" not in fspath:
-                fspath = Path(fspath)
-                if not fspath.exists():
-                    raise ValueError(
-                        f"Provided file-system path '{fspath}' does not exist"
-                    )
-                if fspath.is_dir():
-                    input_dirs.append(fspath)
-                    if recurse_into_dirs:
-                        logger.debug(
-                            "Walking '%s' for directory datatypes (prune-on-match)",
-                            str(fspath),
-                        )
-                        fspaths.extend(
-                            _recursive_collect(fspath, datatypes, ignore_datatypes)
-                        )
-                    elif recursive:
-                        logger.debug(
-                            "Recursively searching for all paths '%s' directory",
-                            str(fspath),
-                        )
-                        fspaths.extend(
-                            Path(p) for p in glob(str(fspath) + "/**/*", recursive=True)
-                        )
-                    else:
-                        logger.debug(
-                            "Adding contents of '%s' directory to list", str(fspath)
-                        )
-                        fspaths.extend(Path(fspath).iterdir())
-                else:
-                    logger.debug(
-                        "Directly appending '%s' to list of files", str(fspath)
-                    )
-                    fspaths.append(fspath)
-            else:
-                logger.debug("Searching for file-system paths using glob '%s'", fspath)
-                fspaths.extend(Path(p) for p in glob(fspath, recursive=True))
-
-        fspaths = [fix_long_path(p) for p in fspaths]
-
-        if exclude_paths:
-            fspaths = _drop_excluded_paths(fspaths, input_dirs, exclude_paths)
-
-        if nonexistent := [str(p) for p in fspaths if not Path(p).exists()]:
+        fspaths = [fix_long_path(p) for p in files]
+        if nonexistent := [str(p) for p in fspaths if not p.exists()]:
             raise ValueError(
                 "The following paths do not exist:\n"
                 + "\n".join(nonexistent[:100])
                 + ("\n..." if len(nonexistent) > 100 else "")
+            )
+        if not_files := [str(p) for p in fspaths if not p.is_file()]:
+            raise ValueError(
+                "Only files can be collated, the following paths are not files:\n"
+                + "\n".join(not_files[:100])
+                + ("\n..." if len(not_files) > 100 else "")
             )
 
         # Create a UID out of the paths that session was created from and the
@@ -906,7 +727,7 @@ class Accession:
         from_paths_kwargs = {}
 
         # Sort loaded series by StudyInstanceUID (imaging session)
-        logger.info(f"Loading {datatypes} from {files_path}...")
+        logger.info("Loading %s from %s files...", datatypes, len(fspaths))
         filesets = from_paths(
             fspaths,
             *(datatypes + ignore_datatypes),
@@ -1866,44 +1687,6 @@ class Accession:
             self.fields.save(session_dir)
         return saved, session_dir
 
-    @classmethod
-    def move_dir(cls, src: Path, dest: Path):
-        with SoftFileLock(dest.with_suffix(".lock")):
-            if dest.exists():
-                logger.info(
-                    "Merging sorted session '%s' into existing directory '%s'",
-                    src.name,
-                    dest,
-                )
-                for scan_dir in src.iterdir():
-                    if scan_dir.is_dir():
-                        scan_dir.rename(dest / scan_dir.name)
-                exist_mdata_path = dest / cls.METADATA_FNAME
-                new_mdata_path = src / cls.METADATA_FNAME
-                if new_mdata_path.exists():
-                    if exist_mdata_path.exists():
-                        # Merge metadata files
-                        mdata = Yaml(exist_mdata_path).load()
-                        new_mdata = Yaml(new_mdata_path).load()
-                        for key in set(mdata) & set(new_mdata):
-                            if mdata[key] != new_mdata[key]:
-                                raise ValueError(
-                                    f"Conflict in metadata for key '{key}' between existing session at "
-                                    f"'{exist_mdata_path}' and new session at '{new_mdata_path}'"
-                                )
-                        mdata.update(new_mdata)
-                        Yaml(exist_mdata_path).save(mdata)
-                    else:
-                        new_mdata_path.rename(exist_mdata_path)
-                if remaining := list(src.iterdir()):
-                    raise ValueError(
-                        f"Unexpected files/directories {remaining} found in saved session directory '{src}' "
-                        f"after merging with existing session directory '{dest}'"
-                    )
-                src.rmdir()
-            else:
-                src.rename(dest)
-
     MANIFEST_FNAME = "MANIFEST.yaml"
 
     def unlink(self, keep_metadata: bool = False) -> None:
@@ -1929,21 +1712,6 @@ class Accession:
                 resource.unlink(remove_dir=keep_metadata)
         for resource in self.session_resources.values():
             resource.unlink(remove_dir=keep_metadata)
-
-    def last_modified(self) -> int:
-        """Returns the timestamp of the most recently modified file in the session
-        in nanoseconds
-
-        Returns
-        -------
-        int
-            the mtime of the most recently modified file in the session in nanoseconds
-        """
-        return max(
-            resource.fileset.last_modified
-            for scan in self.acquisitions.values()
-            for resource in scan.resources.values()
-        )
 
 
 def fix_long_path(p: str | Path) -> Path:

@@ -29,6 +29,7 @@ from ..api.collate_api import (
     DEFAULT_RESOURCE_FIELD,
     collate,
 )
+from ..discovery import find_files
 
 
 @collate_group.command(
@@ -36,8 +37,9 @@ from ..api.collate_api import (
     help="""Collates the files found in folders, on a local path or a mounted file
 system, into accessions, acquisitions and resources
 
-INPUT_PATHS are either paths to directories containing the files to collate, or
-glob patterns that select the paths directly
+INPUT_PATHS are paths to files, to directories containing the files to collate, or
+glob patterns that select the files directly. Only files are collated, directories
+are expanded into the files they contain (see --recursive)
 
 OUTPUT_DIR is the staging directory the files of each accession are collated to,
 ready to be labelled
@@ -109,7 +111,8 @@ ready to be labelled
         "of the primary files to to upload, defaults to 'medimage/dicom-series'. "
         "Any formats implemented in the FileFormats Python package "
         "(https://github.com/ArcanaFramework/fileformats) that implement the 'read_metadata' "
-        '"extra" are supported, see FF docs on how to add support for new formats.'
+        '"extra" are supported, see FF docs on how to add support for new formats. '
+        "Directory datatypes are not supported."
     ),
 )
 @click.option(
@@ -181,8 +184,7 @@ ready to be labelled
     envvar="ACFLOW_IGNORE_DATATYPE",
     help=(
         "Datatypes expected in the input but not wanted: recognised files of these types are "
-        "dropped instead of raising, and with --recursive a matching directory is skipped "
-        "without descending into it. A path matching neither --datatype nor --ignore-datatype "
+        "dropped instead of raising. A file matching neither --datatype nor --ignore-datatype "
         "nor --allow-unrecognised/--exclude-path still raises. (ACFLOW_IGNORE_DATATYPE env. var)"
     ),
 )
@@ -269,7 +271,6 @@ def collate_cmd(
     exclude_paths: tuple[str, ...],
     ignore_datatypes: tuple[MimeType, ...],
     loop: int,
-    wait_period: int,
     recursive: bool,
     copy_mode: FileSet.CopyMode,
     collate_resources: tuple[CollationSpec, ...],
@@ -288,7 +289,9 @@ def collate_cmd(
     while True:
         start_time = time.monotonic()
         errors = collate(
-            input_paths=input_paths,
+            input_paths=find_files(
+                input_paths, recursive=recursive, exclude_paths=exclude_paths
+            ),
             output_dir=output_dir,
             datatypes=[dt.datatype for dt in datatype or ()],
             accession_uid=accession_uid,
@@ -298,12 +301,9 @@ def collate_cmd(
             raise_errors=raise_errors,
             copy_mode=copy_mode,
             allow_unrecognised=allow_unrecognised,
-            exclude_paths=exclude_paths,
             ignore_datatypes=[dt.datatype for dt in ignore_datatypes],
             on_resource_clash=list(on_resource_clash),
-            wait_period=wait_period,
             path_metadata_regex=path_metadata_regex,
-            recursive=recursive,
             collation_map={cs.datatype: cs.collation_level for cs in collate_resources},
             conversion_map={c.source: (c.target, c.options) for c in conversions},
             metadata_tables=list(metadata_tables),

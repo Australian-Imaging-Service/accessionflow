@@ -5,13 +5,6 @@ to_process_label/processed_label filtering, is covered directly against a
 faked Orthanc REST API in test_orthanc_staging.py) -- this just
 checks that the "collate orthanc" command actually runs and passes the CLI options
 through to the api/model layers unchanged.
-
-This command used to crash unconditionally: cli/collate.py called
-`collate_orthanc(..., wait_period=wait_period)` but api/collate_.py's
-collate_orthanc() has no `wait_period` parameter, so every invocation raised
-`TypeError: collate_orthanc() got an unexpected keyword argument
-'wait_period'` before any Orthanc/network code ran. There was no test
-coverage of this command at all, which is how it went unnoticed.
 """
 
 import typing as ty
@@ -46,8 +39,6 @@ def test_collate_orthanc_cli_runs_and_passes_labels_through(
                 "ready-for-xnat",
                 "--processed-label",
                 "sent-to-xnat",
-                "--wait-period",
-                "300",
             ],
         )
 
@@ -56,7 +47,7 @@ def test_collate_orthanc_cli_runs_and_passes_labels_through(
     _, kwargs = mock_stage_studies.call_args
     assert kwargs["to_process_label"] == "ready-for-xnat"
     assert kwargs["processed_label"] == "sent-to-xnat"
-    assert kwargs["wait_period"] == 300
+    assert "wait_period" not in kwargs
 
 
 def test_collate_orthanc_cli_defaults_to_no_to_process_label(

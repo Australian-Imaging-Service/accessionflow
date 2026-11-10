@@ -143,7 +143,7 @@ it by name.
 
 ## Behaviour changes to check
 
-Two changes since xnat-ingest can affect a pipeline that otherwise migrates cleanly.
+Three changes since xnat-ingest can affect a pipeline that otherwise migrates cleanly.
 
 ### `deidentify` keeps only the accession's UID in its metadata
 
@@ -175,6 +175,19 @@ If you start hashing UIDs with `deidentify --hash-uid-key`, sessions already on 
 hold the unhashed UID and will be refused. Pass `--no-uid-check` to `store xnat` and
 `check-store xnat` while moving over. The documentation's XNAT page describes this under
 *Session identity on reuse*.
+
+### `collate folder` takes files and writes straight to staging
+
+- `--wait-period` has been removed from every `collate` source (`folder` and `orthanc`),
+  along with `ACFLOW_WAIT_PERIOD` for them. `collate` collates every file it is given,
+  so only give it files that have finished arriving.
+- Accessions are saved directly into the output directory rather than built under
+  `__build__` and moved into place. Don't run `label` on that directory while
+  `collate` is still writing to it. Collating an accession that is already staged
+  adds to it, but its accession-level metadata is replaced, not merged.
+- Only files are collated. Directory datatypes such as `medimage/dicom-dir` are not
+  currently supported, and `--recursive` simply includes the files in every
+  subdirectory.
 
 
 ## Data that is already staged

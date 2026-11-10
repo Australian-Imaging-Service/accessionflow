@@ -4,7 +4,6 @@ from pathlib import Path
 
 from fileformats.core import FileSet
 
-from accessionflow.api.collate_api import BUILD_NAME_DEFAULT
 from accessionflow.helpers.logging import logger
 
 from ..staging import stage_studies
@@ -21,7 +20,6 @@ def collate(
     unlink_source: str | None = None,
     raise_errors: bool = False,
     copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
-    wait_period: int = 0,
     conversion_map: (
         dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None
     ) = None,
@@ -55,9 +53,6 @@ def collate(
         whether to raise errors instead of logging them. Not yet implemented
     copy_mode: FileSet.CopyMode
         how the files are copied. Only hardlinks are implemented
-    wait_period: int
-        the number of seconds since Orthanc last updated a study before it is
-        collated, so that studies still being received aren't collated partially
     conversion_map: dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None
         the types series are converted to before the study is labelled as processed,
         with the options passed through to ``convert()``
@@ -79,12 +74,6 @@ def collate(
 
     errors: list[str] = []
 
-    # Create sub-directory of the output directory to build accessions in before
-    # moving them into their final location
-    build_dir = output_dir / BUILD_NAME_DEFAULT
-
-    build_dir.mkdir(parents=True, exist_ok=True)
-
     stage_studies(
         url=url,
         output_dir=output_dir,
@@ -93,23 +82,9 @@ def collate(
         password=password,
         to_process_label=to_process_label,
         processed_label=processed_label,
-        wait_period=wait_period,
         conversion_map=conversion_map,
         errors=errors,
     )
-
-    # Should stage_studies() not actually move the data, just reference it in place like from_paths()
-    # does? If so, we can just call save_accessions_to_dir() here.
-
-    # errors = save_accessions_to_dir(
-    #     sessions,
-    #     f"Collating resources found in Orthanc instance at '{url}' to {output_dir}",
-    #     build_dir=build_dir,
-    #     copy_mode=copy_mode,
-    #     output_dir=output_dir,
-    #     unlink_source=unlink_source,
-    #     raise_errors=raise_errors,
-    # )
 
     if errors:
         logger.error("Collating from Orthanc completed with %s errors", len(errors))

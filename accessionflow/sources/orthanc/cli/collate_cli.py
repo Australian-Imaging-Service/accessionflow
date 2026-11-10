@@ -87,7 +87,6 @@ def collate_cmd(
     unlink_source: str | None,
     raise_errors: bool,
     loop: int,
-    wait_period: int,
     copy_mode: FileSet.CopyMode,
     conversions: tuple[Convert, ...],
     loggers: ty.List[LoggerConfig],
@@ -115,7 +114,6 @@ def collate_cmd(
             unlink_source=unlink_source,
             raise_errors=raise_errors,
             copy_mode=copy_mode,
-            wait_period=wait_period,
             conversion_map={c.source: (c.target, c.options) for c in conversions},
         )
         if loop < 0:

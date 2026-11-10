@@ -119,26 +119,19 @@ formulas:
 
 .. _source-folder-recursive:
 
-Recursing into nested directory formats
----------------------------------------
+Recursing into subdirectories
+-----------------------------
 
-``--recursive`` descends into the input directories. For plain file datatypes it just
-flattens the tree. When a ``--datatype`` (or ``--ignore-datatype``) is a *directory*
-format, the walk instead stops descending into a directory as soon as it validates as
-one of them: a ``--datatype`` match is taken whole (its contents are never looked at
-individually), an ``--ignore-datatype`` match is skipped whole, and anything else is
-descended. This is how you pull a nested directory format out of a larger vendor
-export:
+Only files are collated. An input directory is expanded into the files directly within
+it, and ``--recursive`` includes the files in all of its subdirectories as well, e.g.:
 
 .. code-block:: console
 
     $ accessionflow collate folder /data/incoming /data/staging/collated --recursive \
-        --datatype medimage/vnd.canfield.whole-body-analysis-dir \
-        --datatype medimage/vnd.canfield.dexi-data-dir \
         --exclude-path '*/*/*.png'
 
-``generic/directory`` and ``generic/file-set`` can't be used as a ``--datatype`` with
-``--recursive``, since they match every directory, at every depth.
+Directory datatypes, such as ``medimage/dicom-dir`` or a vendor export directory, are not
+currently supported as a ``--datatype`` or ``--ignore-datatype``.
 
 
 .. _source-folder-skip:
@@ -155,8 +148,7 @@ by default. Three options relax that, from most to least targeted:
   ``image/png`` three directories deep, while keeping your real ``image/png`` two deep.
   ``*`` does not cross ``/``, ``**`` does. Repeatable.
 * ``--ignore-datatype <mime>`` names a datatype that *is* recognised but isn't wanted:
-  its filesets are dropped from the result, and (with ``--recursive``) matching
-  directories are skipped without descending. Repeatable.
+  its filesets are dropped from the result. Repeatable.
 * ``--allow-unrecognised <regex>`` matches the **basename** of any leftover path that no
   datatype recognised, and skips it instead of raising. ``--allow-unrecognised '.*'``
   tolerates every stray file. It never affects a recognised fileset.

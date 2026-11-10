@@ -40,6 +40,11 @@ directory can become a zip in XNAT's ``DICOM-zip`` resource and a single DICOM f
 the resource XNAT chooses from its SOP class (``DICOM`` for primary images,
 ``secondary`` for other DICOM), without reopening the zip.
 
+.. note::
+
+   ``collate folder`` does not currently support directory datatypes such as
+   ``medimage/dicom-dir``, so this workflow is unavailable until that support returns.
+
 Collate this workflow using ``medimage/dicom-dir``. Each input directory must contain
 only one series and the files intended for its archive. Use ``--recursive`` if the
 series directories are nested below the input path:

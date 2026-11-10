@@ -2,12 +2,10 @@ import json
 import os
 import shutil
 import struct
-import time
 import typing as ty
 import zlib
 from datetime import datetime
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import click
@@ -716,86 +714,6 @@ def test_additional_logger_routes_to_configured_handler(
     assert " - fileformats - " in logs, show_cli_trace(result)
 
 
-def test_stage_wait_period(
-    cli_runner: ty.Any,
-    tmp_path: Path,
-    capsys: ty.Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Get test image data
-
-    sorted_dir = tmp_path / "sorted"
-    dicoms_path = tmp_path / "dicoms"
-    if sorted_dir.exists():
-        shutil.rmtree(sorted_dir)
-    sorted_dir.mkdir()
-
-    stage_log_file = tmp_path / "stage-logs.log"
-    if stage_log_file.exists():
-        os.unlink(stage_log_file)
-
-    # Generate a test DICOM image
-    get_pet_image(dicoms_path)
-
-    # Fix the age-check clock so loading this large fixture cannot consume the
-    # waiting period. Other modules keep their real clocks.
-    checked_at = time.time_ns()
-    monkeypatch.setattr(
-        "accessionflow.api.collate_api.time",
-        SimpleNamespace(time_ns=lambda: checked_at),
-    )
-
-    result = cli_runner(
-        collate_cmd,
-        [
-            str(dicoms_path),
-            str(sorted_dir),
-            "--raise-errors",
-            "--unlink-source",
-            "all",
-            "--wait-period",
-            "10",
-        ],
-        env={
-            "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
-        },
-    )
-
-    assert result.exit_code == 0, show_cli_trace(result)
-    logs = stage_log_file.read_text()
-    assert " as it was last modified " in logs, show_cli_trace(result)
-    assert not [p for p in sorted_dir.iterdir() if not p.name.startswith("__")], (
-        show_cli_trace(result)
-    )
-
-    # Backdate the modification times of the files past the wait period, rather than
-    # sleeping until it has elapsed
-    backdated = checked_at / 1e9 - 60
-    for fspath in dicoms_path.rglob("*"):
-        os.utime(fspath, (backdated, backdated))
-
-    result = cli_runner(
-        collate_cmd,
-        [
-            str(dicoms_path),
-            str(sorted_dir),
-            "--raise-errors",
-            "--unlink-source",
-            "all",
-            "--wait-period",
-            "10",
-        ],
-        env={
-            "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
-        },
-    )
-
-    assert result.exit_code == 0, show_cli_trace(result)
-    logs = stage_log_file.read_text()
-    assert "Successfully collated " in logs, show_cli_trace(result)
-    assert list(sorted_dir.iterdir())
-
-
 def test_collate_path_metadata_regex(
     cli_runner: ty.Any,
     tmp_path: Path,
@@ -813,8 +731,6 @@ def test_collate_path_metadata_regex(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--path-metadata-regex",
             r".*/(?P<cohort>[^/]+)$",
             "medimage/dicom-series",
@@ -892,8 +808,6 @@ def test_collate_metadata_table_detailed_example(
             str(images_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--recursive",
             "--datatype",
             "image/png",
@@ -997,8 +911,6 @@ def test_collate_allow_unrecognised_skips_unrecognised_files(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--allow-unrecognised",
             r".*\.txt",
         ],
@@ -1027,8 +939,6 @@ def test_collate_without_allow_unrecognised_fails_on_unrecognised_file(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
         ],
     )
     assert result.exit_code != 0
@@ -1053,8 +963,6 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_fails(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--allow-unrecognised",
             r"unrelated-pattern",
         ],
@@ -1081,8 +989,6 @@ def test_collate_ignore_datatype_excludes_recognised_but_unwanted_files(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--ignore-datatype",
             "application/json",
         ],
@@ -1111,8 +1017,6 @@ def test_collate_without_ignore_datatype_fails_on_recognised_extra_type(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
         ],
     )
     assert result.exit_code != 0
@@ -1136,8 +1040,6 @@ def test_collate_ignore_datatype_contradicting_datatype_fails(
             str(dicoms_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--datatype",
             "medimage/dicom-series",
             "--ignore-datatype",
@@ -1180,8 +1082,6 @@ def test_sort_orthanc_collate_resources(
             str(sorted_dir),
             "--raise-errors",
             "--recursive",
-            "--wait-period",
-            "0",
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
@@ -1205,8 +1105,6 @@ def test_sort_orthanc_collate_resources(
             str(sorted_collated_dir),
             "--raise-errors",
             "--recursive",
-            "--wait-period",
-            "0",
             "--collate-resources",
             "medimage/dicom-series",
             "siblings",
@@ -1323,8 +1221,6 @@ def test_check_upload_missing_scan(
             "--raise-errors",
             "--unlink-source",
             "all",
-            "--wait-period",
-            "0",
         ],
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
@@ -1450,8 +1346,6 @@ def test_check_upload_empty_scan(
             "--raise-errors",
             "--unlink-source",
             "all",
-            "--wait-period",
-            "0",
         ],
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
@@ -1592,8 +1486,6 @@ def test_check_upload_missing_resource(
             "--raise-errors",
             "--unlink-source",
             "all",
-            "--wait-period",
-            "0",
         ],
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
@@ -1730,8 +1622,6 @@ def test_check_upload_checksum_fail(
             "--raise-errors",
             "--unlink-source",
             "all",
-            "--wait-period",
-            "0",
         ],
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
@@ -1855,8 +1745,6 @@ def test_upload_snapshots_display_in_xnat(
             str(images_dir),
             str(sorted_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--recursive",
             "--datatype",
             "image/png",
@@ -2028,8 +1916,6 @@ def test_deidentify_cli_dicom(
             str(dicoms_dir),
             str(staged_dir),
             "--raise-errors",
-            "--wait-period",
-            "0",
             "--recursive",
         ],
         env={"ACFLOW_LOGGERS": f"file debug {sort_log};stream info stdout"},
@@ -2137,7 +2023,7 @@ def test_deidentify_cli_dicom_missing_transform(
     staged_dir.mkdir()
     result = cli_runner(
         collate_cmd,
-        [str(dicoms_dir), str(staged_dir), "--raise-errors", "--wait-period", "0"],
+        [str(dicoms_dir), str(staged_dir), "--raise-errors"],
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -2213,7 +2099,7 @@ def test_deidentify_cli_dicom_encrypted_reid(
     staged_dir.mkdir()
     result = cli_runner(
         collate_cmd,
-        [str(dicoms_dir), str(staged_dir), "--raise-errors", "--wait-period", "0"],
+        [str(dicoms_dir), str(staged_dir), "--raise-errors"],
     )
     assert result.exit_code == 0, show_cli_trace(result)
 

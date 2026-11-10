@@ -45,7 +45,6 @@ def test_sources_share_the_collate_options(source: str) -> None:
     assert result.exit_code == 0, result.output
     for option in [
         "--loop",
-        "--wait-period",
         "--copy-mode",
         "--convert",
         "--logger",

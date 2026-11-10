@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from fileformats.application import Json, Zip
+from fileformats.application import Json
 from fileformats.core.exceptions import FormatRecognitionError
 from fileformats.medimage import DicomDir, DicomSeries
 from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
@@ -12,12 +12,16 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
 from accessionflow.api.collate_api import BUILD_NAME_DEFAULT
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable
 from accessionflow.model.accession import Accession
-from accessionflow.model.resource import Resource
 from accessionflow.sources.folder.api import collate
 
 ACCESSION_UID_FIELD = [IDSpec("StudyInstanceUID", "medimage/dicom-collection")]
 ACQUISITION_ID_FIELD = [IDSpec("SeriesNumber", "medimage/dicom-collection")]
 RESOURCE_FIELD = [IDSpec("ImageType[2:]", "medimage/dicom-collection")]
+
+
+def _files(directory: Path) -> list[Path]:
+    """The files directly within a directory, as collate() takes individual files"""
+    return sorted(p for p in directory.iterdir() if p.is_file())
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +36,7 @@ def test_collate_creates_pre_label_session_dir(dicom_dir: Path, tmp_path: Path) 
     output_dir.mkdir()
 
     errors = collate(
-        input_paths=[str(dicom_dir)],
+        input_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -41,9 +45,7 @@ def test_collate_creates_pre_label_session_dir(dicom_dir: Path, tmp_path: Path) 
     )
 
     assert errors == []
-    session_dirs = [
-        d for d in output_dir.iterdir() if d.is_dir() and d.name != BUILD_NAME_DEFAULT
-    ]
+    session_dirs = [d for d in output_dir.iterdir() if d.is_dir()]
     assert len(session_dirs) == 1
     session_dir = session_dirs[0]
     # Not yet assigned project/subject/visit IDs, so flagged with the pre-label prefix
@@ -62,7 +64,7 @@ def test_collate_output_reloadable_with_no_labelled_ids(
     output_dir.mkdir()
 
     collate(
-        input_paths=[str(dicom_dir)],
+        input_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -91,7 +93,7 @@ def test_collate_collects_errors_without_raising(tmp_path: Path) -> None:
     empty_input.mkdir()
 
     errors = collate(
-        input_paths=[str(empty_input)],
+        input_paths=_files(empty_input),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -114,7 +116,7 @@ def test_collate_unrecognised_file_raises_without_allow_unrecognised(
 
     with pytest.raises(FormatRecognitionError, match="notes.txt"):
         collate(
-            input_paths=[str(input_dir)],
+            input_paths=_files(input_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -133,7 +135,7 @@ def test_collate_allow_unrecognised_skips_matching_files(
     (input_dir / "notes.txt").write_text("not a recognised format")
 
     errors = collate(
-        input_paths=[str(input_dir)],
+        input_paths=_files(input_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -143,9 +145,7 @@ def test_collate_allow_unrecognised_skips_matching_files(
     )
 
     assert errors == []
-    session_dirs = [
-        d for d in output_dir.iterdir() if d.is_dir() and d.name != BUILD_NAME_DEFAULT
-    ]
+    session_dirs = [d for d in output_dir.iterdir() if d.is_dir()]
     assert len(session_dirs) == 1
 
 
@@ -160,7 +160,7 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_raises(
 
     with pytest.raises(FormatRecognitionError, match="notes.txt"):
         collate(
-            input_paths=[str(input_dir)],
+            input_paths=_files(input_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -180,7 +180,7 @@ def test_collate_ignore_datatypes_excludes_recognised_but_unwanted_files(
     (input_dir / "notes.json").write_text("{}")
 
     errors = collate(
-        input_paths=[str(input_dir)],
+        input_paths=_files(input_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -190,9 +190,7 @@ def test_collate_ignore_datatypes_excludes_recognised_but_unwanted_files(
     )
 
     assert errors == []
-    session_dirs = [
-        d for d in output_dir.iterdir() if d.is_dir() and d.name != BUILD_NAME_DEFAULT
-    ]
+    session_dirs = [d for d in output_dir.iterdir() if d.is_dir()]
     assert len(session_dirs) == 1
     scan_dir = next(d for d in session_dirs[0].iterdir() if d.is_dir())
     resource_dir = next(d for d in scan_dir.iterdir() if d.is_dir())
@@ -210,7 +208,7 @@ def test_collate_without_ignore_datatypes_raises_on_recognised_extra_type(
 
     with pytest.raises(FormatRecognitionError, match="notes.json"):
         collate(
-            input_paths=[str(input_dir)],
+            input_paths=_files(input_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -227,7 +225,7 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
 
     with pytest.raises(ValueError, match="listed for both"):
         collate(
-            input_paths=[str(dicom_dir)],
+            input_paths=_files(dicom_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -237,14 +235,12 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
         )
 
 
-def test_collate_creates_build_dir(tmp_path: Path) -> None:
+def test_collate_saves_directly_to_output_dir(dicom_dir: Path, tmp_path: Path) -> None:
     output_dir = tmp_path / "collated"
     output_dir.mkdir()
-    empty_input = tmp_path / "empty"
-    empty_input.mkdir()
 
-    collate(
-        input_paths=[str(empty_input)],
+    errors = collate(
+        input_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -252,7 +248,42 @@ def test_collate_creates_build_dir(tmp_path: Path) -> None:
         resource=RESOURCE_FIELD,
     )
 
-    assert (output_dir / BUILD_NAME_DEFAULT).exists()
+    assert errors == []
+    assert not (output_dir / BUILD_NAME_DEFAULT).exists()
+    # Only the accession directory, no build or hidden temporary directories
+    (session_dir,) = output_dir.iterdir()
+    assert session_dir.name.startswith(Accession.PRE_LABEL_PREFIX)
+    assert not [p for p in output_dir.rglob(".*")]
+
+
+def test_collate_directory_input_raises(dicom_dir: Path, tmp_path: Path) -> None:
+    output_dir = tmp_path / "collated"
+    output_dir.mkdir()
+
+    with pytest.raises(ValueError, match="not files"):
+        collate(
+            input_paths=[dicom_dir],
+            output_dir=output_dir,
+            datatypes=[DicomSeries],
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
+            resource=RESOURCE_FIELD,
+        )
+
+
+def test_collate_directory_datatype_raises(dicom_dir: Path, tmp_path: Path) -> None:
+    output_dir = tmp_path / "collated"
+    output_dir.mkdir()
+
+    with pytest.raises(ValueError, match="Directory datatypes are not supported"):
+        collate(
+            input_paths=_files(dicom_dir),
+            output_dir=output_dir,
+            datatypes=[DicomDir],
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
+            resource=RESOURCE_FIELD,
+        )
 
 
 @pytest.fixture
@@ -260,7 +291,7 @@ def patient_id(dicom_dir: Path) -> str:
     """The PatientID of the dummy dataset, discovered by a throwaway load so the
     metadata-table tests don't have to hard-code it"""
     sessions = Accession.from_paths(
-        dicom_dir,
+        _files(dicom_dir),
         [DicomSeries],
         ACCESSION_UID_FIELD,
         ACQUISITION_ID_FIELD,
@@ -285,7 +316,7 @@ def test_collate_injects_session_metadata_from_table(
     )
 
     errors = collate(
-        input_paths=[str(dicom_dir)],
+        input_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -314,7 +345,7 @@ def test_from_paths_injects_resource_metadata_from_table(
     table.write_text(f"PatientID,Radiotracer\n{patient_id},FDG\nother,ignored\n")
 
     sessions = Accession.from_paths(
-        dicom_dir,
+        _files(dicom_dir),
         [DicomSeries],
         ACCESSION_UID_FIELD,
         ACQUISITION_ID_FIELD,
@@ -328,34 +359,3 @@ def test_from_paths_injects_resource_metadata_from_table(
         iter(next(iter(sessions[0].acquisitions.values())).resources.values())
     )
     assert resource.metadata["Radiotracer"] == "FDG"
-
-
-def test_collate_converts_directory_to_zip(dicom_dir: Path, tmp_path: Path):
-    output_dir = tmp_path / "collated"
-    output_dir.mkdir()
-    directory_dir = tmp_path / "directory"
-    dicom0_dir = directory_dir / "dicom0"
-    shutil.copytree(dicom_dir, dicom0_dir)
-
-    errors = collate(
-        # input_paths=[str(dicom_dir)],
-        input_paths=[str(directory_dir)],
-        output_dir=output_dir,
-        datatypes=[DicomDir],
-        accession_uid=ACCESSION_UID_FIELD,
-        acquisition_id=ACQUISITION_ID_FIELD,
-        resource=RESOURCE_FIELD,
-        conversion_map={DicomDir: (Zip, {"compression": "ZIP_STORED"})},
-    )
-
-    assert errors == []
-    session_dir = next(
-        d
-        for d in output_dir.iterdir()
-        if d.is_dir() and d.name.startswith(Accession.PRE_LABEL_PREFIX)
-    )
-    scan_dir = next(d for d in session_dir.iterdir() if d.is_dir())
-    resource_dir = next(d for d in scan_dir.iterdir() if d.is_dir())
-    manifest = Json(resource_dir / Resource.MANIFEST_FNAME).load()
-    assert manifest["datatype"] == Zip.mime_like
-    assert (resource_dir / f"{dicom0_dir.name}.zip").exists()

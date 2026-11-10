@@ -32,17 +32,6 @@ def collate_options(func: ty.Callable[..., None]) -> ty.Callable[..., None]:
             ),
         ),
         click.option(
-            "--wait-period",
-            type=click.IntRange(min=0),
-            default=0,
-            envvar="ACFLOW_WAIT_PERIOD",
-            help=(
-                "The number of seconds since an accession was last modified at the "
-                "source before it is collated, so that accessions that are still being "
-                "transferred aren't collated partially (ACFLOW_WAIT_PERIOD env. var)"
-            ),
-        ),
-        click.option(
             "--copy-mode",
             type=CopyModeParamType(),
             default=FileSet.CopyMode.hardlink_or_copy,

@@ -64,8 +64,9 @@ when it was collated, and a digest of the IDs of the instances it exported. On e
 run, a processed study whose ``LastUpdate`` no longer matches its snapshot label (or
 that has no snapshot label, from an older version) loses both labels and is collated
 again in full. Later stages skip what they already hold, so the late series is the only
-new data that moves on. A processed label makes the wait period at least one second, so
-that a late instance always gets a later ``LastUpdate`` than the one collated.
+new data that moves on. With a processed label, a study is only collated once Orthanc
+hasn't updated it for at least one second, so that a late instance always gets a later
+``LastUpdate`` than the one collated.
 
 The snapshot label is also what a retention tool can check before it deletes a study
 from Orthanc: the exported instance set is the digest, and a changed ``LastUpdate``

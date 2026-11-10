@@ -251,9 +251,7 @@ def label(
             # mtime on every pass, which is what stops a session from ever
             # settling long enough to be uploaded.
             #
-            # collate_api does the same thing with move_dir; this is the same
-            # guarantee reached with a rename, which is atomic within a
-            # directory tree on one filesystem.
+            # The rename is atomic within a directory tree on one filesystem.
             build_dir = dest_dir / BUILD_NAME_DEFAULT
             work_dir = build_dir / f"promote_{session_listing.name}"
             if work_dir.exists():
