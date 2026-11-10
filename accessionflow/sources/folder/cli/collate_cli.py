@@ -24,9 +24,9 @@ from accessionflow.helpers.arg_types import (
 from accessionflow.helpers.logging import logger, set_logger_handling
 
 from ..api.collate_api import (
+    DEFAULT_ACCESSION_UID_FIELD,
+    DEFAULT_ACQUISITION_ID_FIELD,
     DEFAULT_RESOURCE_FIELD,
-    DEFAULT_SCAN_FIELD,
-    DEFAULT_SESSION_FIELD,
     collate,
 )
 
@@ -48,32 +48,37 @@ ready to be labelled
     "output_dir", type=click.Path(path_type=Path), envvar="ACFLOW_OUTPUT_DIR"
 )
 @click.option(
-    "--session",
+    "--accession-uid",
     type=IDSpec.cli_type,
     nargs=2,
     multiple=True,
-    default=DEFAULT_SESSION_FIELD,
-    envvar="ACFLOW_SESSION",
+    default=DEFAULT_ACCESSION_UID_FIELD,
+    metavar="<specifier> <datatype>",
+    envvar="ACFLOW_ACCESSION_UID",
     help=(
-        "The metadata field used to collate files into the same accession before IDs are extracted "
-        "(ACFLOW_SESSION env. var). Defaults to 'StudyInstanceUID' for DICOM collections; other "
-        "fileset types need an explicit spec. Can also be a Python format string over several "
-        "fields, e.g. '{PatientID}_{StudyDate:%Y%m%d}', to compose one."
+        "The metadata field whose value identifies the accession each file is collated "
+        "into, before it is labelled (ACFLOW_ACCESSION_UID env. var). Defaults to "
+        "'StudyInstanceUID' for DICOM collections; other fileset types need an explicit "
+        "spec. Can also be a "
+        "Python format string over several fields, e.g. '{PatientID}_{StudyDate:%Y%m%d}', "
+        "to compose one. Not to be confused with DICOM's AccessionNumber, which is just "
+        "another field that can be used here or to label the accession."
     ),
 )
 @click.option(
-    "--scan",
+    "--acquisition-id",
     type=IDSpec.cli_type,
     nargs=2,
     multiple=True,
-    default=DEFAULT_SCAN_FIELD,
+    default=DEFAULT_ACQUISITION_ID_FIELD,
     metavar="<specifier> <datatype>",
-    envvar="ACFLOW_SCAN",
+    envvar="ACFLOW_ACQUISITION_ID",
     help=(
         "The keyword of the metadata field to extract the acquisition ID from, or a "
-        "Python format string over several fields (see --session). Defaults to 'SeriesNumber' "
-        "for DICOM collections (one acquisition per series); for any fileset type not "
-        "matched by a --scan spec the acquisition is named after the resource. (ACFLOW_SCAN env. var)"
+        "Python format string over several fields (see --accession-uid). Defaults to "
+        "'SeriesNumber' for DICOM collections (one acquisition per series); for any "
+        "fileset type not matched by an --acquisition-id spec the acquisition is named "
+        "after the resource (ACFLOW_ACQUISITION_ID env. var)"
     ),
 )
 @click.option(
@@ -87,9 +92,9 @@ ready to be labelled
     help=(
         "The keywords of the metadata field to extract the resource ID from "
         "for different datatypes (use `generic/file-set` as a catch-all if required), or a "
-        "Python format string over several fields (see --session). If not given, each "
+        "Python format string over several fields (see --accession-uid). If not given, each "
         "resource is labelled with the mime-like rendering of its fileset type name, "
-        "e.g. 'vectra-export', 'sqlite3-db'. (ACFLOW_RESOURCE env. var)"
+        "e.g. 'vectra-export', 'sqlite3-db' (ACFLOW_RESOURCE env. var)"
     ),
 )
 @click.option(
@@ -230,7 +235,7 @@ ready to be labelled
         "TSV from the file extension; a different format can be forced by appending its mime-type in square "
         "brackets, e.g. 'path/to/table.dat[text/csv]'. "
         'The "row frequency" arg specifies what each row in the '
-        "metadata table corresponds to in the data hierarchy, and can be one of 'session', 'scan', 'resource', "
+        "metadata table corresponds to in the data hierarchy, and can be one of 'accession', 'acquisition', 'resource', "
         "'fileset', 'fileset[<mime-type>]'. When one or more mime-types are given in square brackets after 'fileset' "
         "they restrict the join to input files of those types (multiple mime-types can be '|'-separated, e.g. "
         "'fileset[image/png|image/jpeg]'); a bare 'fileset' matches any input file. "
@@ -250,8 +255,8 @@ ready to be labelled
 def collate_cmd(
     input_paths: list[str],
     output_dir: Path,
-    session: ty.Sequence[IDSpec],
-    scan: ty.Sequence[IDSpec],
+    accession_uid: ty.Sequence[IDSpec],
+    acquisition_id: ty.Sequence[IDSpec],
     resource: ty.Sequence[IDSpec],
     datatype: list[MimeType] | None,
     path_metadata_regex: list[PathMetadataRegex],
@@ -286,8 +291,8 @@ def collate_cmd(
             input_paths=input_paths,
             output_dir=output_dir,
             datatypes=[dt.datatype for dt in datatype or ()],
-            session=session,
-            scan=scan,
+            accession_uid=accession_uid,
+            acquisition_id=acquisition_id,
             resource=resource,
             unlink_source=unlink_source,
             raise_errors=raise_errors,

@@ -32,8 +32,8 @@ def session_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
         input_paths=[str(dicom_dir)],
         output_dir=collated_dir,
         datatypes=[DicomSeries],
-        session=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        scan=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
         resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
     )
     assert errors == []

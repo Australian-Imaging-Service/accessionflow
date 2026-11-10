@@ -29,7 +29,7 @@ configuration. For the same reason, ``--copy-mode`` only supports its default.
 Accessions are collated by ``StudyInstanceUID``, acquisitions by ``SeriesNumber``
 (described by ``SeriesDescription``) and resources by ``ImageType``, following Orthanc's
 own study/series/instance hierarchy. These groupings are fixed: there are no
-``--session``/``--scan``/``--resource`` options like ``collate folder``'s. What
+``--accession-uid``/``--acquisition-id``/``--resource`` options like ``collate folder``'s. What
 *metadata* is available to the ``label`` stage can be extended through the Orthanc
 configuration however (see :ref:`source-orthanc-metadata`).
 

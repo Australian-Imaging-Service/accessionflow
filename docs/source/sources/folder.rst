@@ -28,10 +28,13 @@ Grouping files into accessions, acquisitions and resources
 Three options decide which accession, acquisition and resource each file belongs to,
 each taking a :ref:`specifier <concepts-specifiers>` and the datatype it applies to:
 
-* ``--session`` — files with the same value are collated into the same accession.
-  Defaults to ``StudyInstanceUID`` for DICOM
-* ``--scan`` — files with the same value are collated into the same acquisition.
-  Defaults to ``SeriesNumber`` for DICOM. If no ``--scan`` spec matches a fileset, its
+* ``--accession-uid`` — files with the same value are collated into the same
+  accession, and the value is its UID. Defaults to ``StudyInstanceUID`` for DICOM. This
+  isn't DICOM's ``AccessionNumber``, which is just another field that can be used here
+  or to label the accession
+* ``--acquisition-id`` — files with the same value are collated into the same
+  acquisition, and the value is its ID. Defaults to ``SeriesNumber`` for DICOM. If no
+  ``--acquisition-id`` spec matches a fileset, its
   acquisition is named after its resource
 * ``--resource`` — names the resource. If no ``--resource`` spec matches a fileset, its
   resource is named after its type, e.g. ``dicom-series`` or ``vectra-export``
@@ -41,7 +44,7 @@ datatypes differently.
 
 Non-DICOM data (raw exports, image files, vendor directory formats) needs ``--datatype``
 set to the relevant `FileFormats <https://arcanaframework.github.io/fileformats/>`_
-MIME-like type(s), and usually its own ``--session``/``--scan``/``--resource`` specs,
+MIME-like type(s), and usually its own ``--accession-uid``/``--acquisition-id``/``--resource`` specs,
 since the DICOM defaults won't apply. Any format that FileFormats can read metadata from
 can be collated (see :doc:`/developer/file_formats`).
 
@@ -94,7 +97,7 @@ TSV table into the metadata, e.g. a spreadsheet exported alongside the images:
 * ``<path>`` — the table. Its format is detected from its extension; a different format
   can be forced by appending its MIME type in square brackets, e.g.
   ``path/to/table.dat[text/csv]``
-* ``<row-frequency>`` — what each row describes: ``session``, ``scan``, ``resource``,
+* ``<row-frequency>`` — what each row describes: ``accession``, ``acquisition``, ``resource``,
   ``fileset``, or ``fileset[<mime-type>]`` to join only files of those types (several can
   be ``|``-separated, e.g. ``fileset[image/png|image/jpeg]``)
 * ``<join-exprs>`` — a comma-separated list of ``<column-name>=<cell-value>``
@@ -177,7 +180,7 @@ repeatable; a clash is resolved by the first entry whose ``<scope>`` (a MIME-lik
 * ``overwrite`` replaces the existing resource
 
 A clash that no entry's scope covers (e.g. a PNG colliding with a directory format)
-always raises. Tighten ``--scan``/``--resource`` so the two don't collide, or add a scope
+always raises. Tighten ``--acquisition-id``/``--resource`` so the two don't collide, or add a scope
 that deliberately covers both.
 
 
@@ -195,7 +198,7 @@ is ``siblings``).
 Series without numbers
 ----------------------
 
-The default ``--scan`` spec, ``SeriesNumber``, must resolve for every DICOM series. For
+The default ``--acquisition-id`` spec, ``SeriesNumber``, must resolve for every DICOM series. For
 sources that don't number their series, give an explicit
-``--scan SeriesInstanceUID medimage/dicom-collection`` instead. (``collate orthanc``
+``--acquisition-id SeriesInstanceUID medimage/dicom-collection`` instead. (``collate orthanc``
 falls back to the ``SeriesInstanceUID`` automatically, see :ref:`source-orthanc-fallbacks`.)

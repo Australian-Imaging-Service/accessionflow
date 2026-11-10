@@ -61,7 +61,7 @@ $ python3 -m pip install accessionflow
 
 ## Running
 
-AccessionFlow has a public API and a command-line interface (CLI), with subcommands to collate,
+AccessionFlow has a public API and a command-line interface (CLI), with sub-commands to collate,
 attach, label, de-identify and store accessions in a data store — either as a one-off run or
 as a continuously-running service (e.g. via Docker Compose or Kubernetes). For example:
 

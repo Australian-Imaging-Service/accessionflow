@@ -897,10 +897,10 @@ def test_collate_metadata_table_detailed_example(
             "--recursive",
             "--datatype",
             "image/png",
-            "--session",
+            "--accession-uid",
             "SubjectID",
             "all",
-            "--scan",
+            "--acquisition-id",
             "LesionID",
             "all",
             "--resource",
@@ -1314,10 +1314,10 @@ def test_check_upload_missing_scan(
         [
             str(inputs_dir),
             str(sorted_dir),
-            "--session",
+            "--accession-uid",
             "StudyInstanceUID",
             "all",
-            "--scan",
+            "--acquisition-id",
             "SeriesNumber",
             "all",
             "--raise-errors",
@@ -1457,9 +1457,9 @@ def test_check_upload_empty_scan(
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
-            # --session/--scan specs don't apply - set them explicitly
-            "ACFLOW_SESSION": "StudyInstanceUID all",
-            "ACFLOW_SCAN": "SeriesNumber all",
+            # --accession-uid/--acquisition-id specs don't apply - set them explicitly
+            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
         },
     )
 
@@ -1538,6 +1538,8 @@ def test_check_upload_empty_scan(
     assert "CHECKSUM FAIL" not in logs
 
 
+# The XNAT test container intermittently answers an upload with HTTP 500
+@pytest.mark.flaky(reruns=3)
 @mock_aws
 def test_check_upload_missing_resource(
     xnat_server: str,
@@ -1597,9 +1599,9 @@ def test_check_upload_missing_resource(
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
-            # --session/--scan specs don't apply - set them explicitly
-            "ACFLOW_SESSION": "StudyInstanceUID all",
-            "ACFLOW_SCAN": "SeriesNumber all",
+            # --accession-uid/--acquisition-id specs don't apply - set them explicitly
+            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
         },
     )
 
@@ -1734,10 +1736,10 @@ def test_check_upload_checksum_fail(
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
-            # non-DICOM test formats: the default DICOM-scoped --session/--scan
+            # non-DICOM test formats: the default DICOM-scoped --accession-uid/--acquisition-id
             # specs don't apply, set them explicitly
-            "ACFLOW_SESSION": "StudyInstanceUID all",
-            "ACFLOW_SCAN": "SeriesNumber all",
+            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
         },
     )
 
@@ -1858,10 +1860,10 @@ def test_upload_snapshots_display_in_xnat(
             "--recursive",
             "--datatype",
             "image/png",
-            "--session",
+            "--accession-uid",
             "SessionID",
             "all",
-            "--scan",
+            "--acquisition-id",
             "ScanID",
             "all",
             "--on-resource-clash",
