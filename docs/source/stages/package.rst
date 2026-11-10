@@ -28,8 +28,8 @@ every conversion and manifest has been written successfully. ``--on-resource-cla
 decides what happens when an output label clashes with another resource of the same
 acquisition.
 
-``package`` doesn't carry an accession's fields through to its output, so run
-:doc:`select_fields` after it.
+The accession's fields (see :doc:`select_fields`) are carried through to the output
+unchanged.
 
 
 Example: a DICOM archive and a sample

@@ -32,8 +32,9 @@ The metadata side-cars in the output keep only the accession's UID (``__uid__``)
 the fields that identify its labels and store; every other metadata field is dropped,
 while the input's metadata is unchanged. To keep other fields, e.g. for
 :doc:`select_fields` to read, list them with ``--metadata-allowlist``. The accession's
-fields (``__FIELDS__.json``) aren't carried through either, so run ``select-fields``
-after ``deidentify``. The UID is kept so that the data store can recognise an accession
+fields (``__FIELDS__.json``) are carried through to the output unchanged: they are *not*
+de-identified, so select any field that could identify the subject after ``deidentify``
+(see :doc:`select_fields`). The UID is kept so that the data store can recognise an accession
 that is deposited again; to replace it with a keyed hash, see
 :ref:`store-xnat-identity`.
 

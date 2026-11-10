@@ -24,10 +24,14 @@ the accession's folder.
 Fields the accession already has are kept, and a field whose specifier can't be
 resolved is skipped.
 
-Run ``select-fields`` last, just before ``store``: ``deidentify`` and ``package`` don't
-carry the fields through to their output. ``deidentify`` also drops every metadata field
-from its output except the accession's UID, so to select fields from de-identified data,
-keep the ones you need with its ``--metadata-allowlist`` option:
+Every later stage carries the fields through to its output unchanged, so
+``select-fields`` can run at any point after ``label``. But ``deidentify`` doesn't
+de-identify the fields: a field selected before it is deposited exactly as it was
+selected. So select any field that could identify the subject *after* ``deidentify``.
+
+``deidentify`` drops every metadata field from its output except the accession's UID,
+so to select fields from de-identified data, keep the ones you need with its
+``--metadata-allowlist`` option:
 
 .. code-block:: console
 

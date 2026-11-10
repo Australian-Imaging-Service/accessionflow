@@ -147,3 +147,100 @@ def test_fields_does_not_finalize_output_when_extraction_fails(
     assert "extraction failed" in errors[0]
     assert not (output_dir / "PROJECT.SUBJECT.SESSION").exists()
     assert source_dir.exists()
+
+
+def _staged_session_with_fields(input_dir: Path) -> Path:
+    _, session_dir = _staged_session(input_dir)
+    session = Accession.load(session_dir)
+    session.fields["site"] = "SYDNEY"
+    session.save(input_dir)
+    assert dict(Accession.load(session_dir).fields) == {"site": "SYDNEY"}
+    return session_dir
+
+
+def test_new_empty_keeps_fields(tmp_path: Path) -> None:
+    """An accession's fields belong to the accession, not to its acquisitions, so a
+    copy without the acquisitions keeps them"""
+    session_dir = _staged_session_with_fields(tmp_path / "input")
+    session = Accession.load(session_dir)
+    empty = session.new_empty()
+    assert not empty.acquisitions
+    assert dict(empty.fields) == {"site": "SYDNEY"}
+    # The copy has its own fields, so changing them leaves the original's alone
+    empty.fields["extra"] = "value"
+    assert dict(session.fields) == {"site": "SYDNEY"}
+
+
+def test_package_keeps_fields(tmp_path: Path) -> None:
+    from accessionflow.api import package
+
+    _staged_session_with_fields(tmp_path / "input")
+    errors = package(
+        input_dir=tmp_path / "input",
+        output_dir=tmp_path / "output",
+        source_datatype=MyFormat,
+        output_resources={"COPY": (MyFormat, {})},
+    )
+    assert errors == []
+    out = Accession.load(tmp_path / "output" / "PROJECT.SUBJECT.SESSION")
+    assert dict(out.fields) == {"site": "SYDNEY"}
+
+
+def test_deidentify_keeps_fields(tmp_path: Path) -> None:
+    from accessionflow.api import deidentify
+    from accessionflow.api.tests.test_deidentify import SHIPPED_RECIPES_DIR
+
+    _staged_session_with_fields(tmp_path / "input")
+    errors = deidentify(
+        input_dir=tmp_path / "input",
+        output_dir=tmp_path / "output",
+        recipe_dir=SHIPPED_RECIPES_DIR,
+    )
+    assert errors == []
+    out = Accession.load(tmp_path / "output" / "PROJECT.SUBJECT.SESSION")
+    assert dict(out.fields) == {"site": "SYDNEY"}
+
+
+def test_label_keeps_fields(tmp_path: Path) -> None:
+    from accessionflow.api import label
+
+    source = tmp_path / "source.my"
+    source.write_text("data")
+    collated = Accession(
+        uid="1.2.3",
+        acquisitions=[
+            Acquisition(id="1", type="CT", resources={"SOURCE": MyFormat(source)})
+        ],
+    )
+    collated.metadata.update({"P": "PROJECT", "S": "SUBJECT", "E": "SESSION"})
+    collated.fields["site"] = "SYDNEY"
+    collated.save(tmp_path / "input")
+    errors = label(
+        input_dir=tmp_path / "input",
+        output_dir=tmp_path / "output",
+        label_fields={"project": "P", "subject": "S", "session": "E"},
+        store_type="xnat",
+    )
+    assert errors == []
+    out = Accession.load(tmp_path / "output" / "PROJECT.SUBJECT.SESSION")
+    assert dict(out.fields) == {"site": "SYDNEY"}
+
+
+def test_attach_keeps_fields(tmp_path: Path) -> None:
+    from accessionflow.api import attach
+
+    _staged_session_with_fields(tmp_path / "input")
+    extra_dir = tmp_path / "extra"
+    extra_dir.mkdir()
+    (extra_dir / "5_LISTMODE_EXTRA.txt").write_text("attached")
+    errors = attach(
+        input_dir=tmp_path / "input",
+        output_dir=tmp_path / "output",
+        datatype=File,
+        glob=str(extra_dir / "*.txt"),
+        identity_pattern=r".*/(?P<id>\d+)_(?P<type>[A-Z]+)_(?P<resource>[A-Z]+)\.txt",
+    )
+    assert errors == []
+    out = Accession.load(tmp_path / "output" / "PROJECT.SUBJECT.SESSION")
+    assert "EXTRA" in out.acquisitions["5"].resources
+    assert dict(out.fields) == {"site": "SYDNEY"}

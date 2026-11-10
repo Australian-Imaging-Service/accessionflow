@@ -25,11 +25,12 @@ own (see :ref:`concepts-pipeline`):
     Copies metadata fields into the accession's fields, which the data store records
     alongside it, e.g. as XNAT custom variables.
 
-Only ``label`` is needed for every pipeline. The full order is::
+Only ``label`` is needed for every pipeline. A typical order is::
 
-    collate → [attach] → label → [deidentify] → [package] → [select-fields] → store
+    collate → [attach] → label → [deidentify] → [select-fields] → [package] → store
 
 ``attach`` can run at any point after ``collate``, but before ``deidentify`` if its
-pattern relies on identifying metadata (see :doc:`attach`). ``select-fields`` comes
-last, since ``deidentify`` and ``package`` don't carry the fields through to their
-output (see :doc:`select_fields`).
+pattern relies on identifying metadata (see :doc:`attach`). ``select-fields`` can run at
+any point after ``label``, since every stage carries the fields through, but after
+``deidentify`` if a field could identify the subject, since ``deidentify`` doesn't
+de-identify the fields (see :doc:`select_fields`).

@@ -608,13 +608,22 @@ class Accession:
         return Metadata.collate(s.metadata for s in self.acquisitions.values())
 
     def new_empty(self) -> Self:
-        """Return a new empty session with the same IDs as the current session"""
-        return type(self)(
+        """Return a new accession with the same labels and fields as this one, but no
+        acquisitions or resources, for a stage to save its output into.
+
+        The fields are the accession's own, not derived from its acquisitions, so they
+        are carried over: every stage that loads an accession and saves a new one then
+        keeps them. The copy has its own fields, which can be changed without changing
+        this accession's.
+        """
+        empty = type(self)(
             uid=self.uid,
             labels=self.labels,
             store_type=self.store_type,
             run_uid=self.run_uid,
         )
+        empty.fields.update(dict(self.fields))
+        return empty
 
     def select_resources(
         self,
@@ -1850,8 +1859,8 @@ class Accession:
             self.metadata[self.STORE_TYPE_METADATA_KEY] = self.store_type
         self.metadata.save(session_dir, allowlist=metadata_allowlist)
         if self.fields:
+            # 'saved' already holds the fields, from new_empty()
             self.fields.save(session_dir)
-            saved.fields.update(dict(self.fields))
         return saved, session_dir
 
     @classmethod
