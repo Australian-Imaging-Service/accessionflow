@@ -80,9 +80,18 @@ def catch_cli_exceptions() -> bool:
 
 
 @pytest.fixture(scope="session")
-def run_prefix() -> str:
+def _session_run_prefix() -> str:
     "A datetime string used to avoid stale data left over from previous tests"
     return datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
+
+
+@pytest.fixture
+def run_prefix(request: pytest.FixtureRequest, _session_run_prefix: str) -> str:
+    """The run's datetime string, with the attempt number appended when a flaky test is
+    rerun (see pytest-rerunfailures), so that a rerun uses fresh projects rather than
+    ones a failed attempt left partly uploaded"""
+    attempt = getattr(request.node, "execution_count", 1)
+    return _session_run_prefix if attempt <= 1 else f"{_session_run_prefix}R{attempt}"
 
 
 @pytest.fixture(scope="session")

@@ -22,7 +22,7 @@ import json
 import logging
 import shutil
 import typing as ty
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from zipfile import ZIP_STORED, ZipFile
@@ -855,12 +855,22 @@ def test_malformed_expanded_find_reply_is_an_error(tmp_path):
     assert fake.labelled == [] and fake.unlabelled == []
 
 
-def test_processed_label_forces_a_one_second_wait(tmp_path, caplog):
+def test_processed_label_forces_a_one_second_wait(tmp_path, caplog, monkeypatch):
     # Without a wait a late instance can share the staged LastUpdate's second.
     fake, store = _make_fake_orthanc(tmp_path)
-    fake.studies["study-ready"]["last_update"] = datetime.now(UTC).strftime(
-        "%Y%m%dT%H%M%S"
-    )
+    # LastUpdate only has whole seconds, so taking it from the real clock made the
+    # study's age anything from 0 to just over 1 second, and the test fail whenever
+    # it started close to the end of a second. The clock is frozen half a second
+    # after the study's LastUpdate instead.
+    last_update = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    fake.studies["study-ready"]["last_update"] = last_update.strftime("%Y%m%dT%H%M%S")
+
+    class _FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return last_update + timedelta(seconds=0.5)
+
+    monkeypatch.setattr(staging_module, "datetime", _FrozenDatetime)
     kwargs = _snapshot_kwargs(tmp_path / "staged", store)
     kwargs["wait_period"] = 0
     with _patch_requests(fake), caplog.at_level(logging.INFO):
