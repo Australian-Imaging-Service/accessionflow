@@ -1,4 +1,4 @@
-"""Collates files found in local or S3 paths into accessions"""
+"""Collates files found in local or mounted folders into accessions"""
 
 import typing as ty
 from pathlib import Path
@@ -59,7 +59,8 @@ def collate(
     Parameters
     ----------
     input_paths: list[str]
-        List of paths to search for input files. Can be local paths or S3 paths.
+        List of paths to search for input files: directories, or glob patterns that
+        select the files directly. They must be local or on a mounted file system.
     output_dir: Path
         Path to the staging directory where the collated sessions will be saved. This should be a local path.
     datatypes: ty.Sequence[type[FileSet]]

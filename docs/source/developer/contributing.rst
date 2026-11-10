@@ -1,3 +1,5 @@
+.. _contributing:
+
 Contribution guide
 ==================
 
@@ -69,7 +71,7 @@ installing ``pre-commit`` for the first time, or before a big PR):
 The project is also configured for ``mypy --strict`` (see ``pyproject.toml``), though
 it isn't currently run as a separate CI step or pre-commit hook. Docstrings follow
 `NumPy style <https://numpydoc.readthedocs.io/en/latest/format.html>`_, which is what
-``sphinx.ext.napoleon``/``numpydoc`` render into the :doc:`API reference </api>`.
+``sphinx.ext.napoleon``/``numpydoc`` render into the :doc:`API reference </reference/api>`.
 
 
 Building the docs

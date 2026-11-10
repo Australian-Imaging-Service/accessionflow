@@ -2,8 +2,8 @@
 
 Each subpackage of `accessionflow.sources` adds support for one source of the
 files that the `collate` stage collates into accessions, e.g.
-`accessionflow/sources/folder` for folders on a local path, a mount or in an
-S3 bucket, and `accessionflow/sources/orthanc` for an Orthanc server.
+`accessionflow/sources/folder` for folders on a local path or a mounted
+file system, and `accessionflow/sources/orthanc` for an Orthanc server.
 
 `accessionflow` and `accessionflow/sources` are namespace packages, so
 neither may contain an `__init__.py`. That lets plugins be installed from

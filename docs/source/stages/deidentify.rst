@@ -1,5 +1,7 @@
-Deidentification
-================
+.. _stage-deidentify:
+
+Deidentify
+==========
 
 For sites where the ``label``-ed accessions still contain identifiable data (e.g. a
 clinical scanner staging DICOMs before upload), insert a ``deidentify`` step between
@@ -23,9 +25,17 @@ up a scan for a clinical follow-up).
   than persist it, which is the safer choice when holding an
   original\ ↔\ deidentified lookup on disk is itself a concern.
 
-As with ``label``, ``--unlink-source all``/``--unlink-source keep-metadata`` clean up
-the ``label`` output once an accession's been deidentified — see
-:ref:`2. Label project/subject/session IDs` for what the two modes do.
+``--unlink-source all``/``--unlink-source keep-metadata`` clean up the ``label`` output
+once an accession has been deidentified (see :ref:`concepts-unlink-source`).
+
+The metadata side-cars in the output keep only the accession's UID (``__uid__``) and
+the fields that identify its labels and store; every other metadata field is dropped,
+while the input's metadata is unchanged. To keep other fields, e.g. for
+:doc:`select_fields` to read, list them with ``--metadata-allowlist``. The accession's
+fields (``__FIELDS__.json``) aren't carried through either, so run ``select-fields``
+after ``deidentify``. The UID is kept so that the data store can recognise an accession
+that is deposited again; to replace it with a keyed hash, see
+:ref:`store-xnat-identity`.
 
 Every input accession with resources is processed, even when its output already
 exists. A late series is saved into the existing output accession. Earlier acquisitions
@@ -68,9 +78,9 @@ is no applicable recipe (see below), the accession fails and its input stays.
 Laying out the deidentification recipes
 ------------------------------------------
 
-``RECIPE_DIR`` holds one subdirectory per project, named to match the project ID that
-``label`` gave the accession, plus an optional ``__default__`` subdirectory used as a
-fallback for any project without its own:
+``RECIPE_DIR`` holds one subdirectory per project, named to match the accession's first
+label (e.g. the XNAT project ID that ``label xnat`` gave it), plus an optional
+``__default__`` subdirectory used as a fallback for any project without its own:
 
 .. code-block:: text
 
@@ -106,10 +116,11 @@ Re-identifying data later
 ------------------------------
 
 If ``--reid-dir`` is given, each accession's original identifying values (before they
-were stripped) are written there as ``<session_id>.json``. If ``--reid-encrypt-key``
+were stripped) are written there as ``<labels>.json``, named after the accession's
+directory. If ``--reid-encrypt-key``
 is also set to a URL-safe base64-encoded 32-byte key (e.g. from
 ``Fernet.generate_key()`` in the ``cryptography`` package), the file is written
-encrypted instead, as ``<session_id>.json.enc``, and can only be read back with that
+encrypted instead, as ``<labels>.json.enc``, and can only be read back with that
 same key — keep it somewhere separate from the ``--reid-dir`` directory itself.
 Without ``--reid-dir`` the mapping is never written and the deidentification cannot be
 reversed (``--reid-encrypt-key`` then has no effect and is warned about).

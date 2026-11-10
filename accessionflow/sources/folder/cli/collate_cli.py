@@ -33,8 +33,8 @@ from ..api.collate_api import (
 
 @collate_group.command(
     name="folder",
-    help="""Collates the files found in folders, on a local path, a mount or in an S3
-bucket, into accessions, acquisitions and resources
+    help="""Collates the files found in folders, on a local path or a mounted file
+system, into accessions, acquisitions and resources
 
 INPUT_PATHS are either paths to directories containing the files to collate, or
 glob patterns that select the paths directly
@@ -211,7 +211,7 @@ ready to be labelled
     envvar="ACFLOW_COLLATE_RESOURCES",
     help=(
         "Flatten files of the given datatype into the resource directory during collation, "
-        "regardless of source directory structure (e.g. when collating from Orthanc). "
+        "regardless of source directory structure. "
         "Collation level is one of 'any', 'siblings', or 'adjacent' (default 'siblings'). "
     ),
 )

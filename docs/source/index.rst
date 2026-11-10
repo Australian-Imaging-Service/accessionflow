@@ -14,30 +14,46 @@ AccessionFlow
    :target: https://github.com/australian-imaging-service/accessionflow
 
 
-*AccessionFlow* is a toolkit for capturing data from instruments and uploading them to an XNAT
-instance.
+*AccessionFlow* is a toolkit for capturing data from instruments and depositing it in
+a data store, such as an XNAT instance or a folder hierarchy on a local disk or in an
+S3 bucket.
 
-Data files coming straight off a scanner or other instrument aren't organised the way XNAT
-expects, and — particularly on clinical scanners — often still carry patient-identifying
-information that needs stripping before they leave clinical control. *AccessionFlow*
-contains tools for each step of this process:
+Data files coming straight off a scanner or other instrument aren't organised the way
+a data store expects, and — particularly on clinical scanners — often still carry
+patient-identifying information that needs stripping before they leave clinical
+control. *AccessionFlow* contains tools for each step of this process:
 
-* Collating DICOM and non-DICOM files into accessions, acquisitions and resources
-* Determining which XNAT project each belongs to and assigning appropriate subject and session labels
+* Collating files from a source, such as a folder or an Orthanc server, into
+  accessions, acquisitions and resources
+* Labelling each accession with where it belongs in the data store, e.g. its XNAT
+  project, subject and session
 * De-identifying files using flexible, file-format-specific methods
-* Uploading the sorted data into the specified XNAT instance.
+* Depositing the labelled accessions in the data store, and checking that they all
+  made it
 
-Each of these is a separate step that can be chained together and left
-running continuously as a service, watching for new files as they arrive.
+Each of these is a separate stage that reads the previous stage's output directory and
+writes its own, so the stages can be chained together and left running continuously as
+services, picking up new files as they arrive:
 
-See :doc:`quick_start` for a hands-on walkthrough using synthetic sample data or go through the
-different sections in more detail using the links below
+.. code-block:: text
 
-* :ref:`Basic accession workflow` — collate, label and upload files to XNAT
-* :ref:`Attach files without relevant metadata` — link in files by filename pattern instead
-* :ref:`Deidentification` — strip patient-identifying data first
-* :ref:`Deployment tips` — run the pipeline continuously via Docker/Kubernetes
-* :doc:`cli` — full command-line reference
+    collate <source>  →  [attach]  →  label <store>  →  [deidentify]  →  [package]
+                      →  store <store>  →  check-store <store>
+
+Where the files come from and where they go are both plugins: :ref:`sources <sources>`
+provide the ``collate`` subcommands, and :ref:`data stores <stores>` provide the
+``label``, ``store`` and ``check-store`` subcommands. The stages in between work the same
+way whatever the source and store.
+
+Start with the :doc:`quick_start`, which collates sample data and deposits it in a
+folder store and then in XNAT, then see:
+
+* :doc:`concepts` — the ideas every stage relies on
+* :ref:`Sources <sources>` — collating from folders or an Orthanc server
+* :ref:`Stages <stages>` — attaching, labelling, de-identifying and packaging
+* :ref:`Data stores <stores>` — depositing in XNAT or a folder store
+* :doc:`deployment` — running the pipeline continuously with Docker or Kubernetes
+* :doc:`reference/cli` — the full command-line reference
 
 
 Installation
@@ -51,14 +67,20 @@ external dependencies (e.g. dcm2niix, MRtrix3):
 
     $ docker run ghcr.io/australian-imaging-service/accessionflow --help
 
-See :ref:`Deployment tips` for how this fits into Docker Compose
-or Kubernetes.
+See :doc:`deployment` for how this fits into Docker Compose or Kubernetes.
 
 Alternatively, *AccessionFlow* can be installed for Python >=3.11 using *pip*:
 
 .. code-block:: console
 
     $ python3 -m pip install accessionflow
+
+Depositing in a folder store on S3 or over SFTP needs the ``s3`` or ``ssh`` extra, e.g.
+``python3 -m pip install accessionflow[s3]``.
+
+The command is ``accessionflow``, which these docs use throughout. ``acflow`` is
+installed as a shorter alias for it, matching the ``ACFLOW_`` prefix of the
+:doc:`environment variables <reference/environment>`.
 
 
 License
@@ -70,19 +92,48 @@ This work is licensed under the
 
 .. toctree::
     :maxdepth: 2
+    :caption: Getting started
     :hidden:
 
     quick_start
+    concepts
 
 .. toctree::
     :maxdepth: 2
-    :caption: How-to
+    :caption: Sources
     :hidden:
 
-    how_to/pipeline
-    how_to/deidentify
-    how_to/attach
-    how_to/deploying
+    sources/index
+    sources/folder
+    sources/orthanc
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Stages
+    :hidden:
+
+    stages/index
+    stages/attach
+    stages/label
+    stages/deidentify
+    stages/package
+    stages/select_fields
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Data stores
+    :hidden:
+
+    stores/index
+    stores/folder
+    stores/xnat
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Running it
+    :hidden:
+
+    deployment
 
 .. toctree::
     :maxdepth: 2
@@ -90,13 +141,15 @@ This work is licensed under the
     :hidden:
 
     developer/contributing
-    developer/file_formats
     developer/data_model
+    developer/file_formats
+    developer/plugins
 
 .. toctree::
     :maxdepth: 2
     :caption: Reference
     :hidden:
 
-    cli
-    api
+    reference/cli
+    reference/environment
+    reference/api

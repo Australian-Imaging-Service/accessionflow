@@ -1,5 +1,7 @@
+.. _stage-attach:
+
 Attach files without relevant metadata
-=========================================
+======================================
 
 ``collate``/``label`` sort files using metadata read out of the files themselves (DICOM
 tags, by default). Some data that belongs in an accession doesn't work that way — e.g.
@@ -8,12 +10,11 @@ patient/session metadata of their own, or live in a completely separate export
 location to the DICOMs. If those files can still be found some other way (a shared
 naming convention with the primary DICOMs, in the same folder or elsewhere) and you
 know which acquisition/resource they belong to from their path, ``attach`` can link them
-into an accession that's already been through ``collate``.
+into an accession that's already been through ``collate`` (see :ref:`sources`).
 
-It can run at any point after :ref:`1. Collate files into accessions/acquisitions/resources`
-— on ``collate``'s own output, on ``label``'s, or later — since it only needs the
-accession's own metadata (read from the primary files' own headers), not resolved
-project/subject/session IDs. The one real ordering constraint is ``deidentify``: run
+It can run at any point after ``collate`` — on ``collate``'s own output, on
+``label``'s, or later — since it only needs the accession's own metadata (read from the
+primary files' own headers), not its labels. The one real ordering constraint is ``deidentify``: run
 ``attach`` *before* it if ``GLOB`` relies on identifying metadata, as in the
 example below (``{PatientName.family_name}``) — ``deidentify`` replaces
 ``PatientName`` with a fixed placeholder rather than removing it, so the glob would
@@ -53,7 +54,8 @@ cleaned up. ``attach`` doesn't need to know or care whether that's happened: if
 ``label`` (and/or ``deidentify``) was run with ``--unlink-source keep-metadata``
 rather than ``all``, the accession and acquisition directories are still there — just without
 the (now redundant) image data — since ``--unlink-source keep-metadata`` only removes
-each resource's files, never the accession's or acquisition's own ``__METADATA__.json``.
+each resource's files, never the accession's or acquisition's own ``__METADATA__.json``
+(see :ref:`concepts-unlink-source`).
 
 ``attach`` loads an accession the same way either way. An acquisition with no resources at all
 is an ordinary, valid state (it's what a freshly-collated acquisition looks like before

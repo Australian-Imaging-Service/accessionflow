@@ -1,5 +1,5 @@
-"""Collates files found in folders, on a local path, a mount or in an S3 bucket,
-into accessions"""
+"""Collates files found in folders, on a local path or a mounted file system, into
+accessions"""
 
 from accessionflow.model.source import Source
 
