@@ -15,8 +15,8 @@ from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
 from accessionflow.sources.folder.api import collate
 
-SESSION_FIELD = [IDSpec("StudyInstanceUID", "medimage/dicom-collection")]
-SCAN_FIELD = [IDSpec("SeriesNumber", "medimage/dicom-collection")]
+ACCESSION_UID_FIELD = [IDSpec("StudyInstanceUID", "medimage/dicom-collection")]
+ACQUISITION_ID_FIELD = [IDSpec("SeriesNumber", "medimage/dicom-collection")]
 RESOURCE_FIELD = [IDSpec("ImageType[2:]", "medimage/dicom-collection")]
 
 
@@ -35,8 +35,8 @@ def test_collate_creates_pre_label_session_dir(dicom_dir: Path, tmp_path: Path) 
         input_paths=[str(dicom_dir)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
     )
 
@@ -65,8 +65,8 @@ def test_collate_output_reloadable_with_no_labelled_ids(
         input_paths=[str(dicom_dir)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
     )
     session_dir = next(
@@ -94,8 +94,8 @@ def test_collate_collects_errors_without_raising(tmp_path: Path) -> None:
         input_paths=[str(empty_input)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
     )
 
@@ -117,8 +117,8 @@ def test_collate_unrecognised_file_raises_without_allow_unrecognised(
             input_paths=[str(input_dir)],
             output_dir=output_dir,
             datatypes=[DicomSeries],
-            session=SESSION_FIELD,
-            scan=SCAN_FIELD,
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
             resource=RESOURCE_FIELD,
         )
 
@@ -136,8 +136,8 @@ def test_collate_allow_unrecognised_skips_matching_files(
         input_paths=[str(input_dir)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
         allow_unrecognised=[r"notes\.txt"],
     )
@@ -163,8 +163,8 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_raises(
             input_paths=[str(input_dir)],
             output_dir=output_dir,
             datatypes=[DicomSeries],
-            session=SESSION_FIELD,
-            scan=SCAN_FIELD,
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
             resource=RESOURCE_FIELD,
             allow_unrecognised=[r"unrelated-pattern"],
         )
@@ -183,8 +183,8 @@ def test_collate_ignore_datatypes_excludes_recognised_but_unwanted_files(
         input_paths=[str(input_dir)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
         ignore_datatypes=[Json],
     )
@@ -213,8 +213,8 @@ def test_collate_without_ignore_datatypes_raises_on_recognised_extra_type(
             input_paths=[str(input_dir)],
             output_dir=output_dir,
             datatypes=[DicomSeries],
-            session=SESSION_FIELD,
-            scan=SCAN_FIELD,
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
             resource=RESOURCE_FIELD,
         )
 
@@ -230,8 +230,8 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
             input_paths=[str(dicom_dir)],
             output_dir=output_dir,
             datatypes=[DicomSeries],
-            session=SESSION_FIELD,
-            scan=SCAN_FIELD,
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
             resource=RESOURCE_FIELD,
             ignore_datatypes=[DicomSeries],
         )
@@ -247,8 +247,8 @@ def test_collate_creates_build_dir(tmp_path: Path) -> None:
         input_paths=[str(empty_input)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
     )
 
@@ -260,7 +260,11 @@ def patient_id(dicom_dir: Path) -> str:
     """The PatientID of the dummy dataset, discovered by a throwaway load so the
     metadata-table tests don't have to hard-code it"""
     sessions = Accession.from_paths(
-        dicom_dir, [DicomSeries], SESSION_FIELD, SCAN_FIELD, RESOURCE_FIELD
+        dicom_dir,
+        [DicomSeries],
+        ACCESSION_UID_FIELD,
+        ACQUISITION_ID_FIELD,
+        RESOURCE_FIELD,
     )
     resource = next(
         iter(next(iter(sessions[0].acquisitions.values())).resources.values())
@@ -284,11 +288,11 @@ def test_collate_injects_session_metadata_from_table(
         input_paths=[str(dicom_dir)],
         output_dir=output_dir,
         datatypes=[DicomSeries],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
         metadata_tables=[
-            MetadataTable(str(table), "session", "PatientID=PatientID"),
+            MetadataTable(str(table), "accession", "PatientID=PatientID"),
         ],
     )
 
@@ -312,8 +316,8 @@ def test_from_paths_injects_resource_metadata_from_table(
     sessions = Accession.from_paths(
         dicom_dir,
         [DicomSeries],
-        SESSION_FIELD,
-        SCAN_FIELD,
+        ACCESSION_UID_FIELD,
+        ACQUISITION_ID_FIELD,
         RESOURCE_FIELD,
         metadata_tables=[
             MetadataTable(str(table), "resource", "PatientID=PatientID"),
@@ -338,8 +342,8 @@ def test_collate_converts_directory_to_zip(dicom_dir: Path, tmp_path: Path):
         input_paths=[str(directory_dir)],
         output_dir=output_dir,
         datatypes=[DicomDir],
-        session=SESSION_FIELD,
-        scan=SCAN_FIELD,
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
         resource=RESOURCE_FIELD,
         conversion_map={DicomDir: (Zip, {"compression": "ZIP_STORED"})},
     )

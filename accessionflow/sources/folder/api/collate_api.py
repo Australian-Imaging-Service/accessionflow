@@ -19,10 +19,10 @@ from accessionflow.model.accession import Accession
 
 # Default ID specs, shared verbatim with the 'collate folder' CLI options so the API
 # and CLI can never drift apart
-DEFAULT_SESSION_FIELD: tuple[IDSpec, ...] = (
+DEFAULT_ACCESSION_UID_FIELD: tuple[IDSpec, ...] = (
     IDSpec("StudyInstanceUID", "medimage/dicom-collection"),
 )
-DEFAULT_SCAN_FIELD: tuple[IDSpec, ...] = (
+DEFAULT_ACQUISITION_ID_FIELD: tuple[IDSpec, ...] = (
     IDSpec("SeriesNumber", "medimage/dicom-collection"),
 )
 DEFAULT_RESOURCE_FIELD: tuple[IDSpec, ...] = ()
@@ -33,8 +33,8 @@ def collate(
     input_paths: list[str],
     output_dir: Path,
     datatypes: ty.Sequence[type[FileSet]] = _DEFAULT_DATATYPES,
-    session: ty.Sequence[IDSpec] = DEFAULT_SESSION_FIELD,
-    scan: ty.Sequence[IDSpec] = DEFAULT_SCAN_FIELD,
+    accession_uid: ty.Sequence[IDSpec] = DEFAULT_ACCESSION_UID_FIELD,
+    acquisition_id: ty.Sequence[IDSpec] = DEFAULT_ACQUISITION_ID_FIELD,
     resource: ty.Sequence[IDSpec] = DEFAULT_RESOURCE_FIELD,
     path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
     unlink_source: str | None = None,
@@ -52,7 +52,7 @@ def collate(
     metadata_tables: list[MetadataTable] | None = None,
     recursive: bool = False,
 ) -> list[str]:
-    """Collates the input files into sessions/scans/resources and stages them into the
+    """Collates the input files into accessions/acquisitions/resources and stages them into the
     staging directory. Project/subject/visit IDs and scan descriptions are not
     labelled at this point, see the 'label' function for that.
 
@@ -66,16 +66,17 @@ def collate(
     datatypes: ty.Sequence[type[FileSet]]
         FileSet types to look for in the input files. Only files with these datatypes will be
         considered for staging. Defaults to ``(DicomSeries,)`` to mirror the CLI.
-    session: ty.Sequence[IDSpec]
-        List of field specifications to use for extracting the session UIDs from the input files to collate them into
-        separate sessions. Defaults to ``DEFAULT_SESSION_FIELD`` (``StudyInstanceUID``
-        scoped to DICOM collections; the same object backs the CLI's ``--session``);
-        other fileset types need an explicit spec.
-    scan: ty.Sequence[IDSpec]
-        List of field specifications to use for extracting the scan IDs from the input files to collate them into
-        scans. Defaults to ``DEFAULT_SCAN_FIELD`` (``SeriesNumber`` scoped to DICOM
-        collections; shared with the CLI's ``--scan``); for a fileset whose type is not
-        matched by any spec here the scan is named after that fileset's resource.
+    accession_uid: ty.Sequence[IDSpec]
+        Field specifications to extract the accession UIDs from the input files, to
+        collate them into separate accessions. Defaults to ``DEFAULT_ACCESSION_UID_FIELD``
+        (``StudyInstanceUID`` scoped to DICOM collections; the same object backs the
+        CLI's ``--accession-uid``); other fileset types need an explicit spec.
+    acquisition_id: ty.Sequence[IDSpec]
+        Field specifications to extract the acquisition IDs from the input files, to
+        collate them into acquisitions. Defaults to ``DEFAULT_ACQUISITION_ID_FIELD``
+        (``SeriesNumber`` scoped to DICOM collections; shared with the CLI's
+        ``--acquisition-id``); for a fileset whose type is not matched by any spec here the
+        acquisition is named after that fileset's resource.
     resource: ty.Sequence[IDSpec]
         List of field specifications to use for extracting the resource IDs from the input files to collate them into
         resources. If empty, each resource is labelled with the mime-like rendering
@@ -132,7 +133,7 @@ def collate(
         TSV from the file extension; a different format can be forced by appending its mime-type in square
         brackets, e.g. 'path/to/table.dat[text/csv]'.
         The "row frequency" arg specifies what each row in the
-        metadata table corresponds to in the data hierarchy, and can be one of 'session', 'scan', 'resource',
+        metadata table corresponds to in the data hierarchy, and can be one of 'accession', 'acquisition', 'resource',
         'fileset', 'fileset[<mime-type>]'. When one or more mime-types are given in square brackets after
         'fileset' they restrict the join to input files of those types (multiple mime-types can be '|'-separated,
         e.g. 'fileset[image/png|image/jpeg]'); a bare 'fileset' matches any input file.
@@ -172,8 +173,8 @@ def collate(
     sessions = Accession.from_paths(
         files_path=input_paths,
         datatypes=datatypes,
-        session_field=session,
-        scan_field=scan,
+        accession_uid_field=accession_uid,
+        acquisition_id_field=acquisition_id,
         resource_field=resource,
         recursive=recursive,
         on_resource_clash=on_resource_clash,

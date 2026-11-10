@@ -897,10 +897,10 @@ def test_collate_metadata_table_detailed_example(
             "--recursive",
             "--datatype",
             "image/png",
-            "--session",
+            "--accession-uid",
             "SubjectID",
             "all",
-            "--scan",
+            "--acquisition-id",
             "LesionID",
             "all",
             "--resource",
@@ -1314,10 +1314,10 @@ def test_check_upload_missing_scan(
         [
             str(inputs_dir),
             str(sorted_dir),
-            "--session",
+            "--accession-uid",
             "StudyInstanceUID",
             "all",
-            "--scan",
+            "--acquisition-id",
             "SeriesNumber",
             "all",
             "--raise-errors",
@@ -1457,7 +1457,7 @@ def test_check_upload_empty_scan(
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
-            # --session/--scan specs don't apply - set them explicitly
+            # --accession-uid/--acquisition-id specs don't apply - set them explicitly
             "ACFLOW_SESSION": "StudyInstanceUID all",
             "ACFLOW_SCAN": "SeriesNumber all",
         },
@@ -1597,7 +1597,7 @@ def test_check_upload_missing_resource(
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
-            # --session/--scan specs don't apply - set them explicitly
+            # --accession-uid/--acquisition-id specs don't apply - set them explicitly
             "ACFLOW_SESSION": "StudyInstanceUID all",
             "ACFLOW_SCAN": "SeriesNumber all",
         },
@@ -1734,7 +1734,7 @@ def test_check_upload_checksum_fail(
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
-            # non-DICOM test formats: the default DICOM-scoped --session/--scan
+            # non-DICOM test formats: the default DICOM-scoped --accession-uid/--acquisition-id
             # specs don't apply, set them explicitly
             "ACFLOW_SESSION": "StudyInstanceUID all",
             "ACFLOW_SCAN": "SeriesNumber all",
@@ -1858,10 +1858,10 @@ def test_upload_snapshots_display_in_xnat(
             "--recursive",
             "--datatype",
             "image/png",
-            "--session",
+            "--accession-uid",
             "SessionID",
             "all",
-            "--scan",
+            "--acquisition-id",
             "ScanID",
             "all",
             "--on-resource-clash",

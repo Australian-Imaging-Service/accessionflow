@@ -289,7 +289,7 @@ def _resolve_clash_policy(
         f"{type(incoming).__name__} {where}, and no --on-resource-clash spec's "
         "scope covers both. Add one (e.g. "
         f"'--on-resource-clash avoid \"{to_mime(type(existing))}|{to_mime(type(incoming))}\"'), "
-        "or tighten --scan / --resource so the two don't collide."
+        "or tighten --acquisition-id / --resource so the two don't collide."
     )
 
 
@@ -526,7 +526,7 @@ class Accession:
     STORE_TYPE_METADATA_KEY = "__store_type__"
     # Metadata key under which each fileset's resolved fileformats type name (e.g.
     # 'VectraExport', 'Sqlite3Db') is stashed during collation, so it can be
-    # referenced from --session/--scan/--resource specs (e.g. '{__datatype__}')
+    # referenced from --accession-uid/--acquisition-id/--resource specs (e.g. '{__datatype__}')
     TYPE_METADATA_KEY = "__datatype__"
 
     def __attrs_post_init__(self) -> None:
@@ -707,8 +707,8 @@ class Accession:
         cls,
         files_path: str | Path | ty.Sequence[str | Path],
         datatypes: type[FileSet] | ty.Sequence[type[FileSet]],
-        session_field: ty.Sequence[IDSpec],
-        scan_field: ty.Sequence[IDSpec] = (),
+        accession_uid_field: ty.Sequence[IDSpec],
+        acquisition_id_field: ty.Sequence[IDSpec] = (),
         resource_field: ty.Sequence[IDSpec] = (),
         recursive: bool = False,
         on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
@@ -728,13 +728,14 @@ class Accession:
         datatypes : type or list[type]
             the fileformats to load from the paths, e.g. DicomSeries or
             [DicomSeries, NiftiGz]
-        session_field: ty.Sequence[IDSpec]
-            the metadata field that uniquely identifies the session, used to collate files
-            together before project/subject/visit IDs are extracted (e.g. StudyInstanceUID)
-        scan_field: ty.Sequence[IDSpec]
-            the value of this field is used to collate resources under single scans.
-            For a fileset whose type is not matched by any spec here (including the
-            empty default), the scan is named after that fileset's resource.
+        accession_uid_field: ty.Sequence[IDSpec]
+            the metadata field that uniquely identifies the accession, used to collate
+            files together before they are labelled (e.g. StudyInstanceUID)
+        acquisition_id_field: ty.Sequence[IDSpec]
+            the value of this field is used to collate resources under single
+            acquisitions. For a fileset whose type is not matched by any spec here
+            (including the empty default), the acquisition is named after that
+            fileset's resource.
         resource_field: ty.Sequence[IDSpec]
             the value of this field is used to identify resources. If empty, the
             resource is labelled with the mime-like rendering of the fileset's type
@@ -932,7 +933,7 @@ class Accession:
                         fileset.metadata.update(match.groupdict())
 
         # Expose each fileset's resolved type name as a metadata field so it can be
-        # referenced from --session/--scan/--resource specs (setdefault so an
+        # referenced from --accession-uid/--acquisition-id/--resource specs (setdefault so an
         # explicit path-regex group of the same name still wins)
         for fileset in filesets:
             fileset.metadata.setdefault(cls.TYPE_METADATA_KEY, fileset.type_name)
@@ -945,7 +946,9 @@ class Accession:
             filesets,
             "Sorting resources into XNAT tree structure...",
         ):
-            session_uid = IDSpec.get_value_from_matching_spec(fileset, session_field)
+            session_uid = IDSpec.get_value_from_matching_spec(
+                fileset, accession_uid_field
+            )
             # XNAT requires DICOM datasets to have 'DICOM'/'secondary' resource
             # labels otherwise some features don't work
             resource_derived = False
@@ -965,11 +968,11 @@ class Accession:
                 resource_label = IDSpec.get_value_from_matching_spec(
                     fileset, resource_field
                 )
-            # No --scan spec matches this fileset's type (e.g. the datatype-scoped
+            # No --acquisition-id spec matches this fileset's type (e.g. the datatype-scoped
             # 'SeriesNumber' default doesn't apply to a non-DICOM fileset): put the
             # resource in a scan of the same name
             scan_id = IDSpec.get_value_from_matching_spec(
-                fileset, scan_field, default=_DERIVED_ID
+                fileset, acquisition_id_field, default=_DERIVED_ID
             )
             scan_derived = scan_id is _DERIVED_ID
             if scan_derived:
@@ -977,7 +980,7 @@ class Accession:
             derived_specs = [
                 spec
                 for spec, was_derived in (
-                    ("--scan", scan_derived),
+                    ("--acquisition-id", scan_derived),
                     ("--resource", resource_derived),
                 )
                 if was_derived
@@ -1378,7 +1381,7 @@ class Accession:
         clash_hint : str, optional
             extra context appended to the message when a resource-name clash is
             hit (raised for ``on_clash="error"``, logged for ``"avoid"``), e.g. to
-            note that the clashing IDs were auto-derived because no ``--scan``/
+            note that the clashing IDs were auto-derived because no ``--acquisition-id``/
             ``--resource`` spec was given.
         """
         try:
@@ -1493,7 +1496,7 @@ class Accession:
                     f"Clash between resource names ('{resource_name}') for {scan_id} scan in "
                     f"{self.name} session. Pass --on-resource-clash <policy> <scope> "
                     "(policy one of 'avoid'/'merge'/'overwrite') with a scope covering "
-                    "the clashing datatype(s), or tighten --scan / --resource so they "
+                    "the clashing datatype(s), or tighten --acquisition-id / --resource so they "
                     "don't collide." + (f" {clash_hint}" if clash_hint else ""),
                 )
             else:

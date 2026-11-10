@@ -23,8 +23,8 @@ from accessionflow.sources.folder.api import collate
 
 PROJECT_FIELD = "StudyID"
 SUBJECT_FIELD = "PatientID"
-SESSION_FIELD = "AccessionNumber"
-SCAN_FIELD = "SeriesDescription"
+ACCESSION_UID_FIELD = "AccessionNumber"
+ACQUISITION_ID_FIELD = "SeriesDescription"
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_label_calls_load_label_save_for_each_session(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
         )
 
@@ -81,7 +81,7 @@ def test_label_calls_load_label_save_for_each_session(
         label_fields={
             "project": PROJECT_FIELD,
             "subject": SUBJECT_FIELD,
-            "session": SESSION_FIELD,
+            "session": ACCESSION_UID_FIELD,
         },
         acquisition_field=None,
         constant_labels=None,
@@ -139,7 +139,7 @@ def test_label_leaves_no_partial_session_under_its_real_name_when_save_dies(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
         )
 
@@ -165,7 +165,7 @@ def test_label_repairs_a_resource_left_without_a_manifest(tmp_path: Path) -> Non
         acquisitions=[Acquisition(id="1", type="T", resources={"RES": File(src)})],
     )
     session.metadata.update(
-        {PROJECT_FIELD: "PROJ", SUBJECT_FIELD: "SUBJ", SESSION_FIELD: "SESS"}
+        {PROJECT_FIELD: "PROJ", SUBJECT_FIELD: "SUBJ", ACCESSION_UID_FIELD: "SESS"}
     )
     collated_dir = tmp_path / "collated"
     _, collated_session_dir = session.save(collated_dir)
@@ -181,7 +181,7 @@ def test_label_repairs_a_resource_left_without_a_manifest(tmp_path: Path) -> Non
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
         )
 
@@ -218,7 +218,7 @@ def test_label_routes_invalid_ids_to_invalid_subdir(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
         )
 
@@ -244,12 +244,14 @@ def test_label_passes_acquisition_field(collated_dir: Path, tmp_path: Path) -> N
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
-            acquisition_field=SCAN_FIELD,
+            acquisition_field=ACQUISITION_ID_FIELD,
         )
 
-    assert mock_session.label.call_args.kwargs["acquisition_field"] == SCAN_FIELD
+    assert (
+        mock_session.label.call_args.kwargs["acquisition_field"] == ACQUISITION_ID_FIELD
+    )
 
 
 def test_label_passes_constant_project_id(collated_dir: Path, tmp_path: Path) -> None:
@@ -264,7 +266,7 @@ def test_label_passes_constant_project_id(collated_dir: Path, tmp_path: Path) ->
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             constant_labels={"project": "FIXED_PROJECT"},
         )
@@ -289,7 +291,7 @@ def test_label_collects_errors_without_raising(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
         )
 
@@ -312,7 +314,7 @@ def test_label_raise_errors_propagates(collated_dir: Path, tmp_path: Path) -> No
                 label_fields={
                     "project": PROJECT_FIELD,
                     "subject": SUBJECT_FIELD,
-                    "session": SESSION_FIELD,
+                    "session": ACCESSION_UID_FIELD,
                 },
                 raise_errors=True,
             )
@@ -335,7 +337,7 @@ def test_label_deletes_source_dir_on_success_when_unlink_source_all(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             unlink_source="all",
         )
@@ -359,7 +361,7 @@ def test_label_leaves_source_dir_when_unlink_source_none(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             unlink_source=None,
         )
@@ -386,7 +388,7 @@ def test_label_keep_metadata_preserves_session_without_resources(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             unlink_source="keep-metadata",
         )
@@ -412,7 +414,7 @@ def test_label_does_not_delete_on_failure_even_if_unlink_source_all(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             unlink_source="all",
         )
@@ -439,8 +441,8 @@ def test_label_end_to_end_resolves_ids_from_collated_metadata(
         input_paths=[str(dicom_dir)],
         output_dir=collated_dir,
         datatypes=[DicomSeries],
-        session=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        scan=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
         resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
     )
     assert collate_errors == []
@@ -454,9 +456,9 @@ def test_label_end_to_end_resolves_ids_from_collated_metadata(
         label_fields={
             "project": PROJECT_FIELD,
             "subject": SUBJECT_FIELD,
-            "session": SESSION_FIELD,
+            "session": ACCESSION_UID_FIELD,
         },
-        acquisition_field=SCAN_FIELD,
+        acquisition_field=ACQUISITION_ID_FIELD,
     )
 
     assert errors == []
@@ -486,8 +488,8 @@ def test_label_loads_dicomdir_resource(dicom_dir: Path, tmp_path: Path) -> None:
             output_dir=collated_dir,
             datatypes=[DicomDir],
             recursive=True,
-            session=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-            scan=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+            accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+            acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
             resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
         )
         == []
@@ -501,7 +503,7 @@ def test_label_loads_dicomdir_resource(dicom_dir: Path, tmp_path: Path) -> None:
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
         )
         == []
@@ -525,8 +527,8 @@ def test_label_end_to_end_routes_datatypes_to_separate_projects(
             input_paths=[str(dicom_dir)],
             output_dir=collated_dir,
             datatypes=[DicomSeries],
-            session=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-            scan=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+            accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+            acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
             resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
         )
         == []
@@ -543,7 +545,7 @@ def test_label_end_to_end_routes_datatypes_to_separate_projects(
         "label_fields": {
             "project": PROJECT_FIELD,
             "subject": SUBJECT_FIELD,
-            "session": SESSION_FIELD,
+            "session": ACCESSION_UID_FIELD,
         },
     }
     assert (
@@ -591,8 +593,8 @@ def test_label_end_to_end_unresolvable_project_field_goes_to_invalid_dir(
         input_paths=[str(dicom_dir)],
         output_dir=collated_dir,
         datatypes=[DicomSeries],
-        session=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        scan=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
         resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
     )
     assert collate_errors == []
@@ -606,7 +608,7 @@ def test_label_end_to_end_unresolvable_project_field_goes_to_invalid_dir(
         label_fields={
             "project": "ThisFieldDoesNotExistInTheMetadata",
             "subject": SUBJECT_FIELD,
-            "session": SESSION_FIELD,
+            "session": ACCESSION_UID_FIELD,
         },
     )
 
@@ -633,8 +635,8 @@ def test_label_skips_duplicate_invalid_sessions(
         input_paths=[str(dicom_dir)],
         output_dir=collated_dir,
         datatypes=[DicomSeries],
-        session=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        scan=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
         resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
     )
     assert collate_errors == []
@@ -648,7 +650,7 @@ def test_label_skips_duplicate_invalid_sessions(
         label_fields={
             "project": "NonExistentField",
             "subject": SUBJECT_FIELD,
-            "session": SESSION_FIELD,
+            "session": ACCESSION_UID_FIELD,
         },
     )
     assert len(errors1) == 1
@@ -663,7 +665,7 @@ def test_label_skips_duplicate_invalid_sessions(
         label_fields={
             "project": "NonExistentField",
             "subject": SUBJECT_FIELD,
-            "session": SESSION_FIELD,
+            "session": ACCESSION_UID_FIELD,
         },
     )
     assert errors2 == []
@@ -695,7 +697,7 @@ def test_label_single_resource_rejects_acquisition_with_several(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             single_resource=True,
         )
@@ -722,7 +724,7 @@ def test_label_single_resource_counts_only_included_resources(
             label_fields={
                 "project": PROJECT_FIELD,
                 "subject": SUBJECT_FIELD,
-                "session": SESSION_FIELD,
+                "session": ACCESSION_UID_FIELD,
             },
             include=[DicomSeries],
             single_resource=True,

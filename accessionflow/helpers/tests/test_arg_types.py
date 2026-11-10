@@ -441,7 +441,7 @@ def test_semicolon_list_option_accepts_repeated_flags_and_env_var() -> None:
 # ── row_frequency_converter ────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("freq", ["session", "scan", "resource"])
+@pytest.mark.parametrize("freq", ["accession", "acquisition", "resource"])
 def test_row_frequency_converter_hierarchy_levels(freq: str) -> None:
     assert row_frequency_converter(freq) == freq
 
@@ -501,7 +501,7 @@ def test_row_frequency_converter_iterable_with_bad_entry_raises() -> None:
 
 
 def test_metadata_table_built_from_cli_style_strings(csv_table: Csv) -> None:
-    table = MetadataTable(str(csv_table.fspath), "session", "PatientID=PatientID")
+    table = MetadataTable(str(csv_table.fspath), "accession", "PatientID=PatientID")
     assert isinstance(table.table_file, Csv)
     assert table.row_frequency == "session"
     assert table.join_exprs == [JoinExpr("PatientID", "PatientID")]
@@ -509,12 +509,12 @@ def test_metadata_table_built_from_cli_style_strings(csv_table: Csv) -> None:
 
 def test_metadata_table_requires_at_least_one_join_expr(csv_table: Csv) -> None:
     with pytest.raises(ValueError, match="At least one join expression"):
-        MetadataTable(csv_table, "session", [])
+        MetadataTable(csv_table, "accession", [])
 
 
 def test_metadata_table_equality_ignores_loaded_table_cache(csv_table: Csv) -> None:
-    a = MetadataTable(csv_table, "session", "PatientID=PatientID")
-    b = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    a = MetadataTable(csv_table, "accession", "PatientID=PatientID")
+    b = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     _ = a.table  # populate the lazy cache on one of them only
     assert a == b
 
@@ -523,7 +523,7 @@ def test_metadata_table_equality_ignores_loaded_table_cache(csv_table: Csv) -> N
 
 
 def test_table_loads_csv_column_oriented(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     assert dict(table.table) == {
         "PatientID": ["subj01", "subj01", "subj02"],
         "Session": ["MR01", "MR02", "MR01"],
@@ -533,7 +533,7 @@ def test_table_loads_csv_column_oriented(csv_table: Csv) -> None:
 
 
 def test_table_loads_tsv(tsv_table: Tsv) -> None:
-    table = MetadataTable(tsv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(tsv_table, "accession", "PatientID=PatientID")
     assert dict(table.table) == {
         "PatientID": ["subj01", "subj02"],
         "Comment": ["hello", "world"],
@@ -543,12 +543,12 @@ def test_table_loads_tsv(tsv_table: Tsv) -> None:
 def test_table_handles_utf8_bom(tmp_path: Path) -> None:
     path = tmp_path / "bom.csv"
     path.write_bytes("PatientID,Comment\nsubj01,x\n".encode("utf-8-sig"))
-    table = MetadataTable(Csv(path), "session", "PatientID=PatientID")
+    table = MetadataTable(Csv(path), "accession", "PatientID=PatientID")
     assert list(table.table) == ["PatientID", "Comment"]
 
 
 def test_table_is_cached_after_first_access(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     assert table.table is table.table
 
 
@@ -557,7 +557,7 @@ def test_table_is_cached_after_first_access(csv_table: Csv) -> None:
 
 def test_inject_session_injects_whole_matched_row(csv_table: Csv) -> None:
     table = MetadataTable(
-        csv_table, "session", ["PatientID=PatientID", "Session=Session"]
+        csv_table, "accession", ["PatientID=PatientID", "Session=Session"]
     )
     session = _session(PatientID="subj01", Session="MR02")
     table.inject(session)
@@ -567,28 +567,28 @@ def test_inject_session_injects_whole_matched_row(csv_table: Csv) -> None:
 
 
 def test_inject_no_matching_row_is_a_noop(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     session = _session(PatientID="nobody")
     table.inject(session)
     assert "Comment" not in session.metadata
 
 
 def test_inject_multiple_matching_rows_raises(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     session = _session(PatientID="subj01")  # matches two rows
     with pytest.raises(ValueError, match="Multiple rows"):
         table.inject(session)
 
 
 def test_inject_missing_join_field_on_target_is_a_noop(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     session = _session(SomethingElse="x")
     table.inject(session)
     assert "Comment" not in session.metadata
 
 
 def test_inject_unknown_join_column_raises(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "session", "NoSuchColumn=PatientID")
+    table = MetadataTable(csv_table, "accession", "NoSuchColumn=PatientID")
     session = _session(PatientID="subj01")
     with pytest.raises(ValueError, match="not found in metadata table"):
         table.inject(session)
@@ -597,14 +597,16 @@ def test_inject_unknown_join_column_raises(csv_table: Csv) -> None:
 def test_inject_wrong_frequency_target_is_a_noop(
     csv_table: Csv, tmp_path: Path
 ) -> None:
-    table = MetadataTable(csv_table, "session", "PatientID=PatientID")
+    table = MetadataTable(csv_table, "accession", "PatientID=PatientID")
     scan = _scan(PatientID="subj02", Session="MR01")
     table.inject(scan)
     assert "Comment" not in scan.metadata
 
 
 def test_inject_scan_frequency(csv_table: Csv) -> None:
-    table = MetadataTable(csv_table, "scan", ["PatientID=PatientID", "Session=Session"])
+    table = MetadataTable(
+        csv_table, "acquisition", ["PatientID=PatientID", "Session=Session"]
+    )
     scan = _scan(PatientID="subj02", Session="MR01")
     table.inject(scan)
     assert scan.metadata["Comment"] == "third"
@@ -673,7 +675,7 @@ def test_inject_plain_fileset_frequency_matches_any_fileset(tmp_path: Path) -> N
 
 def test_inject_and_combines_multiple_join_exprs(csv_table: Csv) -> None:
     table = MetadataTable(
-        csv_table, "session", ["PatientID=PatientID", "Session=Session"]
+        csv_table, "accession", ["PatientID=PatientID", "Session=Session"]
     )
     session = _session(PatientID="subj01", Session="MR01")
     table.inject(session)
@@ -683,7 +685,7 @@ def test_inject_and_combines_multiple_join_exprs(csv_table: Csv) -> None:
 def test_inject_template_join_expr(csv_table: Csv, tmp_path: Path) -> None:
     lookup = tmp_path / "lookup.csv"
     lookup.write_text("Key,Label\nsubj01/MR02,the-label\n")
-    table = MetadataTable(Csv(lookup), "session", "Key={PatientID}/{Session}")
+    table = MetadataTable(Csv(lookup), "accession", "Key={PatientID}/{Session}")
     session = _session(PatientID="subj01", Session="MR02")
     table.inject(session)
     assert session.metadata["Label"] == "the-label"
@@ -706,9 +708,9 @@ def test_inject_list_applies_every_table_to_every_target(
     weights = tmp_path / "weights.csv"
     weights.write_text("PatientID,Weight\nsubj01,70\nsubj02,85\n")
     table_a = MetadataTable(
-        csv_table, "session", ["PatientID=PatientID", "Session=Session"]
+        csv_table, "accession", ["PatientID=PatientID", "Session=Session"]
     )
-    table_b = MetadataTable(Csv(weights), "session", "PatientID=PatientID")
+    table_b = MetadataTable(Csv(weights), "accession", "PatientID=PatientID")
     sessions = [
         _session(PatientID="subj01", Session="MR01"),
         _session(PatientID="subj02", Session="MR01"),

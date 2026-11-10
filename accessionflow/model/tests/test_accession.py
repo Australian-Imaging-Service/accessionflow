@@ -350,8 +350,8 @@ def test_stage_raw_data_directly(raw_frameset: FrameSet, tmp_path: Path) -> None
             SyngoMi_Vr20b_ListMode,
             SyngoMi_Vr20b_CountRate,
         ],
-        session_field=[IDSpec("StudyInstanceUID")],
-        scan_field=[IDSpec("SeriesNumber")],
+        accession_uid_field=[IDSpec("StudyInstanceUID")],
+        acquisition_id_field=[IDSpec("SeriesNumber")],
         resource_field=[IDSpec("ImageType[2:]")],
     )
 
@@ -398,8 +398,8 @@ def test_path_metadata_regex_extracts_named_groups(tmp_path: Path) -> None:
     sessions = Accession.from_paths(
         f"{raw_data_dir}/**/*",
         datatypes=[DicomSeries],
-        session_field=[IDSpec("StudyInstanceUID")],
-        scan_field=[IDSpec("SeriesNumber")],
+        accession_uid_field=[IDSpec("StudyInstanceUID")],
+        acquisition_id_field=[IDSpec("SeriesNumber")],
         resource_field=[IDSpec("ImageType[2:]")],
         path_metadata_regex=[
             PathMetadataRegex(r".*/(?P<cohort>[^/]+)$", DicomSeries),
@@ -421,8 +421,8 @@ def test_path_metadata_regex_no_match_raises(tmp_path: Path) -> None:
         Accession.from_paths(
             f"{raw_data_dir}/**/*",
             datatypes=[DicomSeries],
-            session_field=[IDSpec("StudyInstanceUID")],
-            scan_field=[IDSpec("SeriesNumber")],
+            accession_uid_field=[IDSpec("StudyInstanceUID")],
+            acquisition_id_field=[IDSpec("SeriesNumber")],
             resource_field=[IDSpec("ImageType[2:]")],
             path_metadata_regex=[
                 PathMetadataRegex(r"^/nonexistent/(?P<cohort>.+)$", DicomSeries),
@@ -440,8 +440,8 @@ def test_from_paths_injects_datatype_metadata_field(tmp_path: Path) -> None:
     sessions = Accession.from_paths(
         src,
         datatypes=[File],
-        session_field=[IDSpec("sess")],
-        scan_field=[IDSpec("sess")],
+        accession_uid_field=[IDSpec("sess")],
+        acquisition_id_field=[IDSpec("sess")],
         resource_field=[IDSpec("res_{__datatype__}")],
         path_metadata_regex=[PathMetadataRegex(r".*/(?P<sess>[^/]+)\.txt", File)],
     )
@@ -464,8 +464,8 @@ def test_from_paths_resource_label_defaults_to_mime_like_type_name(
     sessions = Accession.from_paths(
         src,
         datatypes=[File],
-        session_field=[IDSpec("__datatype__")],
-        scan_field=[IDSpec("__datatype__")],
+        accession_uid_field=[IDSpec("__datatype__")],
+        acquisition_id_field=[IDSpec("__datatype__")],
         # resource_field omitted -> mime-like(type_name)
     )
 
@@ -529,8 +529,8 @@ def test_from_paths_recursive_pulls_nested_directory_datatype(tmp_path: Path) ->
     sessions = Accession.from_paths(
         root,
         datatypes=[DirectoryOf[Json]],
-        session_field=[IDSpec("__datatype__")],
-        scan_field=[IDSpec("name")],
+        accession_uid_field=[IDSpec("__datatype__")],
+        acquisition_id_field=[IDSpec("name")],
         resource_field=[IDSpec("name")],
         recursive=True,
         path_metadata_regex=[
@@ -573,8 +573,8 @@ def test_from_paths_recursive_allow_unrecognised_wildcard_pulls_only_wanted_dirs
     sessions = Accession.from_paths(
         root,
         datatypes=[DirectoryOf[Json]],
-        session_field=[IDSpec("__datatype__")],
-        scan_field=[IDSpec("name")],
+        accession_uid_field=[IDSpec("__datatype__")],
+        acquisition_id_field=[IDSpec("name")],
         resource_field=[IDSpec("name")],
         recursive=True,
         allow_unrecognised=[".*"],
@@ -600,8 +600,8 @@ def test_from_paths_recursive_raises_on_unlisted_type(tmp_path: Path) -> None:
         Accession.from_paths(
             root,
             datatypes=[DirectoryOf[Json]],
-            session_field=[IDSpec("__datatype__")],
-            scan_field=[IDSpec("__datatype__")],
+            accession_uid_field=[IDSpec("__datatype__")],
+            acquisition_id_field=[IDSpec("__datatype__")],
             recursive=True,
             ignore_datatypes=[DirectoryOf[Csv]],  # doesn't cover the loose files
         )
@@ -615,8 +615,8 @@ def test_from_paths_recursive_rejects_bare_generic_directory(tmp_path: Path) -> 
         Accession.from_paths(
             root,
             datatypes=[Directory],
-            session_field=[IDSpec("__datatype__")],
-            scan_field=[IDSpec("__datatype__")],
+            accession_uid_field=[IDSpec("__datatype__")],
+            acquisition_id_field=[IDSpec("__datatype__")],
             recursive=True,
         )
 
@@ -657,8 +657,8 @@ def test_from_paths_exclude_path_drops_recognised_by_relative_depth(
     sessions = Accession.from_paths(
         root,
         datatypes=[File],
-        session_field=[IDSpec("__datatype__")],
-        scan_field=[IDSpec("name")],
+        accession_uid_field=[IDSpec("__datatype__")],
+        acquisition_id_field=[IDSpec("name")],
         resource_field=[IDSpec("name")],
         recursive=True,
         exclude_paths=["*/*/*.txt"],
@@ -729,8 +729,8 @@ def test_from_paths_recursive_extracts_nested_dirs_from_canfield_shaped_tree(
     sessions = Accession.from_paths(
         root,
         datatypes=[DirectoryOf[Json], DirectoryOf[Csv]],
-        session_field=[IDSpec("session")],
-        scan_field=[IDSpec("capture")],
+        accession_uid_field=[IDSpec("session")],
+        acquisition_id_field=[IDSpec("capture")],
         resource_field=[IDSpec("name")],
         recursive=True,
         allow_unrecognised=[".*"],
@@ -765,7 +765,7 @@ def test_from_paths_scan_id_defaults_to_resource_label(tmp_path: Path) -> None:
     sessions = Accession.from_paths(
         src,
         datatypes=[File],
-        session_field=[IDSpec("__datatype__")],
+        accession_uid_field=[IDSpec("__datatype__")],
         # scan_field / resource_field omitted
     )
 
@@ -775,7 +775,7 @@ def test_from_paths_scan_id_defaults_to_resource_label(tmp_path: Path) -> None:
 
 
 def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> None:
-    """A datatype-scoped --scan spec that doesn't apply to a fileset's type (the
+    """A datatype-scoped --acquisition-id spec that doesn't apply to a fileset's type (the
     DICOM 'SeriesNumber' default vs a plain File) names the scan after the resource
     rather than raising."""
     src = tmp_path / "src"
@@ -785,8 +785,8 @@ def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> N
     sessions = Accession.from_paths(
         src,
         datatypes=[File],
-        session_field=[IDSpec("__datatype__")],
-        scan_field=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
+        accession_uid_field=[IDSpec("__datatype__")],
+        acquisition_id_field=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
     )
 
     assert next(iter(sessions[0].acquisitions.values())).id == "file"
@@ -806,7 +806,9 @@ def test_from_paths_session_spec_not_matching_type_raises_clearly(
         Accession.from_paths(
             src,
             datatypes=[File],
-            session_field=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+            accession_uid_field=[
+                IDSpec("StudyInstanceUID", "medimage/dicom-collection")
+            ],
         )
 
 
@@ -941,8 +943,8 @@ def test_add_resource_clash_hint_in_error() -> None:
             fileset=File.sample(seed=2),
             on_clash="error",
             clash_hint=(
-                "the --scan and --resource ID(s) for this resource were "
-                "auto-derived from its fileset type; pass explicit --scan / "
+                "the --acquisition-id and --resource ID(s) for this resource were "
+                "auto-derived from its fileset type; pass explicit --acquisition-id / "
                 "--resource specifier(s) to control collation"
             ),
         )
@@ -958,9 +960,9 @@ def test_add_resource_clash_hint_in_avoid_warning(
         resource_name=CLASH_RESOURCE_NAME,
         fileset=File.sample(seed=2),
         on_clash="avoid",
-        clash_hint="pass explicit --scan / --resource specifier(s) to control collation",
+        clash_hint="pass explicit --acquisition-id / --resource specifier(s) to control collation",
     )
-    assert "pass explicit --scan / --resource specifier(s)" in caplog.text
+    assert "pass explicit --acquisition-id / --resource specifier(s)" in caplog.text
 
 
 def test_clash_merge(caplog: pytest.LogCaptureFixture) -> None:
@@ -1340,8 +1342,8 @@ def test_id_escape(tmp_path: Path) -> None:
     sessions = Accession.from_paths(
         f"{raw_data_dir}/**/*.ptd",
         datatypes=[SyngoMi_Vr20b_ListMode, SyngoMi_Vr20b_CountRate],
-        session_field=[IDSpec("StudyInstanceUID")],
-        scan_field=[IDSpec("SeriesNumber")],
+        accession_uid_field=[IDSpec("StudyInstanceUID")],
+        acquisition_id_field=[IDSpec("SeriesNumber")],
         resource_field=[IDSpec("ImageType[2:]")],
     )
 

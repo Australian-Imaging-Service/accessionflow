@@ -724,20 +724,20 @@ def row_frequency_converter(
     value: str | type[FileSet] | types.UnionType | ty.Iterable[type[FileSet] | str],
 ) -> str | type[FileSet] | types.UnionType:
     """Normalise the ``--metadata-table`` row-frequency arg. The hierarchy levels
-    'session', 'scan' and 'resource' are returned as-is; 'fileset' and a
+    'accession', 'acquisition' and 'resource' are returned as-is; 'fileset' and a
     'fileset[<mime-like>]' spec (or an iterable of ``FileSet`` types / mime-like
     strings) are resolved to the ``FileSet`` type (or ``|``-union of types) they name -
     'fileset' itself becomes the base ``FileSet`` class - ready to be used directly
     with ``isinstance()``."""
     if isinstance(value, str):
         value = value.lower()
-        if value in {"session", "scan", "resource"}:
+        if value in {"accession", "acquisition", "resource"}:
             return value
         if value == "fileset":
             return FileSet
         if not (value.startswith("fileset[") and value.endswith("]")):
             raise ValueError(
-                f"Invalid frequency '{value}'. Must be one of 'session', 'scan', "
+                f"Invalid frequency '{value}'. Must be one of 'accession', 'acquisition', "
                 "'resource', 'fileset', 'fileset[<mime-type>]' (multiple mime-types "
                 "can be '|'-separated, e.g. 'fileset[image/png|image/jpeg]')."
             )
@@ -798,7 +798,7 @@ class MetadataTable(MultiCliTyped):
         The metadata table file. A str/Path is auto-detected as CSV or TSV from its
         extension; append '[<mime-type>]' to force a format, e.g. 'table.dat[text/csv]'.
     row_frequency : str | type[FileSet] | types.UnionType
-        What each row corresponds to: one of 'session', 'scan', 'resource', 'fileset'
+        What each row corresponds to: one of 'accession', 'acquisition', 'resource', 'fileset'
         or 'fileset[<mime-like>]'. 'fileset' resolves to the base ``FileSet`` class and
         'fileset[<mime-like>]' to the named ``FileSet`` type (or '|'-union of types), so
         the value is usable directly with ``isinstance()``.
@@ -844,8 +844,8 @@ class MetadataTable(MultiCliTyped):
 
         rf = self.row_frequency
         if (
-            (rf == "session" and isinstance(target, Accession))
-            or (rf == "scan" and isinstance(target, Acquisition))
+            (rf == "accession" and isinstance(target, Accession))
+            or (rf == "acquisition" and isinstance(target, Acquisition))
             or (rf == "resource" and isinstance(target, Resource))
             # rf is a FileSet type (bare 'FileSet', a subclass, or a '|'-union of them)
             # -> match raw filesets of it
