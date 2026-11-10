@@ -19,8 +19,8 @@ Accessioning is the process of formally receiving material from a source and reg
 it in a managed collection. AccessionFlow is a
 collection of tools to accession data: collate, label, de-identify and store them
 in a data store. Support for various file types is provided through
-the [FileFormats](https://arcanaframework.github.io/fileformats/) package and its extensions
-(e.g. [FileFormats MedImage](https://arcanaframework.github.io/fileformats-medimage/), [FileFormats Siemens](https://arcanaframework.github.io/fileformats-vendor-siemens/),...).
+the [FileFormats](https://python-fileformats.github.io/fileformats/) package and its extensions
+(e.g. [FileFormats MedImage](https://python-fileformats.github.io/fileformats-medimage/), [FileFormats Siemens](https://python-fileformats.github.io/fileformats-vendor-siemens/),...).
 
 ```mermaid
 flowchart LR
