@@ -2,7 +2,7 @@
 
 Each subpackage of `accessionflow.stores` adds support for one kind of
 data store, e.g. `accessionflow/stores/xnat` for XNAT and
-`accessionflow/stores/tree` for a tree of label folders on a local or remote
+`accessionflow/stores/folder` for nested label folders on a local or remote
 file system.
 
 `accessionflow` and `accessionflow/stores` are namespace packages, so
@@ -14,7 +14,7 @@ A plugin package
 - defines `STORE`, an `accessionflow.model.store.Store` that
   names the store's label levels (e.g. XNAT's project, subject and
   session) and their default metadata fields, or leaves them to be named
-  when labelling (`labels=None`, as the tree store does), and what the store
+  when labelling (`labels=None`, as the folder store does), and what the store
   calls an acquisition (e.g. XNAT's scan)
 - may have a `cli` subpackage, imported when the CLI first looks up a
   store's subcommand, that registers the plugin's subcommands, e.g.

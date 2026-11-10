@@ -542,23 +542,23 @@ confirm nothing was dropped.
 It takes the same ``STAGED``/``SERVER``/credential options as ``store``.
 
 
-Depositing in a tree instead of XNAT
-------------------------------------
+Depositing in folders instead of XNAT
+-------------------------------------
 
-The ``tree`` data store deposits accessions in a tree of nested label folders, on a
-local path, a mount, or a remote file system such as S3 or SFTP. Unlike XNAT, a tree
-has no fixed hierarchy: you name its levels, in order from the top, when labelling:
+The ``folder`` data store deposits accessions in nested label folders, on a
+local path, a mount, or a remote file system such as S3 or SFTP. Unlike XNAT, a folder
+store has no fixed hierarchy: you name its levels, in order from the top, when labelling:
 
 .. code-block:: console
 
-    $ accessionflow label tree /data/staging/collated /data/staging/labelled \
+    $ accessionflow label folder /data/staging/collated /data/staging/labelled \
         --level site SiteID \
         --level subject PatientID \
         --level visit '{StudyDate:%Y%m%d}'
 
-    $ accessionflow store tree /data/staging/labelled s3://my-bucket/archive
+    $ accessionflow store folder /data/staging/labelled s3://my-bucket/archive
 
-    $ accessionflow check-store tree /data/staging/labelled s3://my-bucket/archive
+    $ accessionflow check-store folder /data/staging/labelled s3://my-bucket/archive
 
 Each accession is deposited as::
 
@@ -576,8 +576,8 @@ unless ``--overwrite`` is given.
 ``DEST`` is a path or an `fsspec <https://filesystem-spec.readthedocs.io>`_ URL. Remote
 file systems need their fsspec package, installed with the ``s3`` or ``ssh`` extras
 (``pip install accessionflow[s3]``), and options for them, such as credentials, can be
-given with ``--storage-option KEY VALUE``. ``check-store tree`` reads every file back to
+given with ``--storage-option KEY VALUE``. ``check-store folder`` reads every file back to
 compare checksums, or with ``--sizes-only`` just compares sizes, which is much cheaper.
 
-An accession is labelled for one kind of data store, so ``store tree`` refuses one
-labelled with ``label xnat``, and ``store xnat`` one labelled with ``label tree``.
+An accession is labelled for one kind of data store, so ``store folder`` refuses one
+labelled with ``label xnat``, and ``store xnat`` one labelled with ``label folder``.

@@ -1,4 +1,4 @@
-"""How staged accessions are found, and where their resources go in a tree store.
+"""How staged accessions are found, and where their resources go in a folder store.
 
 An accession is deposited in a folder per label, in level order, under the root of
 the store, with a folder per acquisition (named as in the staging directory,
@@ -37,7 +37,7 @@ from accessionflow.helpers.remotes import (
 from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
 
-STORE_TYPE = "tree"
+STORE_TYPE = "folder"
 FIELDS_FNAME = "__FIELDS__.json"
 
 
@@ -86,14 +86,14 @@ def staged_sessions(
 
 
 def load_labelled(listing: SessionListing, require_manifest: bool) -> Accession:
-    """Load a staged accession, checking it was labelled for a tree store"""
+    """Load a staged accession, checking it was labelled for a folder store"""
     accession = Accession.load(listing.cache_path, require_manifest=require_manifest)
     if not accession.labels:
         raise ValueError(f"'{listing.name}' hasn't been labelled")
     if accession.store_type not in (None, STORE_TYPE):
         raise ValueError(
             f"'{listing.name}' was labelled for a '{accession.store_type}' data store, "
-            "not a tree. Label it with 'label tree' to deposit it in a tree"
+            "not a folder store. Label it with 'label folder' to deposit it in one"
         )
     return accession
 

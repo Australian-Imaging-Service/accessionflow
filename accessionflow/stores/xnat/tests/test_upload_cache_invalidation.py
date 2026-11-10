@@ -89,11 +89,11 @@ def test_accession_labelled_for_another_store_is_refused(tmp_path: Path) -> None
         mock.patch.object(XnatLocalSessionListing, "all_uploaded", return_value=False),
         mock.patch(
             "accessionflow.stores.xnat.api.store_api.Accession.load",
-            return_value=mock.MagicMock(store_type="tree"),
+            return_value=mock.MagicMock(store_type="folder"),
         ),
     ):
         errors = store(
             input_dir=str(tmp_path), xnat_repo=FakeRepo(events), wait_period=0
         )
     assert len(errors) == 1
-    assert "'tree' data store, not XNAT" in errors[0]
+    assert "'folder' data store, not XNAT" in errors[0]

@@ -7,7 +7,7 @@ pipeline.
 
 The ``label``, ``store`` and ``check-store`` stages have a subcommand for each
 data store, provided by the store's plugin, e.g. ``accessionflow label xnat`` or
-``accessionflow label tree``.
+``accessionflow label folder``.
 
 
 .. click:: accessionflow.cli.collate_cli:collate_cmd
@@ -20,8 +20,8 @@ data store, provided by the store's plugin, e.g. ``accessionflow label xnat`` or
 .. click:: accessionflow.stores.xnat.cli.label_cli:label_cmd
    :prog: accessionflow label xnat
 
-.. click:: accessionflow.stores.tree.cli.label_cli:label_cmd
-   :prog: accessionflow label tree
+.. click:: accessionflow.stores.folder.cli.label_cli:label_cmd
+   :prog: accessionflow label folder
 
 
 .. click:: accessionflow.cli.deidentify_cli:deidentify_cmd
@@ -40,12 +40,12 @@ data store, provided by the store's plugin, e.g. ``accessionflow label xnat`` or
    :prog: accessionflow check-store xnat
 
 
-.. click:: accessionflow.stores.tree.cli.store_cli:store_cmd
-   :prog: accessionflow store tree
+.. click:: accessionflow.stores.folder.cli.store_cli:store_cmd
+   :prog: accessionflow store folder
 
 
-.. click:: accessionflow.stores.tree.cli.check_store_cli:check_store_cmd
-   :prog: accessionflow check-store tree
+.. click:: accessionflow.stores.folder.cli.check_store_cli:check_store_cmd
+   :prog: accessionflow check-store folder
 
 
 .. click:: accessionflow.cli.attach_cli:attach_cmd

@@ -1,4 +1,4 @@
-"""Options shared by 'store tree' and 'check-store tree'"""
+"""Options shared by 'store folder' and 'check-store folder'"""
 
 import json
 import typing as ty

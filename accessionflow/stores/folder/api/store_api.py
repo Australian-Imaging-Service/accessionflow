@@ -34,9 +34,9 @@ def store(
     temp_dir: Path | None = None,
     s3_max_workers: int | None = None,
 ) -> list[str]:
-    """Deposits the labelled accessions in a staging directory in a tree store: a tree
-    of nested label folders on a local path, a mount, or a remote file system such as
-    S3 or SFTP (see `accessionflow.stores.tree.layout` for the layout).
+    """Deposits the labelled accessions in a staging directory in a folder store:
+    nested label folders on a local path, a mount, or a remote file system such as
+    S3 or SFTP (see `accessionflow.stores.folder.layout` for the layout).
 
     Depositing again is cheap: a resource whose manifest in the store matches the
     staged one is skipped, and one left without a manifest by an interrupted deposit
@@ -46,7 +46,7 @@ def store(
     ----------
     input_dir : str or Path
         the staging directory holding the labelled accessions (the output of 'label
-        tree', or of 'deidentify' after it), or an S3 bucket ('s3://...') to download
+        folder', or of 'deidentify' after it), or an S3 bucket ('s3://...') to download
         them from
     dest : str
         the root of the store, a path or an fsspec URL, e.g. '/mnt/archive',
