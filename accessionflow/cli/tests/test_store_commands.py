@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import click
 import pytest
 from click.testing import CliRunner
 
@@ -204,75 +203,12 @@ def test_label_command_follows_store_config(
         del label_group.commands["testrepo"]
 
 
-@pytest.mark.parametrize(
-    "old,new", [("upload", "store"), ("check-upload", "check-store")]
-)
-def test_former_stage_names_still_work(old: str, new: str) -> None:
-    """The stages' names before they were renamed run the same subcommands, warn
-    that they are deprecated, and are hidden from the help"""
-    runner = CliRunner()
-    help_result = runner.invoke(cli, ["--help"], env=CLEAN_ENV)
-    assert new in help_result.output
-    assert f"  {old} " not in help_result.output
-    result = runner.invoke(cli, [old, "xnat", "--help"], env=CLEAN_ENV)
-    assert result.exit_code == 0, result.output
-    assert f"'accessionflow {old}' is deprecated" in result.output
-    assert f"'accessionflow {new}' instead" in result.output
-    alias, target = cli.commands[old], cli.commands[new]
-    assert isinstance(alias, click.Group) and isinstance(target, click.Group)
-    ctx = click.Context(cli)
-    assert alias.get_command(ctx, "xnat") is target.get_command(ctx, "xnat")
-
-
-def test_former_stage_name_warns(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import accessionflow.stores.xnat.cli.store_cli as store_cli
-
-    monkeypatch.setattr(store_cli, "Xnat", MagicMock())
-    monkeypatch.setattr(store_cli, "store", MagicMock(return_value=[]))
-    (tmp_path / "staged").mkdir()
-    result = CliRunner().invoke(
-        cli,
-        [
-            "upload",
-            "xnat",
-            str(tmp_path / "staged"),
-            "https://xnat.test",
-            "--user",
-            "u",
-            "--password",
-            "p",
-        ],
-        env=CLEAN_ENV,
-    )
-    assert result.exit_code == 0, result.output
-    assert "'accessionflow upload' is deprecated" in result.output
-    assert "'accessionflow store'" in result.output
-    store_cli.store.assert_called_once()  # type: ignore[attr-defined]
-
-
-def test_former_fields_name_still_works(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import accessionflow.cli.select_fields_cli as select_fields_cli
-
-    select_fields = MagicMock(return_value=[])
-    monkeypatch.setattr(select_fields_cli, "select_fields", select_fields)
-    (tmp_path / "in").mkdir()
-    runner = CliRunner()
-    help_result = runner.invoke(cli, ["--help"], env=CLEAN_ENV)
-    assert "select-fields" in help_result.output
-    assert "  fields " not in help_result.output
-    result = runner.invoke(
-        cli,
-        ["fields", str(tmp_path / "in"), str(tmp_path / "out"), "--extract", "a", "b"],
-        env=CLEAN_ENV,
-    )
-    assert result.exit_code == 0, result.output
-    assert "'accessionflow fields' is deprecated" in result.output
-    assert "'accessionflow select-fields' instead" in result.output
-    select_fields.assert_called_once()
+@pytest.mark.parametrize("old", ["upload", "check-upload", "fields", "collate-orthanc"])
+def test_former_command_names_are_gone(old: str) -> None:
+    """The names the stages had before they were renamed aren't kept as aliases"""
+    result = CliRunner().invoke(cli, [old, "--help"], env=CLEAN_ENV)
+    assert result.exit_code != 0
+    assert f"No such command '{old}'" in result.output
 
 
 @pytest.fixture

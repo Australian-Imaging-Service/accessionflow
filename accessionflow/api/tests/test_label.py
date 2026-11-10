@@ -12,7 +12,6 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
     get_image as get_pet_image,  # type: ignore[import-untyped]
 )
 
-from accessionflow.api.collate_api import collate
 from accessionflow.api.label_api import INVALID_DIRNAME, label
 from accessionflow.helpers.arg_types import IDSpec
 from accessionflow.helpers.metadata import Metadata
@@ -20,6 +19,7 @@ from accessionflow.helpers.remotes import list_session_dirs
 from accessionflow.model.accession import Accession
 from accessionflow.model.acquisition import Acquisition
 from accessionflow.model.resource import Resource
+from accessionflow.sources.folder.api import collate
 
 PROJECT_FIELD = "StudyID"
 SUBJECT_FIELD = "PatientID"

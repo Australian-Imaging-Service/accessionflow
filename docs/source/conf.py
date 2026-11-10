@@ -15,6 +15,7 @@ from __future__ import print_function
 
 import datetime
 import re
+import sys
 import typing as ty
 from pathlib import Path
 
@@ -24,6 +25,9 @@ except ImportError:
     import tomli as tomllib
 
 from accessionflow.helpers import __version__  # noqa
+
+# Local extensions, e.g. the generated table of environment variables
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
 with open(Path(__file__).parents[2] / "pyproject.toml", "rb") as f:
     pyproject = tomllib.load(f)
@@ -61,10 +65,10 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
-    "sphinx.ext.autosectionlabel",
     "sphinxarg.ext",  # Provided by sphinx-argparse
     "sphinx_click.ext",  # Provided by sphinx-click
     "numpydoc",
+    "acflow_envvars",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

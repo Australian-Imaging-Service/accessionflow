@@ -7,13 +7,12 @@ subpackage registers the plugin's subcommands, e.g. ``label xnat``, when it is
 imported (see :func:`load_store_plugins`).
 """
 
-import importlib
-import pkgutil
 import types
 import typing as ty
-import warnings
 
 import attrs
+
+from accessionflow.helpers.plugins import get_plugin, load_cli_plugins, plugin_names
 
 PLUGINS_PACKAGE = "accessionflow.stores"
 
@@ -122,59 +121,16 @@ class Store:
 
 def store_plugins() -> list[str]:
     """The names of the store plugins that are installed"""
-    package = importlib.import_module(PLUGINS_PACKAGE)
-    return sorted(
-        info.name for info in pkgutil.iter_modules(package.__path__) if info.ispkg
-    )
+    return plugin_names(PLUGINS_PACKAGE)
 
 
 def get_store(name: str) -> Store:
     """The configuration of the named store plugin"""
-    try:
-        module = importlib.import_module(f"{PLUGINS_PACKAGE}.{name}")
-    except ModuleNotFoundError as e:
-        if e.name != f"{PLUGINS_PACKAGE}.{name}":
-            raise
-        raise ValueError(
-            f"No store plugin named '{name}' is installed (installed: "
-            f"{', '.join(store_plugins()) or 'none'})"
-        ) from None
-    return ty.cast(Store, module.STORE)
-
-
-_loaded_plugins: dict[str, types.ModuleType | None] | None = None
+    return ty.cast(Store, get_plugin(PLUGINS_PACKAGE, name, "store").STORE)
 
 
 def load_store_plugins() -> dict[str, types.ModuleType | None]:
     """Import the 'cli' subpackage of each store plugin once, so that the
-    plugins can register their subcommands.
-
-    A plugin that fails to import is skipped with a warning, so that one broken
-    plugin does not stop the commands of the others from running.
-
-    Returns
-    -------
-    dict[str, types.ModuleType | None]
-        the imported 'cli' subpackages by plugin name, None for plugins without one
-    """
-    global _loaded_plugins
-    if _loaded_plugins is None:
-        _loaded_plugins = {}
-        for name in store_plugins():
-            module_name = f"{PLUGINS_PACKAGE}.{name}.cli"
-            try:
-                _loaded_plugins[name] = importlib.import_module(module_name)
-            except ModuleNotFoundError as e:
-                if e.name != module_name:
-                    warnings.warn(
-                        f"Could not load the '{name}' store plugin: {e}",
-                        stacklevel=2,
-                    )
-                else:
-                    _loaded_plugins[name] = None
-            except Exception as e:  # noqa: BLE001 - see docstring
-                warnings.warn(
-                    f"Could not load the '{name}' store plugin: {e}",
-                    stacklevel=2,
-                )
-    return _loaded_plugins
+    plugins can register their subcommands (see
+    :func:`accessionflow.helpers.plugins.load_cli_plugins`)"""
+    return load_cli_plugins(PLUGINS_PACKAGE, "store")

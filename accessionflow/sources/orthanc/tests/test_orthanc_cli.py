@@ -1,9 +1,9 @@
-"""CLI-level plumbing tests for `accessionflow collate-orthanc`.
+"""CLI-level plumbing tests for `accessionflow collate orthanc`.
 
-Accession.from_orthanc is mocked here (its behaviour, including the
+stage_studies is mocked here (its behaviour, including the
 to_process_label/processed_label filtering, is covered directly against a
-faked Orthanc REST API in model/tests/test_from_orthanc.py) -- this just
-checks that collate_orthanc_cli actually runs and passes the CLI options
+faked Orthanc REST API in test_orthanc_staging.py) -- this just
+checks that the "collate orthanc" command actually runs and passes the CLI options
 through to the api/model layers unchanged.
 
 This command used to crash unconditionally: cli/collate.py called
@@ -20,8 +20,7 @@ from unittest.mock import patch
 
 from fileformats.medimage import DicomSeries, NiftiGzX
 
-from accessionflow.cli import collate_orthanc_cmd
-from accessionflow.model.accession import Accession
+from accessionflow.sources.orthanc.cli import collate_cmd as collate_orthanc_cmd
 from conftest import show_cli_trace
 
 
@@ -32,7 +31,9 @@ def test_collate_orthanc_cli_runs_and_passes_labels_through(
     store_dir.mkdir()
     output_dir = tmp_path / "staged"
 
-    with patch.object(Accession, "from_orthanc", return_value=[]) as mock_from_orthanc:
+    with patch(
+        "accessionflow.sources.orthanc.api.collate_api.stage_studies", return_value=[]
+    ) as mock_stage_studies:
         result = cli_runner(
             collate_orthanc_cmd,
             [
@@ -51,8 +52,8 @@ def test_collate_orthanc_cli_runs_and_passes_labels_through(
         )
 
     assert result.exit_code == 0, show_cli_trace(result)
-    assert mock_from_orthanc.call_count == 1
-    _, kwargs = mock_from_orthanc.call_args
+    assert mock_stage_studies.call_count == 1
+    _, kwargs = mock_stage_studies.call_args
     assert kwargs["to_process_label"] == "ready-for-xnat"
     assert kwargs["processed_label"] == "sent-to-xnat"
     assert kwargs["wait_period"] == 300
@@ -62,13 +63,15 @@ def test_collate_orthanc_cli_defaults_to_no_to_process_label(
     cli_runner: ty.Any, tmp_path: Path
 ) -> None:
     """Without --to-process-label, every non-processed study is a
-    candidate -- from_orthanc must be called with to_process_label=None
+    candidate -- stage_studies must be called with to_process_label=None
     rather than the option being silently dropped or defaulted wrong."""
     store_dir = tmp_path / "orthanc-store"
     store_dir.mkdir()
     output_dir = tmp_path / "staged"
 
-    with patch.object(Accession, "from_orthanc", return_value=[]) as mock_from_orthanc:
+    with patch(
+        "accessionflow.sources.orthanc.api.collate_api.stage_studies", return_value=[]
+    ) as mock_stage_studies:
         result = cli_runner(
             collate_orthanc_cmd,
             [
@@ -81,7 +84,7 @@ def test_collate_orthanc_cli_defaults_to_no_to_process_label(
         )
 
     assert result.exit_code == 0, show_cli_trace(result)
-    _, kwargs = mock_from_orthanc.call_args
+    _, kwargs = mock_stage_studies.call_args
     assert kwargs["to_process_label"] is None
 
 
@@ -92,7 +95,9 @@ def test_collate_orthanc_cli_passes_conversions_through(
     store_dir.mkdir()
     output_dir = tmp_path / "staged"
 
-    with patch.object(Accession, "from_orthanc", return_value=[]) as mock_from_orthanc:
+    with patch(
+        "accessionflow.sources.orthanc.api.collate_api.stage_studies", return_value=[]
+    ) as mock_stage_studies:
         result = cli_runner(
             collate_orthanc_cmd,
             [
@@ -108,5 +113,5 @@ def test_collate_orthanc_cli_passes_conversions_through(
         )
 
     assert result.exit_code == 0, show_cli_trace(result)
-    _, kwargs = mock_from_orthanc.call_args
+    _, kwargs = mock_stage_studies.call_args
     assert kwargs["conversion_map"] == {DicomSeries: (NiftiGzX, {"compress": "y"})}

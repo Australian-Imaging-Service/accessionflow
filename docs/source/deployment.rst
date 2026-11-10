@@ -1,19 +1,20 @@
-Deployment tips
-===============
+.. _deployment:
+
+Deployment
+==========
 
 Rather than a one-off run, most nodes want ``collate``/``label``/``deidentify``/
 ``store`` running continuously, each watching its input directory and picking up new
-files as they arrive. Every stage except ``check-store`` supports this directly via
-``--loop <seconds>``: instead of running once and exiting, the command re-runs itself
-every ``<seconds>`` seconds, forever, in a single process.
+files as they arrive. Every stage except ``check-store`` supports this directly with
+``--loop <seconds>``: instead of running once and exiting, the command runs again every
+``<seconds>`` seconds, forever, in a single process.
 
-Errors encountered while processing an individual accession (a bad file, a missing
-spec, a dropped connection) are logged and skipped rather than crashing the process —
-in fact ``--raise-errors`` and ``--loop`` can't be combined, since raising would
-defeat the point of looping forever. This means each stage is designed to be started
-once and left running, rather than needing a process supervisor to restart it after
-every transient failure (though a restart policy is still good practice as a
-backstop — see below).
+Errors processing an individual accession (a bad file, a missing field, a dropped
+connection) are logged and skipped rather than crashing the process, and the accession
+is tried again on the next run (see :ref:`concepts-looping`). So each stage is designed
+to be started once and left running, rather than needing a process supervisor to
+restart it after every transient failure, though a restart policy is still good
+practice as a backstop (see below).
 
 A published Docker image (``ghcr.io/australian-imaging-service/accessionflow``) wraps
 the CLI as its entrypoint, so each stage becomes a single long-running container:
@@ -24,12 +25,14 @@ the CLI as its entrypoint, so each stage becomes a single long-running container
         -v /data/incoming:/input \
         -v /data/staging:/staging \
         ghcr.io/australian-imaging-service/accessionflow \
-        collate /input /staging/collated --loop 300
+        collate folder /input /staging/collated --loop 300
 
 Repeat with ``label``, optionally ``deidentify``, and ``store`` as separate
 containers, each mounting the previous stage's output as its input, chained through a
 shared staging area on disk (or an S3 bucket, which ``store``/``check-store`` can
-read from directly).
+read from directly). For an Orthanc server, run ``collate orthanc`` in place of
+``collate folder``, with Orthanc's storage directory mounted on the same file system as
+the staging area (see :doc:`sources/orthanc`).
 
 Docker Compose
 --------------
@@ -42,7 +45,7 @@ a service sharing a named volume for the staging directories:
     services:
       collate:
         image: ghcr.io/australian-imaging-service/accessionflow
-        command: collate /input /staging/collated --loop 300
+        command: collate folder /input /staging/collated --loop 300
         volumes:
           - /data/incoming:/input
           - staging:/staging
@@ -50,14 +53,14 @@ a service sharing a named volume for the staging directories:
 
       label:
         image: ghcr.io/australian-imaging-service/accessionflow
-        command: label /staging/collated /staging/labelled --loop 300
+        command: label xnat /staging/collated /staging/labelled --loop 300
         volumes:
           - staging:/staging
         restart: unless-stopped
 
-      upload:
+      store:
         image: ghcr.io/australian-imaging-service/accessionflow
-        command: upload /staging/labelled xnat.example.org --loop 300
+        command: store xnat /staging/labelled xnat.example.org --loop 300
         environment:
           ACFLOW_USER: my-upload-user
           ACFLOW_PASS: my-upload-password
@@ -77,13 +80,9 @@ The same shape maps onto a Kubernetes ``Deployment`` per stage (one replica each
 user, password) injected via a ``ConfigMap``/``Secret`` as ``ACFLOW_*`` environment
 variables rather than passed as command-line flags. ``check-store`` doesn't support
 ``--loop``, so it's a natural fit for a ``CronJob`` instead, run periodically to audit
-what has and hasn't made it to XNAT rather than as an always-on service.
+what has and hasn't made it to the data store rather than as an always-on service.
 
 Rather than writing these manifests from scratch, `ais-edge
 <https://github.com/Australian-Imaging-Service/ais-edge>`_ provides ready-made Helm
 charts for deploying *AccessionFlow* (alongside other edge-node components) to
 Kubernetes, and is a good starting point for a production setup.
-
-Orthanc collation builds each study below ``__build__`` before an atomic rename.
-Use one collate-orthanc producer per output directory. A retry removes its stale
-build; converter children that outlive their parent are outside this contract.

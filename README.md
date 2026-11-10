@@ -19,22 +19,28 @@ Accessioning is the process of formally receiving material from a source and reg
 it in a managed collection. AccessionFlow is a
 collection of tools to accession data: collate, label, de-identify and store them
 in a data store. Support for various file types is provided through
-the [FileFormats](https://arcanaframework.github.io/fileformats/) package and its extensions
-(e.g. [FileFormats MedImage](https://arcanaframework.github.io/fileformats-medimage/), [FileFormats Siemens](https://arcanaframework.github.io/fileformats-vendor-siemens/),...).
+the [FileFormats](https://python-fileformats.github.io/fileformats/) package and its extensions
+(e.g. [FileFormats MedImage](https://python-fileformats.github.io/fileformats-medimage/), [FileFormats Siemens](https://python-fileformats.github.io/fileformats-vendor-siemens/),...).
 
 ```mermaid
 flowchart LR
-    Scanner(["Scanner / instrument"]) --> Collate["collate"]
-    Collate --> Label["label"]
+    Folder(["folder"]) --> Collate["collate (source)"]
+    Orthanc(["Orthanc"]) --> Collate
+    Collate --> Label["label (store)"]
     Label --> Deidentify["deidentify (optional)"]
-    Deidentify --> Store["store"]
+    Deidentify --> Store["store (store)"]
     Store --> XNAT[("XNAT")]
-    Store -.-> CheckStore["check-store"]
+    Store --> FolderStore[("folder store\n(local, S3, SFTP)")]
+    Store -.-> CheckStore["check-store (store)"]
 
     Extra(["files without\nsorting metadata"]) -.-> Attach["attach (optional)"]
     Collate -.-> Attach
     Attach -.-> Label
 ```
+
+Where the files come from and where they go are both plugins: sources provide the
+`collate` subcommands (`collate folder`, `collate orthanc`), and data stores provide the
+`label`, `store` and `check-store` subcommands (e.g. `label xnat`, `store folder`).
 
 
 ## Installation
@@ -55,9 +61,15 @@ $ python3 -m pip install accessionflow
 
 ## Running
 
-AccessionFlow has a public API and a command-line interface (CLI), with sub-commands to collate, label,
-attach, de-identify, and upload imaging sessions to XNAT — either as a one-off run or as a
-continuously-running service (e.g. via Docker Compose or Kubernetes).
+AccessionFlow has a public API and a command-line interface (CLI), with subcommands to collate,
+attach, label, de-identify and store accessions in a data store — either as a one-off run or
+as a continuously-running service (e.g. via Docker Compose or Kubernetes). For example:
+
+```
+$ accessionflow collate folder /data/incoming /data/staging/collated
+$ accessionflow label folder /data/staging/collated /data/staging/labelled --level subject PatientID
+$ accessionflow store folder /data/staging/labelled s3://my-bucket/archive
+```
 
 See the [full documentation](https://australian-imaging-service.github.io/accessionflow/) for a hands-on
-quick start, how-to guides for each part of the pipeline, and the complete CLI/API reference.
+quick start, a guide to each source, stage and data store, and the complete CLI/API reference.

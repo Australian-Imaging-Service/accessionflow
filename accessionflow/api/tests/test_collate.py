@@ -9,10 +9,11 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
     get_image as get_pet_image,  # type: ignore[import-untyped]
 )
 
-from accessionflow.api.collate_api import BUILD_NAME_DEFAULT, collate
+from accessionflow.api.collate_api import BUILD_NAME_DEFAULT
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable
 from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
+from accessionflow.sources.folder.api import collate
 
 SESSION_FIELD = [IDSpec("StudyInstanceUID", "medimage/dicom-collection")]
 SCAN_FIELD = [IDSpec("SeriesNumber", "medimage/dicom-collection")]
