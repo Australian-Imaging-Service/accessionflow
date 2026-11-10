@@ -61,7 +61,8 @@ ready to be labelled
         "'StudyInstanceUID' for DICOM collections; other fileset types need an explicit "
         "spec. Can also be a "
         "Python format string over several fields, e.g. '{PatientID}_{StudyDate:%Y%m%d}', "
-        "to compose one."
+        "to compose one. Not to be confused with DICOM's AccessionNumber, which is just "
+        "another field that can be used here or to label the accession."
     ),
 )
 @click.option(

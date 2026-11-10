@@ -451,7 +451,7 @@ def test_row_frequency_converter_plain_fileset_becomes_fileset_class() -> None:
 
 
 def test_row_frequency_converter_is_case_insensitive() -> None:
-    assert row_frequency_converter("SeSsIoN") == "session"
+    assert row_frequency_converter("AcCeSsIoN") == "accession"
     assert row_frequency_converter("FileSet") is FileSet
 
 
@@ -503,7 +503,7 @@ def test_row_frequency_converter_iterable_with_bad_entry_raises() -> None:
 def test_metadata_table_built_from_cli_style_strings(csv_table: Csv) -> None:
     table = MetadataTable(str(csv_table.fspath), "accession", "PatientID=PatientID")
     assert isinstance(table.table_file, Csv)
-    assert table.row_frequency == "session"
+    assert table.row_frequency == "accession"
     assert table.join_exprs == [JoinExpr("PatientID", "PatientID")]
 
 
@@ -757,13 +757,13 @@ def test_metadata_table_cli_option(csv_table: Csv) -> None:
         [
             "--metadata-table",
             str(csv_table.fspath),
-            "session",
+            "accession",
             "PatientID=PatientID",
         ],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
-    assert result.output.strip() == "Csv|session|PatientID=PatientID"
+    assert result.output.strip() == "Csv|accession|PatientID=PatientID"
 
 
 def test_metadata_table_cli_option_repeatable(csv_table: Csv, tsv_table: Tsv) -> None:
@@ -772,7 +772,7 @@ def test_metadata_table_cli_option_repeatable(csv_table: Csv, tsv_table: Tsv) ->
         [
             "--metadata-table",
             str(csv_table.fspath),
-            "scan",
+            "acquisition",
             "A=B",
             "--metadata-table",
             str(tsv_table.fspath),
@@ -782,7 +782,7 @@ def test_metadata_table_cli_option_repeatable(csv_table: Csv, tsv_table: Tsv) ->
         catch_exceptions=False,
     )
     assert result.output.splitlines() == [
-        "Csv|scan|A=B",
+        "Csv|acquisition|A=B",
         "Tsv|resource|C=D",
     ]
 
@@ -792,10 +792,10 @@ def test_metadata_table_env_var_single(
 ) -> None:
     monkeypatch.setenv(
         "ACFLOW_METADATA_TABLES",
-        f"{csv_table.fspath} session PatientID=PatientID",
+        f"{csv_table.fspath} accession PatientID=PatientID",
     )
     result = CliRunner().invoke(_metadata_table_cli(), [], catch_exceptions=False)
-    assert result.output.strip() == "Csv|session|PatientID=PatientID"
+    assert result.output.strip() == "Csv|accession|PatientID=PatientID"
 
 
 def test_metadata_table_env_var_multiple_semicolon_separated(
@@ -803,10 +803,10 @@ def test_metadata_table_env_var_multiple_semicolon_separated(
 ) -> None:
     monkeypatch.setenv(
         "ACFLOW_METADATA_TABLES",
-        f"{csv_table.fspath} scan A=B;{tsv_table.fspath} resource C=D",
+        f"{csv_table.fspath} acquisition A=B;{tsv_table.fspath} resource C=D",
     )
     result = CliRunner().invoke(_metadata_table_cli(), [], catch_exceptions=False)
-    assert result.output.splitlines() == ["Csv|scan|A=B", "Tsv|resource|C=D"]
+    assert result.output.splitlines() == ["Csv|acquisition|A=B", "Tsv|resource|C=D"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
