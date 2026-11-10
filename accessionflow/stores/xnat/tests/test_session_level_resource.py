@@ -38,7 +38,7 @@ class FakeStagedResource:
     """Staged at session level: scan is None."""
 
     name = "REPORT"
-    scan = None
+    acquisition = None
     path = "test_project:SUBJ:SESS:REPORT"
 
     def __init__(self, checksums: dict[str, str]) -> None:

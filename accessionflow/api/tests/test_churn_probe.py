@@ -32,7 +32,9 @@ def test_second_cycle_does_not_touch_output_mtimes(tmp_path: Path):
     Accession(
         uid=NAME,
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="T", resources={"RES": File.sample(seed=1)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"RES": File.sample(seed=1)})
+        ],
     ).save(inp)
 
     assert (

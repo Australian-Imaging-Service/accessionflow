@@ -468,7 +468,9 @@ def test_from_orthanc_converts_series_before_labelling(tmp_path: Path) -> None:
         )
 
     assert len(staged) == 1
-    (resource,) = [r for s in staged[0].scans.values() for r in s.resources.values()]
+    (resource,) = [
+        r for s in staged[0].acquisitions.values() for r in s.resources.values()
+    ]
     assert resource.name == "DICOM"
     assert isinstance(resource.fileset, Zip)
     with ZipFile(resource.fileset.fspath) as zf:
@@ -575,7 +577,7 @@ def test_initial_build_is_hidden_from_label(tmp_path):
     with _patch_requests(fake):
         staged = Accession.from_orthanc(**_publication_kwargs(output, store))
     assert len(observations) == 2 and len(staged) == 1
-    assert len(staged[0].scans) == 2
+    assert len(staged[0].acquisitions) == 2
     for resource in staged[0].resources:
         assert all(
             path.exists() and "__build__" not in path.parts
@@ -623,7 +625,7 @@ def test_stopped_initial_build_is_hidden_and_retry_publishes_all_series(tmp_path
         assert len(list(build.rglob("*.dcm"))) == 2
         with _patch_requests(fake):
             staged = Accession.from_orthanc(**kwargs)
-        assert len(staged) == 1 and len(staged[0].scans) == 2
+        assert len(staged) == 1 and len(staged[0].acquisitions) == 2
         assert not build.exists() and len(list(output.glob("_.*"))) == 1
         for resource in staged[0].resources:
             resource.check_checksums()
@@ -651,7 +653,7 @@ def test_existing_collate_destination_is_preserved_and_next_study_runs(
     with _patch_requests(fake):
         staged = Accession.from_orthanc(**kwargs)
     assert [session.metadata["AccessionNumber"] for session in staged] == ["ACC-READY"]
-    assert len(staged[0].scans) == 2
+    assert len(staged[0].acquisitions) == 2
     assert list(refused.iterdir()) == [sentinel]
     assert sentinel.read_bytes() == b"existing generation"
     assert _processed(fake) == [("study-ready", "done")]
@@ -1188,7 +1190,7 @@ def test_a_derived_series_of_the_same_scan_becomes_its_own_resource(tmp_path):
 
     assert errors == []
     [session] = staged
-    assert sorted(session.scans["1"].resources) == ["DICOM", "secondary"]
+    assert sorted(session.acquisitions["1"].resources) == ["DICOM", "secondary"]
     assert ("study-ready", "done") in fake.labelled
 
 

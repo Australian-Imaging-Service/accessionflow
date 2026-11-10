@@ -46,7 +46,7 @@ def _package_session(
         for target_datatype, _options in output_resources.values()
     )
 
-    for scan in session.scans.values():
+    for scan in session.acquisitions.values():
         matched = False
         for resource in scan.resources.values():
             if isinstance(resource.fileset, source_datatype):
@@ -122,16 +122,16 @@ def _package_session(
                     on_clash=on_resource_clash,
                     metadata=dict(resource.metadata),
                 )
-        if scan.id in packaged.scans:
-            packaged.scans[scan.id].metadata.update(dict(scan.metadata))
+        if scan.id in packaged.acquisitions:
+            packaged.acquisitions[scan.id].metadata.update(dict(scan.metadata))
         elif not matched:
             # A scan with no resources is unusual but still carries meaningful
             # scan-level metadata and should survive this structural operation.
             packaged_scan = scan.new_empty()
             packaged_scan.attached = scan.attached
-            packaged_scan.session = packaged
+            packaged_scan.accession = packaged
             packaged_scan.metadata.update(dict(scan.metadata))
-            packaged.scans[scan.id] = packaged_scan
+            packaged.acquisitions[scan.id] = packaged_scan
 
     if len(study_uids) > 1:
         raise ValueError(
@@ -242,7 +242,7 @@ def package(
             read_files = _session_files(session, listing.cache_path)
             if not any(
                 isinstance(resource.fileset, source_datatype)
-                for scan in session.scans.values()
+                for scan in session.acquisitions.values()
                 for resource in scan.resources.values()
             ):
                 # Nothing to convert. The session still has to reach the
@@ -276,12 +276,12 @@ def package(
                     )
                     expected_paths = {
                         (scan.id, resource.name)
-                        for scan in packaged.scans.values()
+                        for scan in packaged.acquisitions.values()
                         for resource in scan.resources.values()
                     }
                     existing_paths = {
                         (scan.id, resource.name)
-                        for scan in existing.scans.values()
+                        for scan in existing.acquisitions.values()
                         for resource in scan.resources.values()
                     }
                     # A scan the input does not carry was packaged by an
@@ -292,7 +292,7 @@ def package(
                     earlier_scans = {
                         scan_id
                         for scan_id, _ in existing_paths
-                        if scan_id not in packaged.scans
+                        if scan_id not in packaged.acquisitions
                     }
                     if earlier_scans:
                         logger.info(

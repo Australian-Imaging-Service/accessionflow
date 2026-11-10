@@ -15,7 +15,7 @@ from accessionflow.helpers.metadata import Metadata
 from accessionflow.model.accession import Accession
 from accessionflow.model.acquisition import Acquisition
 from accessionflow.model.resource import Resource
-from accessionflow.stores.tree.api import check_store, store
+from accessionflow.stores.folder.api import check_store, store
 
 CLEAN_ENV = {key: None for key in os.environ if key.startswith("ACFLOW_")}
 
@@ -26,7 +26,7 @@ LABELS = ("SYD", "P01", "V1")
 def _staged(
     tmp_path: Path,
     levels: dict[str, str] = LEVELS,
-    store_type: str = "tree",
+    store_type: str = "folder",
 ) -> Path:
     """A staging directory holding one labelled accession, with two acquisitions (one
     with two resources), a session resource and fields"""
@@ -38,7 +38,7 @@ def _staged(
         files[name].write_text(f"contents of {name}")
     accession = Accession(
         uid="1.2.3",
-        scans=[
+        acquisitions=[
             Acquisition(
                 "1",
                 "T1w",
@@ -228,13 +228,13 @@ def test_accession_labelled_for_another_store_is_refused(
         store_type="xnat",
     )
     errors = store(staged, dest)
-    assert len(errors) == 1 and "'xnat' data store, not a tree" in errors[0]
+    assert len(errors) == 1 and "'xnat' data store, not a folder store" in errors[0]
     fs, root = _fs(dest)
     assert not fs.exists("/".join([root, *LABELS]))
 
 
 def test_label_and_store_tree_cli(tmp_path: Path) -> None:
-    """From a collated accession to a tree in a (non-local) store, through the CLI"""
+    """From a collated accession to a folder store on a (non-local) file system, through the CLI"""
     staged = _staged(tmp_path)
     accession_dir = staged / ".".join(LABELS)
     # Make it a collated, not-yet-labelled accession again
@@ -252,23 +252,23 @@ def test_label_and_store_tree_cli(tmp_path: Path) -> None:
     labelled = tmp_path / "labelled"
     result = runner.invoke(
         cli,
-        ["label", "tree", str(collated), str(labelled)]
+        ["label", "folder", str(collated), str(labelled)]
         + ["--level", "site", "SiteID", "--level", "subject", "PatientID"],
         env=CLEAN_ENV,
     )
     assert result.exit_code == 0, result.output
     assert [p.name for p in labelled.iterdir()] == ["SYD.P01"]
-    result = runner.invoke(cli, ["store", "tree", str(labelled), dest], env=CLEAN_ENV)
+    result = runner.invoke(cli, ["store", "folder", str(labelled), dest], env=CLEAN_ENV)
     assert result.exit_code == 0, result.output
     fs, root = _fs(dest)
     assert fs.exists(f"{root}/SYD/P01/1.T1w/NIFTI/t1.nii")
     result = runner.invoke(
-        cli, ["check-store", "tree", str(labelled), dest], env=CLEAN_ENV
+        cli, ["check-store", "folder", str(labelled), dest], env=CLEAN_ENV
     )
     assert result.exit_code == 0, result.output
     fs.rm_file(f"{root}/SYD/P01/1.T1w/NIFTI/t1.nii")
     result = runner.invoke(
-        cli, ["check-store", "tree", str(labelled), dest], env=CLEAN_ENV
+        cli, ["check-store", "folder", str(labelled), dest], env=CLEAN_ENV
     )
     assert result.exit_code == 1
     fs.rm(root, recursive=True)

@@ -72,7 +72,7 @@ def test_present_input_is_processed_again(tmp_path):
 def test_resource_copy_is_hidden_until_complete(tmp_path, monkeypatch):
     source = _stage(tmp_path / "input", SESSION_NAME)
     session = Accession.load(source)
-    resource = session.scans["1"].resources["RES"]
+    resource = session.acquisitions["1"].resources["RES"]
     previous = {p.name: p.read_bytes() for p in resource.fileset.fspaths}
     replacement = tmp_path / "replacement.dat"
     replacement.write_bytes(b"complete replacement")
@@ -87,7 +87,7 @@ def test_resource_copy_is_hidden_until_complete(tmp_path, monkeypatch):
         # A consumer can run while the copy is in progress. It must see the old
         # complete resource, without any of the replacement's partial bytes.
         loaded = Accession.load(source)
-        visible = loaded.scans["1"].resources["RES"].fileset
+        visible = loaded.acquisitions["1"].resources["RES"].fileset
         assert {p.name: p.read_bytes() for p in visible.fspaths} == previous
         assert not destination.is_relative_to(source)
         partial.unlink()
@@ -97,7 +97,9 @@ def test_resource_copy_is_hidden_until_complete(tmp_path, monkeypatch):
     session.save(source.parent, copy_mode=FileSet.CopyMode.copy)
     loaded = Accession.load(source)
     assert (
-        next(iter(loaded.scans["1"].resources["RES"].fileset.fspaths)).read_bytes()
+        next(
+            iter(loaded.acquisitions["1"].resources["RES"].fileset.fspaths)
+        ).read_bytes()
         == b"complete replacement"
     )
 

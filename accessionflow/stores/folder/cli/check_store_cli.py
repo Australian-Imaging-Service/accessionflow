@@ -7,14 +7,14 @@ import click
 from accessionflow.cli.store_cli import check_store_group
 from accessionflow.helpers.arg_types import LoggerConfig, StoreCredentials
 from accessionflow.helpers.logging import set_logger_handling
-from accessionflow.stores.tree.api.check_store_api import check_store
+from accessionflow.stores.folder.api.check_store_api import check_store
 
 from .options import common_options, storage_options
 
 
 @check_store_group.command(
-    name="tree",
-    help="""Checks what has been deposited in a tree data store against the staging
+    name="folder",
+    help="""Checks what has been deposited in a folder data store against the staging
 directory it was deposited from, and logs every resource that is missing, incomplete or
 different. Exits with a non-zero status if there are any.
 

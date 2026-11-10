@@ -53,7 +53,7 @@ def has_scan_dicom(resources: ty.Iterable[Resource]) -> bool:
     consumed by XNAT's ``pullDataFromHeaders`` operation.
     """
     return any(
-        resource.scan is not None
+        resource.acquisition is not None
         and isinstance(resource.fileset, (DicomCollection, DicomImage))
         for resource in resources
     )

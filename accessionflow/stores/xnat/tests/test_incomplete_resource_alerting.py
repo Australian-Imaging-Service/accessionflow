@@ -56,7 +56,7 @@ class FakeStagedScan:
 
 class FakeStagedResource:
     name = "DICOM"
-    scan = FakeStagedScan()
+    acquisition = FakeStagedScan()
     # not a DicomCollection, so the resource keeps the name it was staged under rather
     # than one derived from the SOP class -- these tests are about checksum repair
     fileset = None

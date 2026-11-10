@@ -162,7 +162,7 @@ def test_label_repairs_a_resource_left_without_a_manifest(tmp_path: Path) -> Non
     src.write_text("content")
     session = Accession(
         uid="some-uid",
-        scans=[Acquisition(id="1", type="T", resources={"RES": File(src)})],
+        acquisitions=[Acquisition(id="1", type="T", resources={"RES": File(src)})],
     )
     session.metadata.update(
         {PROJECT_FIELD: "PROJ", SUBJECT_FIELD: "SUBJ", SESSION_FIELD: "SESS"}
@@ -199,7 +199,7 @@ def test_label_repairs_a_resource_left_without_a_manifest(tmp_path: Path) -> Non
     assert not tmp_manifest.exists()
     labelled = Accession.load(output_dir / "PROJ.SUBJ.SESS")
     expected = Resource(name="RES", fileset=File(src)).checksums
-    assert labelled.scans["1"].resources["RES"].checksums == expected
+    assert labelled.acquisitions["1"].resources["RES"].checksums == expected
     assert label_pass() == []
 
 
@@ -574,7 +574,7 @@ def test_label_end_to_end_routes_datatypes_to_separate_projects(
         isinstance(resource.fileset, DicomSeries)
         for resource in dicom_session.resources
     )
-    assert report_session.scans == {}
+    assert report_session.acquisitions == {}
     assert len(report_session.session_resources) == 1
     assert isinstance(report_session.resources[0].fileset, File)
     assert (collated_dir / collated_session.staging_relpath[0]).exists()
@@ -684,7 +684,7 @@ def test_label_single_resource_rejects_acquisition_with_several(
 ) -> None:
     mock_session = _mock_session()
     mock_session.label.return_value = {}
-    mock_session.scans = {
+    mock_session.acquisitions = {
         "1": _scan("1", "DICOM"),
         "2": _scan("2", "DICOM", "NIFTI"),
     }
@@ -713,7 +713,7 @@ def test_label_single_resource_counts_only_included_resources(
     scan = _scan("1", "DICOM", "NIFTI")
     scan.resources["DICOM"].matches_datatypes.return_value = True
     scan.resources["NIFTI"].matches_datatypes.return_value = False
-    mock_session.scans = {"1": scan}
+    mock_session.acquisitions = {"1": scan}
     mock_session.resources = list(scan.resources.values())
     with patch.object(Accession, "load", return_value=mock_session):
         errors = label(

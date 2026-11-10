@@ -22,9 +22,9 @@ evoke the same modular behaviour via a Python workflow.
 
 .. autofunction:: accessionflow.stores.xnat.api.check_store
 
-.. autofunction:: accessionflow.stores.tree.api.store
+.. autofunction:: accessionflow.stores.folder.api.store
 
-.. autofunction:: accessionflow.stores.tree.api.check_store
+.. autofunction:: accessionflow.stores.folder.api.check_store
 
 .. autofunction:: accessionflow.api.attach
 
@@ -33,18 +33,18 @@ evoke the same modular behaviour via a Python workflow.
 Model classes
 ~~~~~~~~~~~~~
 
-These classes represent an imaging session as it moves through the pipeline stages
-above: a session contains scans, each of which contains one or more resources (e.g.
+These classes represent an accession (e.g. an imaging session) as it moves through the pipeline stages
+above: an accession contains acquisitions (e.g. scans), each of which contains one or more resources (e.g.
 the original DICOM files, a derived NIfTI conversion).
 
 .. autoclass:: accessionflow.model.accession.Accession
-    :members: uid, project_id, subject_id, session_id, scans, session_resources, run_uid,
+    :members: uid, project_id, subject_id, session_id, acquisitions, session_resources, run_uid,
         metadata, from_paths, label, deidentify, attach_files, save, load
 
 .. autoclass:: accessionflow.model.acquisition.Acquisition
     :members: id, type, resources, attached, metadata, save, load
 
 .. autoclass:: accessionflow.model.resource.Resource
-    :members: name, fileset, checksums, scan, metadata, save, load
+    :members: name, fileset, checksums, acquisition, metadata, save, load
 
 .. autofunction:: accessionflow.model.accession.recipe_formats_for

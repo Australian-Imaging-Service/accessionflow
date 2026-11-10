@@ -1,4 +1,4 @@
-"""The 'label tree', 'store tree' and 'check-store tree' subcommands, which are
+"""The 'label folder', 'store folder' and 'check-store folder' subcommands, which are
 registered with their stages when this package is imported"""
 
 from .check_store_cli import check_store_cmd

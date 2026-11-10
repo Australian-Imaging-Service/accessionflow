@@ -22,7 +22,7 @@ def source(tmp_path):
     session_seed.write_text("session resource")
     session = Accession(
         uid="paths",
-        scans=[
+        acquisitions=[
             Acquisition("1", "scan", resources={"RAW": Resource("RAW", File(seed))})
         ],
         session_resources={"SESSION": Resource("SESSION", File(session_seed))},

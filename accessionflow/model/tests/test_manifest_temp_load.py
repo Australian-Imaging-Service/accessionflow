@@ -123,7 +123,7 @@ def test_management_load_of_s3_copy_with_publication_temp(
                     Accession.load(copied)
             else:
                 loaded = Accession.load(copied)
-                data = loaded.scans["1"].resources["DATA"]
+                data = loaded.acquisitions["1"].resources["DATA"]
                 assert set(data.checksums) == {"payload.txt"}
                 assert data.calculate_checksums() == data.checksums
             assert temporary.exists()

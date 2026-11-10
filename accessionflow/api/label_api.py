@@ -51,7 +51,7 @@ def _acquisitions_with_several_resources(
     """The acquisitions of the session that will be saved with more than one
     resource, with the names of those resources"""
     several = {}
-    for scan in session.scans.values():
+    for scan in session.acquisitions.values():
         names = [
             name
             for name, resource in scan.resources.items()

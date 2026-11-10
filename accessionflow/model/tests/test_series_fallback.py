@@ -56,7 +56,7 @@ def test_optional_series_tags_do_not_block_study(tmp_path, number, description, 
             **_publication_kwargs(tmp_path / "staged", store)
         )
     assert len(sessions) == 1
-    scan = next(iter(sessions[0].scans.values()))
+    scan = next(iter(sessions[0].acquisitions.values()))
     assert scan.id and scan.type.strip()
     if number in (None, "", "   "):
         assert scan.id == "1_2_3_4"
@@ -86,7 +86,7 @@ def test_fallback_id_is_stable_for_a_repeated_series(tmp_path):
             sessions = Accession.from_orthanc(
                 **_publication_kwargs(root / "staged", store)
             )
-        ids.append(next(iter(sessions[0].scans)))
+        ids.append(next(iter(sessions[0].acquisitions)))
     assert ids[0] == ids[1]
 
 
@@ -108,9 +108,9 @@ def test_two_unnumbered_series_remain_separate(tmp_path):
             **_publication_kwargs(tmp_path / "staged", store)
         )
     assert len(sessions) == 1
-    assert len(sessions[0].scans) == 2
-    assert set(sessions[0].scans) == {"1_2_3_4", "1_2_3_5"}
-    assert {s.type for s in sessions[0].scans.values()} == {
+    assert len(sessions[0].acquisitions) == 2
+    assert set(sessions[0].acquisitions) == {"1_2_3_4", "1_2_3_5"}
+    assert {s.type for s in sessions[0].acquisitions.values()} == {
         "Series_1_2_3_4",
         "Series_1_2_3_5",
     }
@@ -121,7 +121,7 @@ def test_two_unnumbered_series_remain_separate(tmp_path):
 
     store = AccessionMockStore(sessions[0])
     store.populate_row(store.row)
-    for scan in sessions[0].scans.values():
+    for scan in sessions[0].acquisitions.values():
         scan.type = "unknown"
     with pytest.raises(KeyError, match="multiple entries"):
         store.populate_row(store.row)
@@ -134,8 +134,8 @@ def test_missing_uid_uses_stable_orthanc_series_identity(tmp_path):
         sessions = Accession.from_orthanc(
             **_publication_kwargs(tmp_path / "staged", store)
         )
-    assert len(sessions[0].scans) == 1
-    assert next(iter(sessions[0].scans)).startswith("series_")
+    assert len(sessions[0].acquisitions) == 1
+    assert next(iter(sessions[0].acquisitions)).startswith("series_")
 
 
 def test_normal_series_labels_stay_unchanged(tmp_path):
@@ -144,7 +144,7 @@ def test_normal_series_labels_stay_unchanged(tmp_path):
         sessions = Accession.from_orthanc(
             **_publication_kwargs(tmp_path / "staged", store)
         )
-    assert sessions[0].scans["2"].type == "T1"
+    assert sessions[0].acquisitions["2"].type == "T1"
 
 
 @pytest.mark.parametrize("description", [None, "", " "])
@@ -164,4 +164,4 @@ def test_missing_description_survives_following_label_stage(tmp_path, descriptio
         acquisition_field="SeriesDescription",
     )
     assert missing == {}
-    assert session.scans["1_2_3_4"].type == "Series_1_2_3_4"
+    assert session.acquisitions["1_2_3_4"].type == "Series_1_2_3_4"

@@ -48,7 +48,7 @@ def test_package_auto_labels_sample_from_sop_class(
     session = Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id="1", type="MR", resources={"SOURCE": DicomSeries([image.fspath])}
             )
@@ -62,7 +62,7 @@ def test_package_auto_labels_sample_from_sop_class(
             on_resource_clash="error",
         )
 
-    assert set(packaged.scans["1"].resources) == {expected_label}
+    assert set(packaged.acquisitions["1"].resources) == {expected_label}
 
 
 def test_package_rejects_samples_from_different_studies(tmp_path: Path) -> None:
@@ -71,7 +71,7 @@ def test_package_rejects_samples_from_different_studies(tmp_path: Path) -> None:
     session = Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id="1", type="MR", resources={"SOURCE": DicomSeries([first.fspath])}
             ),
@@ -96,7 +96,7 @@ def test_package_rejects_mixed_studies_inside_one_series(tmp_path: Path) -> None
     session = Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id="1",
                 type="MR",
@@ -121,7 +121,7 @@ def test_package_rejects_primary_sample_as_secondary(tmp_path: Path) -> None:
     session = Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id="1", type="MR", resources={"SOURCE": DicomSeries([image.fspath])}
             )
@@ -146,7 +146,7 @@ def _staged_session(input_dir: Path) -> tuple[Accession, Path]:
     session = Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id="1",
                 type="CT",
@@ -155,8 +155,10 @@ def _staged_session(input_dir: Path) -> tuple[Accession, Path]:
         ],
     )
     session.metadata["session-field"] = "preserved"
-    session.scans["1"].metadata["scan-field"] = "preserved"
-    session.scans["1"].resources["SOURCE"].metadata["resource-field"] = "preserved"
+    session.acquisitions["1"].metadata["scan-field"] = "preserved"
+    session.acquisitions["1"].resources["SOURCE"].metadata["resource-field"] = (
+        "preserved"
+    )
     session.add_session_resource("REPORT", File(report_path))
     _, session_dir = session.save(input_dir)
     return session, session_dir
@@ -183,7 +185,7 @@ def test_package_replaces_one_source_with_multiple_named_outputs(
     assert errors == []
     assert source_dir.exists(), "packaging removed its input without being asked"
     packaged = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    scan = packaged.scans["1"]
+    scan = packaged.acquisitions["1"]
     assert set(scan.resources) == {"DICOM", "secondary"}
     assert all(
         resource.fileset.fspath.read_text() == "deidentified source"
@@ -265,7 +267,7 @@ def test_package_rejects_old_layout_in_existing_output(tmp_path: Path) -> None:
     assert len(errors) == 1
     assert "fresh output directory" in errors[0]
     old_session = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    assert set(old_session.scans["1"].resources) == {"DICOM", "secondary"}
+    assert set(old_session.acquisitions["1"].resources) == {"DICOM", "secondary"}
 
 
 def test_package_cli_accepts_multiple_named_outputs(tmp_path: Path) -> None:
@@ -291,7 +293,7 @@ def test_package_cli_accepts_multiple_named_outputs(tmp_path: Path) -> None:
 
     assert result.exit_code == 0, result.output
     packaged = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    assert set(packaged.scans["1"].resources) == {"DICOM", "secondary"}
+    assert set(packaged.acquisitions["1"].resources) == {"DICOM", "secondary"}
 
 
 def test_package_passes_a_session_without_source_resources_through(
@@ -316,7 +318,7 @@ def test_package_passes_a_session_without_source_resources_through(
     assert errors == []
     assert not source_dir.exists()
     out = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    assert set(out.scans["1"].resources) == {"SOURCE"}
+    assert set(out.acquisitions["1"].resources) == {"SOURCE"}
     assert set(out.session_resources) == {"REPORT"}
 
 
@@ -346,7 +348,7 @@ def test_package_keeps_earlier_scans_when_a_late_scan_arrives(
     Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(id="2", type="CT", resources={"SOURCE": MyFormat(late_path)})
         ],
     ).save(input_dir)
@@ -357,9 +359,9 @@ def test_package_keeps_earlier_scans_when_a_late_scan_arrives(
 
     assert errors == []
     out = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    assert sorted(out.scans) == ["1", "2"]
-    assert set(out.scans["1"].resources) == {"DICOM"}
-    assert set(out.scans["2"].resources) == {"DICOM"}
+    assert sorted(out.acquisitions) == ["1", "2"]
+    assert set(out.acquisitions["1"].resources) == {"DICOM"}
+    assert set(out.acquisitions["2"].resources) == {"DICOM"}
     assert not (input_dir / "PROJECT.SUBJECT.SESSION").exists()
 
 
@@ -456,4 +458,4 @@ def test_package_keeps_an_input_with_a_file_its_manifest_does_not_list(
     assert errors == []
     assert late.exists(), "input kept"
     out = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    assert sorted(out.scans) == ["1"]
+    assert sorted(out.acquisitions) == ["1"]

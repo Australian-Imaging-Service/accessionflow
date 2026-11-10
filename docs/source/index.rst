@@ -2,16 +2,16 @@
 
 AccessionFlow
 =============
-.. image:: https://github.com/australian-imaging-service/xnat-ingest/actions/workflows/ci-cd.yml/badge.svg
-   :target: https://github.com/australian-imaging-service/xnat-ingest/actions/workflows/ci-cd.yml
-.. image:: https://codecov.io/gh/australian-imaging-service/xnat-ingest/branch/main/graph/badge.svg?token=UIS0OGPST7
-   :target: https://codecov.io/gh/australian-imaging-service/xnat-ingest
+.. image:: https://github.com/australian-imaging-service/accessionflow/actions/workflows/ci-cd.yml/badge.svg
+   :target: https://github.com/australian-imaging-service/accessionflow/actions/workflows/ci-cd.yml
+.. image:: https://codecov.io/gh/australian-imaging-service/accessionflow/branch/main/graph/badge.svg?token=UIS0OGPST7
+   :target: https://codecov.io/gh/australian-imaging-service/accessionflow
 .. image:: https://img.shields.io/pypi/v/accessionflow.svg
    :target: https://pypi.python.org/pypi/accessionflow/
    :alt: Latest Version
-.. image:: https://img.shields.io/github/stars/australian-imaging-service/xnat-ingest?label=GitHub
+.. image:: https://img.shields.io/github/stars/australian-imaging-service/accessionflow?label=GitHub
    :alt: GitHub stars
-   :target: https://github.com/australian-imaging-service/xnat-ingest
+   :target: https://github.com/australian-imaging-service/accessionflow
 
 
 *AccessionFlow* is a toolkit for capturing data from instruments and uploading them to an XNAT
@@ -22,7 +22,7 @@ expects, and — particularly on clinical scanners — often still carry patient
 information that needs stripping before they leave clinical control. *AccessionFlow*
 contains tools for each step of this process:
 
-* Collating DICOM and non-DICOM files into sessions, scans and resources
+* Collating DICOM and non-DICOM files into accessions, acquisitions and resources
 * Determining which XNAT project each belongs to and assigning appropriate subject and session labels
 * De-identifying files using flexible, file-format-specific methods
 * Uploading the sorted data into the specified XNAT instance.
@@ -33,7 +33,7 @@ running continuously as a service, watching for new files as they arrive.
 See :doc:`quick_start` for a hands-on walkthrough using synthetic sample data or go through the
 different sections in more detail using the links below
 
-* :ref:`Basic ingest workflow` — collate, label and upload files to XNAT
+* :ref:`Basic accession workflow` — collate, label and upload files to XNAT
 * :ref:`Attach files without relevant metadata` — link in files by filename pattern instead
 * :ref:`Deidentification` — strip patient-identifying data first
 * :ref:`Deployment tips` — run the pipeline continuously via Docker/Kubernetes
@@ -49,7 +49,7 @@ external dependencies (e.g. dcm2niix, MRtrix3):
 
 .. code-block:: console
 
-    $ docker run ghcr.io/australian-imaging-service/xnat-ingest --help
+    $ docker run ghcr.io/australian-imaging-service/accessionflow --help
 
 See :ref:`Deployment tips` for how this fits into Docker Compose
 or Kubernetes.

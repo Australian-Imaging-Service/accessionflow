@@ -262,11 +262,11 @@ def test_split_resource_by_modality_splits_a_mixed_series(tmp_path: Path) -> Non
     _write_dicom(tmp_path / "sr1.dcm", _DOSE_REPORT_SR_SOP_CLASS, "SR")
     series = DicomSeries(list(tmp_path.iterdir()))
     scan = Acquisition(id="6", type="chest_pt")
-    resource = Resource(name="DICOM", fileset=series, scan=scan)
+    resource = Resource(name="DICOM", fileset=series, acquisition=scan)
 
     parts = split_resource_by_modality(resource)
 
-    by_scan_id = {part.scan.id: part for part in parts}
+    by_scan_id = {part.acquisition.id: part for part in parts}
     assert set(by_scan_id) == {"6-PT", "6-SR"}
     assert len(by_scan_id["6-PT"].fileset.fspaths) == 2
     assert len(by_scan_id["6-SR"].fileset.fspaths) == 1
@@ -276,7 +276,7 @@ def test_split_resource_by_modality_splits_a_mixed_series(tmp_path: Path) -> Non
     assert by_scan_id["6-PT"].metadata.get("SOPClassUID") == _PET_IMAGE_SOP_CLASS
     assert by_scan_id["6-SR"].metadata.get("SOPClassUID") == _DOSE_REPORT_SR_SOP_CLASS
     assert all(part.name == "DICOM" for part in parts)
-    assert all(part.scan.type == "chest_pt" for part in parts)
+    assert all(part.acquisition.type == "chest_pt" for part in parts)
 
 
 def test_split_resource_by_modality_no_split_for_uniform_series(
@@ -287,7 +287,7 @@ def test_split_resource_by_modality_no_split_for_uniform_series(
     _write_dicom(tmp_path / "pt2.dcm", _PET_IMAGE_SOP_CLASS, "PT")
     series = DicomSeries(list(tmp_path.iterdir()))
     scan = Acquisition(id="6", type="chest_pt")
-    resource = Resource(name="DICOM", fileset=series, scan=scan)
+    resource = Resource(name="DICOM", fileset=series, acquisition=scan)
 
     assert split_resource_by_modality(resource) == [resource]
 
@@ -297,7 +297,7 @@ def test_split_resource_by_modality_ignores_session_level_resources() -> None:
     looking at its fileset -- there is no scan id to suffix a modality onto"""
 
     class _SessionResource:
-        scan = None
+        acquisition = None
 
     resource: ty.Any = _SessionResource()
     assert split_resource_by_modality(resource) == [resource]
@@ -309,7 +309,7 @@ def test_split_resource_by_modality_ignores_non_dicom_resources(tmp_path: Path) 
     a_file = tmp_path / "notes.txt"
     a_file.write_text("not DICOM")
     scan = Acquisition(id="6", type="chest_pt")
-    resource = Resource(name="NOTES", fileset=File(a_file), scan=scan)
+    resource = Resource(name="NOTES", fileset=File(a_file), acquisition=scan)
 
     assert split_resource_by_modality(resource) == [resource]
 
@@ -339,7 +339,7 @@ def test_get_xnat_resource_ignores_sop_class_on_non_dicom_resources() -> None:
         # SOPClassUID -- read from the embedded header -- like the real vendor
         # raw-data classes do
         fileset = object()
-        scan = _FakeScan()
+        acquisition = _FakeScan()
         checksums: dict[str, str] = {"a.ptd": "digest"}
 
         def __init__(self, name: str) -> None:
@@ -380,7 +380,7 @@ def test_get_xnat_resource_uses_dicom_image_sop_class(
         name=expected_label,
         fileset=DicomImage(dicom_path),
         checksums={"image.dcm": "digest"},
-        scan=scan,
+        acquisition=scan,
     )
     # A packaged image can inherit metadata from its source series. Its own header
     # determines the XNAT label, even when the resource metadata says otherwise.
@@ -404,7 +404,7 @@ def test_get_xnat_resource_rejects_wrong_dicom_image_label(tmp_path: Path) -> No
         name="secondary",
         fileset=DicomImage(dicom_path),
         checksums={"image.dcm": "digest"},
-        scan=scan,
+        acquisition=scan,
     )
 
     with pytest.raises(ValueError, match="must be staged under XNAT resource 'DICOM'"):
@@ -421,7 +421,7 @@ def test_get_xnat_resource_rejects_dicom_image_without_sop_class(
         name="DICOM",
         fileset=DicomImage(dicom_path),
         checksums={"image.dcm": "digest"},
-        scan=scan,
+        acquisition=scan,
     )
     resource.fileset.metadata["SOPClassUID"] = None
     resource.metadata["SOPClassUID"] = _PET_IMAGE_SOP_CLASS
@@ -438,7 +438,7 @@ def test_get_xnat_resource_rejects_conflicting_scan_datatype(tmp_path: Path) -> 
         name="DICOM",
         fileset=DicomImage(dicom_path),
         checksums={"image.dcm": "digest"},
-        scan=scan,
+        acquisition=scan,
     )
     xscan = MagicMock()
     xscan.__xsi_type__ = "xnat:mrScanData"
@@ -492,12 +492,12 @@ def test_get_xnat_resource_scan_without_sop_class_inherits_session_type() -> Non
         id = "602"
         type = "602"
         path = "proj:subj:sess:602-602"
-        session = MagicMock(path="proj:subj:sess")
+        accession = MagicMock(path="proj:subj:sess")
 
     class _FakeVendorResource:
         name = "LISTMODE"
         fileset = object()
-        scan = _FakeScan()
+        acquisition = _FakeScan()
         checksums: dict[str, str] = {"a.ptd": "digest"}
         metadata: dict[str, str] = {}
 
@@ -523,12 +523,12 @@ def _zipped_series_resource(
     with zipfile.ZipFile(zip_path, "w") as z:
         z.writestr("a.dcm", b"not parsed by this test")
     scan = MagicMock(id="3", type="t2", path="proj:subj:sess:3-t2")
-    scan.session = MagicMock(path="proj:subj:sess")
+    scan.accession = MagicMock(path="proj:subj:sess")
     resource = Resource(
         name="DICOM-zip",
         fileset=fileset_type(zip_path),
         checksums={"archive.zip": "digest"},
-        scan=scan,
+        acquisition=scan,
     )
     resource.metadata["SOPClassUID"] = sop_class_uid
     return resource
@@ -589,12 +589,12 @@ def test_get_xnat_resource_plain_zip_sop_metadata_sets_scan_type(
     with zipfile.ZipFile(zip_path, "w") as z:
         z.writestr("listmode.ptd", b"raw")
     scan = MagicMock(id="602", type="602", path="proj:subj:sess:602-602")
-    scan.session = MagicMock(path="proj:subj:sess")
+    scan.accession = MagicMock(path="proj:subj:sess")
     resource = Resource(
         name="LISTMODE",
         fileset=Zip(zip_path),
         checksums={"listmode.zip": "digest"},
-        scan=scan,
+        acquisition=scan,
     )
     resource.metadata["SOPClassUID"] = "1.3.12.2.1107.5.9.1"  # Siemens raw data
     xsession = _xsession_of_type("xnat:petSessionData")

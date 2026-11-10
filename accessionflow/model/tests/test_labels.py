@@ -20,7 +20,9 @@ def _accession(tmp_path: Path, **metadata: str) -> Accession:
     seed.write_text("data")
     accession = Accession(
         uid="1.2.3",
-        scans=[Acquisition("1", "t1", resources={"RAW": Resource("RAW", File(seed))})],
+        acquisitions=[
+            Acquisition("1", "t1", resources={"RAW": Resource("RAW", File(seed))})
+        ],
     )
     for key, value in metadata.items():
         accession.metadata[key] = value
@@ -48,7 +50,7 @@ def test_label_with_named_levels(
     accession = _accession(
         tmp_path, SiteID="SYD", Cohort="A", PatientID="P01", Visit="V2"
     )
-    assert accession.label(label_fields, store_type="tree") == {}
+    assert accession.label(label_fields, store_type="folder") == {}
     assert list(accession.labels) == list(label_fields)
     assert tuple(accession.labels.values()) == expected
     assert accession.name == ".".join(expected)
@@ -58,12 +60,12 @@ def test_label_with_named_levels(
     assert saved_dir.name == ".".join(expected)
     saved = json.loads((saved_dir / Metadata.FNAME).read_text())
     assert saved[Accession.LABELS_METADATA_KEY] == dict(zip(label_fields, expected))
-    assert saved[Accession.STORE_TYPE_METADATA_KEY] == "tree"
+    assert saved[Accession.STORE_TYPE_METADATA_KEY] == "folder"
 
     reloaded = Accession.load(saved_dir)
     assert reloaded.labels == dict(zip(label_fields, expected))
     assert list(reloaded.labels) == list(label_fields)  # level order is kept
-    assert reloaded.store_type == "tree"
+    assert reloaded.store_type == "folder"
     assert reloaded.run_uid is None
 
 

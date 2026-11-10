@@ -7,15 +7,15 @@ import click
 from accessionflow.cli.store_cli import store_group
 from accessionflow.helpers.arg_types import LoggerConfig, StoreCredentials
 from accessionflow.helpers.logging import logger, set_logger_handling
-from accessionflow.stores.tree.api.store_api import store
+from accessionflow.stores.folder.api.store_api import store
 
 from .options import common_options, storage_options
 
 
 @store_group.command(
-    name="tree",
+    name="folder",
     help="""Deposits the labelled accessions in a staging directory (as prepared by
-'label tree') in a tree data store: a tree of nested label folders, with a folder per
+'label folder') in a folder data store: nested label folders, with a folder per
 acquisition and per resource, on a local path, a mount, or a remote file system such as
 S3 or SFTP.
 

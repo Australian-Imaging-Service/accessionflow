@@ -26,7 +26,7 @@ def check_store(
     temp_dir: Path | None = None,
     s3_max_workers: int | None = None,
 ) -> list[str]:
-    """Checks what has been deposited in a tree store against the staging directory it
+    """Checks what has been deposited in a folder store against the staging directory it
     was deposited from, and logs every resource that is missing, incomplete or
     different.
 

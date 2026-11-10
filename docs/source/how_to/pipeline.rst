@@ -1,19 +1,19 @@
-Basic ingest workflow
-=====================
+Basic accession workflow
+========================
 
 This walks through the minimum needed to get files from a directory on disk into an
-XNAT project: **collate** the raw files into scans/resources, **label** each session a
+XNAT project: **collate** the raw files into acquisitions/resources, **label** each accession a
 project/subject/session ID, then **store** them in XNAT. Each stage is a separate CLI
 sub-command and writes its output to a directory that the next stage reads from, so
 they can be run as a chain, on separate schedules, or repeatedly with ``--loop``.
 
 (:doc:`De-identification <deidentify>`, :doc:`linking in files that don't carry their
-own sorting metadata <attach>`, and site-specific steps like linking sessions to an
+own sorting metadata <attach>`, and site-specific steps like linking accessions to an
 external records database, are separate concerns layered on top of this — covered in
 their own guides.)
 
-1. Collate files into sessions/scans/resources
------------------------------------------------
+1. Collate files into accessions/acquisitions/resources
+--------------------------------------------------------
 
 ``collate`` scans one or more input paths, reads each file's metadata (DICOM tags by
 default), and collates files into a directory structure of
@@ -25,13 +25,13 @@ default), and collates files into a directory structure of
 
 * ``INPUT_PATHS`` — one or more directories or glob patterns pointing at the raw files
   (``ACFLOW_INPUT_PATHS``)
-* ``OUTPUT_DIR`` — where collated sessions are written (``ACFLOW_OUTPUT_DIR``)
+* ``OUTPUT_DIR`` — where collated accessions are written (``ACFLOW_OUTPUT_DIR``)
 
-For DICOM collections, sessions are collated by ``StudyInstanceUID`` and
-scans by ``SeriesNumber`` by default. No defaults are provided for other formats.
+For DICOM collections, accessions are collated by ``StudyInstanceUID`` and
+acquisitions by ``SeriesNumber`` by default. No defaults are provided for other formats.
 If no ``--resource`` spec matches a fileset, its resource is named after the
 fileset's type (``dicom-series``, ``vectra-export``, ...); if no ``--scan``
-spec matches, the scan takes that same name. Override any of these with
+spec matches, the acquisition takes that same name. Override any of these with
 ``--session``/``--scan``/``--resource`` for other data — each takes
 ``<specifier> <datatype>`` and can be repeated to treat datatypes
 differently (see :doc:`/cli`).
@@ -77,7 +77,7 @@ specifier in ``label``, or in the compound ``{...}`` format strings below.
 * can be repeated for different datatypes/patterns
 * if a resource matches the datatype but its path doesn't actually match the regex,
   that's a hard error — it aborts the whole ``collate`` run rather than just skipping
-  that one session, so keep the pattern narrow enough that it only applies to data
+  that one accession, so keep the pattern narrow enough that it only applies to data
   you know follows the convention
 
 Composing IDs from more than one field
@@ -178,7 +178,7 @@ storage area rather than copying them.
 * ``URL`` — the Orthanc REST endpoint (``ACFLOW_ORTHANC_URL``)
 * ``STORE_DIR`` — Orthanc's ``StorageDirectory``, as seen from wherever the command
   runs (``ACFLOW_ORTHANC_STORE_DIR``)
-* ``OUTPUT_DIR`` — where collated sessions are written, same as for ``collate``
+* ``OUTPUT_DIR`` — where collated accessions are written, same as for ``collate``
 * ``USER``/``PASSWORD`` — Orthanc credentials
   (``ACFLOW_ORTHANC_USER``/``ACFLOW_ORTHANC_PASSWORD``)
 
@@ -187,7 +187,7 @@ same filesystem, and Orthanc's storage must be uncompressed. Compression is off 
 default, so this only matters if you've enabled ``StorageCompression`` in the Orthanc
 configuration.
 
-Sessions are collated by ``StudyInstanceUID``, scans by ``SeriesNumber`` (described by
+Accessions are collated by ``StudyInstanceUID``, acquisitions by ``SeriesNumber`` (described by
 ``SeriesDescription``) and resources by ``ImageType``, following Orthanc's own
 study/series/instance hierarchy. These groupings are currently fixed, there are no
 ``--session``/``--scan``/``--resource`` overrides like ``collate``'s. What
@@ -256,11 +256,11 @@ Automatic number fallback on that configurable path is a separate follow-up;
 missing optional descriptions in the shared ``label`` path are handled above.
 
 A study that cannot be staged does not stop the others. Two series of one study
-that map to one scan directory and resource (the same ``SeriesNumber`` and
+that map to one acquisition directory and resource (the same ``SeriesNumber`` and
 ``SeriesDescription``), or one ``SeriesNumber`` used with two descriptions, are
 refused before the study is published; files already linked for its earlier
-series are discarded with the build directory. Loading such a session would
-keep only one of the scans. The study is logged as an error with its Orthanc ID and the reason, left
+series are discarded with the build directory. Loading such an accession would
+keep only one of the acquisitions. The study is logged as an error with its Orthanc ID and the reason, left
 without the processed label, and tried again on the next run, so the error stays
 visible until the study is corrected at the source. The other studies of the run
 are staged as usual. A study that changes while it is being staged is logged as a
@@ -271,7 +271,7 @@ Available metadata fields
 
 Unlike ``collate``, which reads each file's full DICOM header, ``collate-orthanc`` only
 sees the tags Orthanc itself indexes: the study-level ``MainDicomTags`` and
-``PatientMainDicomTags``. These are what end up in the session's
+``PatientMainDicomTags``. These are what end up in the accession's
 ``__METADATA__.json``, and therefore what ``label``'s
 ``--project``/``--subject``/``--session`` specifiers can draw on:
 
@@ -294,7 +294,7 @@ reconstructed.
 2. Label project/subject/session IDs
 -----------------------------------------
 
-``label xnat`` reads the collated sessions and works out which XNAT project/subject/session
+``label xnat`` reads the collated accessions and works out which XNAT project/subject/session
 each one belongs to, from metadata fields, writing the result under
 ``<project>.<subject>.<session>`` directories in ``OUTPUT_DIR``.
 
@@ -303,7 +303,7 @@ each one belongs to, from metadata fields, writing the result under
     $ accessionflow label xnat /data/staging/collated /data/staging/labelled
 
 * ``INPUT_DIR`` — the ``collate`` output directory (``ACFLOW_INPUT_DIR``)
-* ``OUTPUT_DIR`` — where labelled sessions are written (``ACFLOW_OUTPUT_DIR``)
+* ``OUTPUT_DIR`` — where labelled accessions are written (``ACFLOW_OUTPUT_DIR``)
 
 The metadata fields used default to ``StudyComments`` (project), ``PatientID``
 (subject) and ``AccessionNumber`` (session). Override with ``--project``/
@@ -315,27 +315,27 @@ string composing more than one field, e.g. ``--project '{PatientID}_{StudyDate:%
 What happens when an ID can't be resolved
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If a project/subject/session field isn't present in a session's metadata at all, that
-session isn't dropped — it's labelled a unique placeholder ID instead
-(``INVALID_NOTFOUND_<FIELD>_<random>``), and the whole session is saved under an
+If a project/subject/session field isn't present in an accession's metadata at all, that
+accession isn't dropped — it's labelled a unique placeholder ID instead
+(``INVALID_NOTFOUND_<FIELD>_<random>``), and the whole accession is saved under an
 ``__invalid__`` subdirectory of ``OUTPUT_DIR`` (e.g.
 ``labelled/__invalid__/INVALID_NOTFOUND_PROJECT_ab12cd34.Session_Label.123/``) instead
-of alongside normally-labelled sessions. This is so a misconfigured field (or a
-session that genuinely doesn't have the data it needs) can still be found and manually
+of alongside normally-labelled accessions. This is so a misconfigured field (or an
+accession that genuinely doesn't have the data it needs) can still be found and manually
 reviewed or reprocessed, rather than only showing up as a line in the logs with
 nothing to act on.
 
 Cleaning up previous stages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add ``--unlink-source`` to clean up the ``collate`` output once a session's been
+Add ``--unlink-source`` to clean up the ``collate`` output once an accession's been
 labelled. Unlike ``collate``, this directory is one that accessionflow itself created, so
 there are two meaningfully different modes:
 
-* ``--unlink-source all`` removes files present before label loads the session, then empty directories.
+* ``--unlink-source all`` removes files present before label loads the accession, then empty directories.
 * ``--unlink-source keep-metadata`` removes recorded files only inside loaded
   resource directories, then removes empty directories inside them. It keeps the
-  session and scan metadata files (``__METADATA__.json``).
+  accession and acquisition metadata files (``__METADATA__.json``).
   See :doc:`attach` for how to use this metadata.
 
 Leave it unset (the default) to keep the collated directory untouched.
@@ -343,13 +343,13 @@ With ``all`` and ``keep-metadata``, files at new paths survive cleanup.
 Published files must remain immutable.
 A replacement at a recorded path is outside this contract.
 With ``keep-metadata``, label records the resource directories when it loads the
-session. A new resource directory that arrives after the load stays in place.
+accession. A new resource directory that arrives after the load stays in place.
 
 Routing datatypes through separate labelling pathways
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use repeatable ``--include`` options when different datatypes from one collated
-session need different IDs or projects. Each label process reads the same collated
+accession need different IDs or projects. Each label process reads the same collated
 source and writes only matching resources:
 
 .. code-block:: console
@@ -368,7 +368,7 @@ to every labelling pathway.
 Optional: package one resource into several upload resources
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``package`` replaces scan resources of one datatype with one or more named
+``package`` replaces acquisition resources of one datatype with one or more named
 conversions. Run it after :doc:`deidentify` when an upload layout needs derived
 resources but de-identification should operate on the unpacked source. Every output
 is converted directly from that source rather than from another output.
@@ -390,7 +390,7 @@ series directories are nested below the input path. The deidentify stage uses a
     $ accessionflow collate /data/incoming /data/staging/collated \
         --datatype medimage/dicom-dir --recursive
 
-After labelling and de-identifying the collated sessions, package them with the
+After labelling and de-identifying the collated accessions, package them with the
 generic FileFormats ZIP converter:
 
 .. code-block:: console
@@ -403,9 +403,9 @@ generic FileFormats ZIP converter:
             medimage/vnd.australianimagingservice.dicom-sample
 
 Point ``store`` at the packaged output. The input remains untouched unless
-``--unlink-source`` is supplied, and a new session is exposed in the output only
+``--unlink-source`` is supplied, and a new accession is exposed in the output only
 after every conversion and manifest has been written successfully.
-Packaging rejects samples from different DICOM studies in one session. The upload
+Packaging rejects samples from different DICOM studies in one accession. The upload
 creates the scan from the sample's SOP class, records the archive as ``ZIP``, and
 records the sample as ``DICOM``.
 
@@ -437,14 +437,14 @@ snapshots in the scan's ``SNAPSHOTS`` resource, marking the files as the
 ``ORIGINAL`` and ``THUMBNAIL`` images that XNAT displays, and ``check-store`` looks
 for them there.
 
-Only resources that match the source datatype are converted. A scan with just one
+Only resources that match the source datatype are converted. An acquisition with just one
 PNG holds an ``image/png`` resource, not an ``image/png+set-of``, so it gets no
 snapshots from the command above.
 
 3. Store in XNAT
 --------------------
 
-``store`` takes the labelled sessions and pushes them to an XNAT instance, creating
+``store`` takes the labelled accessions and pushes them to an XNAT instance, creating
 projects/subjects/sessions/scans/resources as needed.
 
 .. code-block:: console
@@ -457,7 +457,7 @@ projects/subjects/sessions/scans/resources as needed.
 * ``SERVER`` — the XNAT server address (``ACFLOW_HOST``)
 * ``--user``/``--password`` — XNAT credentials (``ACFLOW_USER``/``ACFLOW_PASS``)
 * ``--date <field>`` — when creating a session, set its date from the named
-  session metadata field (``ACFLOW_DATE``). Repeated values must all resolve to
+  accession metadata field (``ACFLOW_DATE``). Repeated values must all resolve to
   the same calendar date; existing XNAT sessions are not changed.
 
 Credentials are read from the environment if the flags are omitted, so on a shared
@@ -475,7 +475,7 @@ session IDs.
 
 At the upload stage you are able to filter which resources get uploaded based on their
 file types. This can be specified by the "always-include" flag, e.g. ``--always-include medimage/dicom-series``
-(defaults to all file types ``--always-include all``) uploads every file found in the session
+(defaults to all file types ``--always-include all``) uploads every file found in the accession
 that matches that type. The alternative is defining an expected column layout for the
 project with the `frametree <https://arcanaframework.github.io/frametree/>`_ tool, and
 only data with a matching column in the dataset definition is uploaded.
@@ -488,13 +488,13 @@ An existing session label must belong to the expected subject. The uploader
 checks the subject's internal XNAT ID through fresh REST responses, including
 for a subject shared into the selected project.
 
-The grouping identity is the ``__uid__`` value saved in session metadata. It
+The grouping identity is the ``__uid__`` value saved in accession metadata. It
 works for DICOM and other formats; it is not XNAT's DICOM ``UID`` attribute.
 New experiments include it in the custom field ``xnat_ingest_uid`` in the
 creation request, then read it back. This field has no project UI form and is
 hidden from that UI by default. It is not secret storage.
 
-By default ``__uid__`` is the original session UID, which for DICOM is its
+By default ``__uid__`` is the original accession UID, which for DICOM is its
 ``StudyInstanceUID``, and de-identification keeps it, so it is stored on XNAT. To
 replace it with a keyed hash, give ``deidentify`` a private ``--hash-uid-key``
 (``ACFLOW_HASH_UID_KEY``). The same UID and key always give the same hash, so don't
@@ -511,7 +511,7 @@ with this option.
 
 Before reuse or a completeness decision, the uploader reads this field again.
 A different value, duplicate field or unreadable response refuses the upload
-and keeps the staged copy. Local and S3 checks read only the session metadata;
+and keeps the staged copy. Local and S3 checks read only the accession metadata;
 they do not download DICOM headers to establish identity. Identity reads request
 ``Cache-Control: no-cache`` and ``Pragma: no-cache``.
 
@@ -519,7 +519,7 @@ An older experiment with no field is incomplete for the purpose of the skip
 check. In the upload path, after the subject matches, the uploader warns that
 the old identity is unverified, writes the incoming grouping identity, and
 reads it back before sending files. This adoption does not prove that the old
-files belong to the incoming session. It never replaces a different existing
+files belong to the incoming accession. It never replaces a different existing
 value. Run one uploader per experiment: the read, write and readback are not
 an atomic claim against concurrent writers.
 
@@ -542,23 +542,23 @@ confirm nothing was dropped.
 It takes the same ``STAGED``/``SERVER``/credential options as ``store``.
 
 
-Depositing in a tree instead of XNAT
-------------------------------------
+Depositing in folders instead of XNAT
+-------------------------------------
 
-The ``tree`` data store deposits accessions in a tree of nested label folders, on a
-local path, a mount, or a remote file system such as S3 or SFTP. Unlike XNAT, a tree
-has no fixed hierarchy: you name its levels, in order from the top, when labelling:
+The ``folder`` data store deposits accessions in nested label folders, on a
+local path, a mount, or a remote file system such as S3 or SFTP. Unlike XNAT, a folder
+store has no fixed hierarchy: you name its levels, in order from the top, when labelling:
 
 .. code-block:: console
 
-    $ accessionflow label tree /data/staging/collated /data/staging/labelled \
+    $ accessionflow label folder /data/staging/collated /data/staging/labelled \
         --level site SiteID \
         --level subject PatientID \
         --level visit '{StudyDate:%Y%m%d}'
 
-    $ accessionflow store tree /data/staging/labelled s3://my-bucket/archive
+    $ accessionflow store folder /data/staging/labelled s3://my-bucket/archive
 
-    $ accessionflow check-store tree /data/staging/labelled s3://my-bucket/archive
+    $ accessionflow check-store folder /data/staging/labelled s3://my-bucket/archive
 
 Each accession is deposited as::
 
@@ -576,8 +576,8 @@ unless ``--overwrite`` is given.
 ``DEST`` is a path or an `fsspec <https://filesystem-spec.readthedocs.io>`_ URL. Remote
 file systems need their fsspec package, installed with the ``s3`` or ``ssh`` extras
 (``pip install accessionflow[s3]``), and options for them, such as credentials, can be
-given with ``--storage-option KEY VALUE``. ``check-store tree`` reads every file back to
+given with ``--storage-option KEY VALUE``. ``check-store folder`` reads every file back to
 compare checksums, or with ``--sizes-only`` just compares sizes, which is much cheaper.
 
-An accession is labelled for one kind of data store, so ``store tree`` refuses one
-labelled with ``label xnat``, and ``store xnat`` one labelled with ``label tree``.
+An accession is labelled for one kind of data store, so ``store folder`` refuses one
+labelled with ``label xnat``, and ``store xnat`` one labelled with ``label folder``.

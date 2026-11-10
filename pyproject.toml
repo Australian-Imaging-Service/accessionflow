@@ -36,7 +36,7 @@ dependencies = [
     "xnat>=0.8.1",
     "frametree >=0.16.2",
     "frametree-xnat >=0.6.10",
-    # The file systems of the 'tree' store
+    # The file systems of the 'folder' store
     "fsspec >=2023.1.0",
 ]
 license = { file = "LICENSE" }
@@ -87,7 +87,7 @@ docs = [
     "furo>=2022.2.14.1",
     "numpydoc>=0.6.0",
 ]
-# Remote file systems for the 'tree' store
+# Remote file systems for the 'folder' store
 s3 = ["s3fs"]
 ssh = ["sshfs"]
 # Aliases

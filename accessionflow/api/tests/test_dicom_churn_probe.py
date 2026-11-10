@@ -55,7 +55,7 @@ def test_dicom_deid_is_reproducible_and_does_not_churn(dicom_dir: Path, tmp_path
     Accession(
         uid=NAME,
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="PET", resources={"DICOM": series})],
+        acquisitions=[Acquisition(id="1", type="PET", resources={"DICOM": series})],
     ).save(inp)
 
     assert (
@@ -96,7 +96,7 @@ def test_dicom_deid_hashes_the_study_uid_in_session_metadata(
     Accession(
         uid=study_uid,
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="PET", resources={"DICOM": series})],
+        acquisitions=[Acquisition(id="1", type="PET", resources={"DICOM": series})],
     ).save(inp)
 
     def saved_uid(output: Path, **kwargs) -> str:

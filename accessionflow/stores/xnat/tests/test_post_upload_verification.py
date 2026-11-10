@@ -168,7 +168,7 @@ def test_existing_resource_logs_debug_without_warnings(caplog, scan_level, repai
     resource = SimpleNamespace(
         name="REPORT",
         path="1:REPORT" if scan_level else "REPORT",
-        scan=SimpleNamespace(id="1", path="SESSION:1") if scan_level else None,
+        acquisition=SimpleNamespace(id="1", path="SESSION:1") if scan_level else None,
         fileset=object(),
         metadata={},
         checksums={"a": "aaa", "b": "bbb"},

@@ -8,9 +8,9 @@ format:
 .. code-block:: text
 
     <project>.<subject>.<session>/
-        __METADATA__.json                  # session-level metadata
+        __METADATA__.json                  # accession-level metadata
         <scan_id>.<scan_type>/
-            __METADATA__.json              # scan-level metadata
+            __METADATA__.json              # acquisition-level metadata
             <resource_name>/
                 __METADATA__.json          # resource-level metadata
                 __MANIFEST__.json          # checksums + datatype
@@ -21,13 +21,13 @@ Nothing stops you from reading these JSON files directly, but the
 structure — handling checksums, deidentification, and staging consistently with the
 rest of the pipeline:
 
-* :class:`~accessionflow.model.accession.Accession` — a whole session: its
-  project/subject/session IDs, scans, session-level resources, and metadata. Load an
+* :class:`~accessionflow.model.accession.Accession` — a whole accession: its
+  ID labels, acquisitions, accession-level resources, and metadata. Load an
   existing one from disk with :meth:`Accession.load
   <accessionflow.model.accession.Accession.load>`, or build one from scratch with
   :meth:`Accession.from_paths
   <accessionflow.model.accession.Accession.from_paths>`.
-* :class:`~accessionflow.model.acquisition.Acquisition` — one scan within a session, and the
+* :class:`~accessionflow.model.acquisition.Acquisition` — one acquisition (e.g. a scan) within an accession, and the
   resources attached to it.
 * :class:`~accessionflow.model.resource.Resource` — one resource: a ``FileSet``,
   its checksums, and its metadata.
@@ -49,25 +49,25 @@ Acquisition
     series.
 Resource
     A set of files holding one form of an acquisition's data, e.g. its DICOM or NIfTI
-    version, or of the accession itself for session-level resources.
+    version, or of the accession itself for accession-level resources.
 
 The directory layout and the ``project``/``subject``/``session`` attributes still use
 XNAT's terms. These classes were previously named ``ImagingSession``, ``ImagingScan``
 and ``ImagingResource``, in the ``xnat_ingest.model.session``, ``.scan`` and
 ``.resource`` modules.
 
-A minimal example of a custom script that loads a staged session and inspects it:
+A minimal example of a custom script that loads a staged accession and inspects it:
 
 .. code-block:: python
 
     from accessionflow.model.accession import Accession
 
-    session = Accession.load("/data/staging/labelled/MYPROJECT.subject1.1")
+    accession = Accession.load("/data/staging/labelled/MYPROJECT.subject1.1")
 
-    print(session.project_id, session.subject_id, session.session_id)
-    for scan_id, scan in session.scans.items():
-        print(scan_id, scan.type, list(scan.resources))
-        print(scan.metadata.get("SeriesDescription"))
+    print(accession.project_id, accession.subject_id, accession.session_id)
+    for acquisition_id, acquisition in accession.acquisitions.items():
+        print(acquisition_id, acquisition.type, list(acquisition.resources))
+        print(acquisition.metadata.get("SeriesDescription"))
 
 The :doc:`API functions </api>` that back each CLI sub-command (``collate``, ``label``,
 ``deidentify``, ``store``, ``attach``, ...) are themselves just plain Python

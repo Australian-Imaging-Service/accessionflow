@@ -1,12 +1,12 @@
-"""Support for depositing accessions in a tree of nested label folders, on a local
+"""Support for depositing accessions in nested label folders, on a local
 path, a mount, or a remote file system such as S3 or SFTP (through fsspec)"""
 
 from accessionflow.model.store import LabelLevel, Store
 
 STORE = Store(
-    name="tree",
-    title="tree",
-    # The levels of the tree are named when labelling, with 'label tree --level'
+    name="folder",
+    title="folder",
+    # The levels of the folders are named when labelling, with 'label folder --level'
     labels=None,
     acquisition=LabelLevel(
         "acquisition", default="SeriesDescription", description="description"

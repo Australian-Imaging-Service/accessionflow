@@ -151,7 +151,7 @@ def _run(staging: Path, outcomes: dict[str, str], **kwargs: ty.Any) -> list[str]
     def fake_get_xnat_resource(
         resource: ty.Any, xsession: ty.Any, **kwargs: ty.Any
     ) -> ty.Any:
-        outcome = outcomes[resource.scan.id]
+        outcome = outcomes[resource.acquisition.id]
         if outcome == "incomplete":  # short on XNAT and NOT repairable
             raise IncompleteCheckumsException(f"{resource.path} is short")
         return FakeXResource({"a.dat"}, outcome), {"b.dat"}

@@ -51,4 +51,4 @@ def test_load_refuses_two_scan_directories_with_one_scan_id(session_dir: Path) -
     # Without the twin the session loads as before.
     shutil.rmtree(twin)
     session = Accession.load(session_dir, require_manifest=True)
-    assert list(session.scans) == [scan_id]
+    assert list(session.acquisitions) == [scan_id]

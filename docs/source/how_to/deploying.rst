@@ -7,7 +7,7 @@ files as they arrive. Every stage except ``check-store`` supports this directly 
 ``--loop <seconds>``: instead of running once and exiting, the command re-runs itself
 every ``<seconds>`` seconds, forever, in a single process.
 
-Errors encountered while processing an individual session (a bad file, a missing
+Errors encountered while processing an individual accession (a bad file, a missing
 spec, a dropped connection) are logged and skipped rather than crashing the process —
 in fact ``--raise-errors`` and ``--loop`` can't be combined, since raising would
 defeat the point of looping forever. This means each stage is designed to be started
