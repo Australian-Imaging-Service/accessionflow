@@ -38,13 +38,13 @@ above: an accession contains acquisitions (e.g. scans), each of which contains o
 the original DICOM files, a derived NIfTI conversion).
 
 .. autoclass:: accessionflow.model.accession.Accession
-    :members: uid, project_id, subject_id, session_id, scans, session_resources, run_uid,
+    :members: uid, project_id, subject_id, session_id, acquisitions, session_resources, run_uid,
         metadata, from_paths, label, deidentify, attach_files, save, load
 
 .. autoclass:: accessionflow.model.acquisition.Acquisition
     :members: id, type, resources, attached, metadata, save, load
 
 .. autoclass:: accessionflow.model.resource.Resource
-    :members: name, fileset, checksums, scan, metadata, save, load
+    :members: name, fileset, checksums, acquisition, metadata, save, load
 
 .. autofunction:: accessionflow.model.accession.recipe_formats_for

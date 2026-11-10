@@ -65,7 +65,7 @@ A minimal example of a custom script that loads a staged accession and inspects 
     accession = Accession.load("/data/staging/labelled/MYPROJECT.subject1.1")
 
     print(accession.project_id, accession.subject_id, accession.session_id)
-    for acquisition_id, acquisition in accession.scans.items():
+    for acquisition_id, acquisition in accession.acquisitions.items():
         print(acquisition_id, acquisition.type, list(acquisition.resources))
         print(acquisition.metadata.get("SeriesDescription"))
 

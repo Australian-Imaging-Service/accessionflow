@@ -41,14 +41,14 @@ class Resource:
         The set of files associated with the resource
     checksums: dict[str, str]
         The checksums of the files in the resource
-    scan: Acquisition
-        The scan that the resource is associated with
+    acquisition: Acquisition
+        The acquisition that the resource is associated with
     """
 
     name: str
     fileset: FileSet
     checksums: dict[str, str] = attrs.field(eq=False, repr=False)
-    scan: "Acquisition" = attrs.field(default=None, eq=False, repr=False)
+    acquisition: "Acquisition" = attrs.field(default=None, eq=False, repr=False)
     metadata: Metadata = attrs.field(eq=False, repr=False, init=False)
 
     @checksums.default
@@ -76,20 +76,20 @@ class Resource:
         )
 
     def __lt__(self, other: Self) -> bool:
-        if self.scan is None and other.scan is None:
+        if self.acquisition is None and other.acquisition is None:
             return self.name < other.name
-        if self.scan is None:
+        if self.acquisition is None:
             return True  # session resources sort before scan resources
-        if other.scan is None:
+        if other.acquisition is None:
             return False
         try:
-            scan_id = int(self.scan.id)
+            scan_id = int(self.acquisition.id)
         except ValueError:
-            scan_id = self.scan.id  # type: ignore[assignment]
+            scan_id = self.acquisition.id  # type: ignore[assignment]
         try:
-            other_scan_id = int(other.scan.id)
+            other_scan_id = int(other.acquisition.id)
         except ValueError:
-            other_scan_id = other.scan.id  # type: ignore[assignment]
+            other_scan_id = other.acquisition.id  # type: ignore[assignment]
         return (scan_id, self.name) < (other_scan_id, other.name)
 
     def newer_than_or_equal(self, other: Self) -> bool:
@@ -413,9 +413,9 @@ class Resource:
 
     @property
     def path(self) -> str:
-        if self.scan is None:
+        if self.acquisition is None:
             return self.name
-        return self.scan.path + ":" + self.name
+        return self.acquisition.path + ":" + self.name
 
     @classmethod
     def manifest_fpath(cls, resource_dir: Path) -> Path:

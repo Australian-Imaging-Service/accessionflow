@@ -102,7 +102,7 @@ def _parse_datetime_to_str(date_str: str, time_str: str | None) -> str:
     return parsed_date.strftime("%Y%m%d")
 
 
-def scans_converter(
+def acquisitions_converter(
     scans: ty.Union[ty.Sequence[Acquisition], ty.Dict[str, Acquisition]],
 ) -> dict[str, Acquisition]:
     if isinstance(scans, ty.Sequence):
@@ -529,8 +529,8 @@ class Accession:
         the accession is labelled
     store_type: str, optional
         The name of the data store the accession was labelled for, e.g. 'xnat'
-    scans: ty.Dict[str, Acquisition]
-        The scans in the session
+    acquisitions: ty.Dict[str, Acquisition]
+        The acquisitions in the accession
     run_uid: ty.Optional[str]
         The run UID of the session, if it exists
     """
@@ -538,9 +538,9 @@ class Accession:
     uid: str
     labels: dict[str, str] = attrs.field(factory=dict, converter=_labels_converter)
     store_type: str | None = None
-    scans: ty.Dict[str, Acquisition] = attrs.field(
+    acquisitions: ty.Dict[str, Acquisition] = attrs.field(
         factory=dict,
-        converter=scans_converter,
+        converter=acquisitions_converter,
         validator=attrs.validators.instance_of(dict),
     )
     session_resources: ty.Dict[str, Resource] = attrs.field(factory=dict)
@@ -570,8 +570,8 @@ class Accession:
     TYPE_METADATA_KEY = "__datatype__"
 
     def __attrs_post_init__(self) -> None:
-        for scan in self.scans.values():
-            scan.session = self
+        for scan in self.acquisitions.values():
+            scan.accession = self
 
     def __getitem__(self, fieldname: str) -> ty.Any:
         return self.metadata[fieldname]
@@ -632,20 +632,20 @@ class Accession:
     @property
     def resources(self) -> ty.List[Resource]:
         return list(self.session_resources.values()) + [
-            r for p in self.scans.values() for r in p.resources.values()
+            r for p in self.acquisitions.values() for r in p.resources.values()
         ]
 
     @property
     def primary_resources(self) -> ty.List[Resource]:
         return [
             r
-            for s in self.scans.values()
+            for s in self.acquisitions.values()
             for r in s.resources.values()
             if not s.attached
         ]
 
     def load_metadata(self):
-        return Metadata.collate(s.metadata for s in self.scans.values())
+        return Metadata.collate(s.metadata for s in self.acquisitions.values())
 
     def new_empty(self) -> Self:
         """Return a new empty session with the same IDs as the current session"""
@@ -706,7 +706,7 @@ class Accession:
                 if isinstance(resource.fileset, fileformat):
                     uploaded.add((None, resource.name))
                     yield resource
-            for scan in self.scans.values():
+            for scan in self.acquisitions.values():
                 for resource in scan.resources.values():
                     if isinstance(resource.fileset, fileformat):
                         uploaded.add((scan.id, resource.name))
@@ -722,7 +722,7 @@ class Accession:
                     ) from e
                 else:
                     scan_id, resource_name = entry.uri
-                    scan = self.scans[scan_id]
+                    scan = self.acquisitions[scan_id]
                     if (scan.id, resource_name) in uploaded:
                         logger.info(
                             "%s/%s resource is already uploaded as 'always_include' is set to "
@@ -737,7 +737,7 @@ class Accession:
                         resource = Resource(
                             name=resource_name,
                             fileset=column.datatype(resource.fileset),
-                            scan=scan,
+                            acquisition=scan,
                         )
                     uploaded.add((scan.id, resource_name))
                 yield resource
@@ -1054,8 +1054,10 @@ class Accession:
         # Inject metadata from the metadata tables into the sessions, scans, and resources
         MetadataTable.inject_list(metadata_tables, list(sessions.values()))
         for session in sessions.values():
-            MetadataTable.inject_list(metadata_tables, list(session.scans.values()))
-            for scan in session.scans.values():
+            MetadataTable.inject_list(
+                metadata_tables, list(session.acquisitions.values())
+            )
+            for scan in session.acquisitions.values():
                 MetadataTable.inject_list(
                     metadata_tables, list(scan.resources.values())
                 )
@@ -1121,7 +1123,7 @@ class Accession:
         self.store_type = store_type
 
         if acquisition_field is not None:
-            for scan in self.scans.values():
+            for scan in self.acquisitions.values():
                 try:
                     description = IDSpec(acquisition_field).get_value(
                         scan.metadata, escape=False
@@ -1693,7 +1695,7 @@ class Accession:
         deidentified = self.new_empty()
 
         reid_series = []
-        for scan in self.scans.values():
+        for scan in self.acquisitions.values():
             for resource_name, resource in scan.resources.items():
                 resource_dest_dir = dest_dir / scan.id / resource_name
                 contains_phi = getattr(resource.fileset, "contains_phi", False)
@@ -1900,10 +1902,10 @@ class Accession:
             ``--resource`` spec was given.
         """
         try:
-            scan = self.scans[scan_id]
+            scan = self.acquisitions[scan_id]
         except KeyError:
-            scan = self.scans[scan_id] = Acquisition(
-                id=scan_id, type=scan_type, attached=attached, session=self
+            scan = self.acquisitions[scan_id] = Acquisition(
+                id=scan_id, type=scan_type, attached=attached, accession=self
             )
         else:
             if scan.type != scan_type:
@@ -1916,7 +1918,7 @@ class Accession:
                     f"Non-matching attached files ({scan.attached} and {attached}) "
                     f"for scan ID {scan_id}"
                 )
-        resource = Resource(name=resource_name, fileset=fileset, scan=scan)
+        resource = Resource(name=resource_name, fileset=fileset, acquisition=scan)
         if metadata:
             resource.metadata.update(metadata)
         try:
@@ -1982,7 +1984,7 @@ class Accession:
                 members.append(dict(fileset.metadata))
                 merged_fileset.metadata.update(Metadata.collate(members))
                 resource = Resource(
-                    name=resource_name, fileset=merged_fileset, scan=scan
+                    name=resource_name, fileset=merged_fileset, acquisition=scan
                 )
                 if metadata:
                     resource.metadata.update(metadata)
@@ -2003,7 +2005,9 @@ class Accession:
                     resource_name,
                     f". {clash_hint}" if clash_hint else "",
                 )
-                resource = Resource(name=resource_name, fileset=fileset, scan=scan)
+                resource = Resource(
+                    name=resource_name, fileset=fileset, acquisition=scan
+                )
             elif policy == "error":
                 raise KeyError(
                     f"Clash between resource names ('{resource_name}') for {scan_id} scan in "
@@ -2141,16 +2145,16 @@ class Accession:
                     require_manifest=require_manifest,
                     check_checksums=check_checksums,
                 )
-                if scan.id in session.scans:
+                if scan.id in session.acquisitions:
                     # Two directories, one scan ID: a dict entry would silently
                     # replace the other scan, and its files would never be saved.
                     raise AccessionParseError(
                         f"Two scan directories of '{session_dir}' have the scan ID "
-                        f"'{scan.id}' ('{session.scans[scan.id].type}' and "
+                        f"'{scan.id}' ('{session.acquisitions[scan.id].type}' and "
                         f"'{scan.type}'). The session needs attention."
                     )
-                scan.session = session
-                session.scans[scan.id] = scan
+                scan.accession = session
+                session.acquisitions[scan.id] = scan
             else:
                 # session resource directory: <resource_name> (no dot)
                 resource = Resource.load(
@@ -2316,14 +2320,14 @@ class Accession:
         included_scans = (
             [
                 scan
-                for scan in self.scans.values()
+                for scan in self.acquisitions.values()
                 if any(
                     resource.matches_datatypes(include)
                     for resource in scan.resources.values()
                 )
             ]
             if include
-            else list(self.scans.values())
+            else list(self.acquisitions.values())
         )
         included_session_resources = [
             resource
@@ -2348,8 +2352,8 @@ class Accession:
                 build_dir=dest_dir / "__build__",
                 metadata_allowlist=metadata_allowlist,
             )
-            saved_scan.session = saved
-            saved.scans[saved_scan.id] = saved_scan
+            saved_scan.accession = saved
+            saved.acquisitions[saved_scan.id] = saved_scan
         for resource in included_session_resources:
             saved_resource = resource.save(
                 session_dir,
@@ -2428,7 +2432,7 @@ class Accession:
             a session loaded from a shared source directory (see
             :meth:`Resource.unlink`), by default False
         """
-        for scan in self.scans.values():
+        for scan in self.acquisitions.values():
             for resource in scan.resources.values():
                 resource.unlink(remove_dir=keep_metadata)
         for resource in self.session_resources.values():
@@ -2445,7 +2449,7 @@ class Accession:
         """
         return max(
             resource.fileset.last_modified
-            for scan in self.scans.values()
+            for scan in self.acquisitions.values()
             for resource in scan.resources.values()
         )
 

@@ -53,7 +53,7 @@ class AccessionMockStore(Store):  # type: ignore[misc]
         row : DataRow
             The row to populate with entries
         """
-        for scan_id, scan in self.session.scans.items():
+        for scan_id, scan in self.session.acquisitions.items():
             for resource_name, resource in scan.resources.items():
                 row.found_entry(
                     path=scan.type + "/" + resource_name,
@@ -78,7 +78,7 @@ class AccessionMockStore(Store):  # type: ignore[misc]
             the item stored within the specified entry
         """
         scan_id, resource_name = entry.uri
-        return datatype(self.session.scans[scan_id][resource_name].fileset)  # type: ignore[no-any-return]
+        return datatype(self.session.acquisitions[scan_id][resource_name].fileset)  # type: ignore[no-any-return]
 
     ######################################
     # The following methods can be empty #

@@ -48,7 +48,9 @@ def _stage(input_dir: Path, name: str) -> Path:
     Accession(
         uid=name,
         labels={"project": project_id, "subject": subject_id, "session": session_id},
-        scans=[Acquisition(id="1", type="T", resources={"RES": File.sample(seed=1)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"RES": File.sample(seed=1)})
+        ],
     ).save(input_dir)
     return input_dir / name
 
@@ -767,7 +769,7 @@ def test_deidentify_end_to_end_directory_structure(tmp_path: Path) -> None:
     session = Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=scan_id,
                 type="SomeScanType",
@@ -796,7 +798,9 @@ def test_deidentify_end_to_end_directory_structure(tmp_path: Path) -> None:
 
     reloaded = Accession.load(session_out_dir)
     assert reloaded.name == SESSION_NAME
-    assert reloaded.scans[scan_id].resources[resource_name].fileset.fspath.exists()
+    assert (
+        reloaded.acquisitions[scan_id].resources[resource_name].fileset.fspath.exists()
+    )
 
 
 def _retiring_kwargs(input_dir, output_dir, recipe_dir, reid_dir):
@@ -827,7 +831,7 @@ def test_deidentify_retires_a_late_scan_with_existing_output(
     Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[
+        acquisitions=[
             Acquisition(id="2", type="late", resources={"RES": File.sample(seed=2)})
         ],
     ).save(input_dir)
@@ -844,7 +848,7 @@ def _late_scan(input_dir: Path, resources: dict) -> None:
     Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[Acquisition(id="2", type="late", resources=resources)],
+        acquisitions=[Acquisition(id="2", type="late", resources=resources)],
     ).save(input_dir)
 
 
@@ -952,7 +956,9 @@ def test_deidentify_runs_for_new_files_of_a_scan_the_output_already_has(
     Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[Acquisition(id="1", type="T", resources={"RES": File.sample(seed=7)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"RES": File.sample(seed=7)})
+        ],
     ).save(input_dir)
     with patch.object(Accession, "deidentify", _mock_deidentify_passthrough):
         errors = deidentify(**kwargs)
@@ -979,7 +985,9 @@ def test_deidentify_runs_for_another_resource_of_a_scan_the_output_already_has(
     Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[Acquisition(id="1", type="T", resources={"OTHER": File.sample(seed=1)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"OTHER": File.sample(seed=1)})
+        ],
     ).save(input_dir)
     with patch.object(Accession, "deidentify", _mock_deidentify_passthrough):
         errors = deidentify(**kwargs)
@@ -1040,7 +1048,9 @@ def test_deidentify_runs_again_for_a_copied_file_with_new_content(
     Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[Acquisition(id="1", type="T", resources={"RES": File(corrected)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"RES": File(corrected)})
+        ],
     ).save(input_dir)
 
     with patch.object(Accession, "deidentify", _mock_deidentify_passthrough):
@@ -1064,7 +1074,9 @@ def test_deidentify_saves_a_directory_resource(tmp_path: Path):
     Accession(
         uid=SESSION_NAME,
         labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-        scans=[Acquisition(id="1", type="T", resources={"DIR": Directory(contents)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"DIR": Directory(contents)})
+        ],
     ).save(input_dir)
 
     with patch.object(Accession, "deidentify", _mock_deidentify_passthrough):
@@ -1107,7 +1119,7 @@ def test_deidentify_does_not_trust_a_stale_input_manifest(tmp_path: Path):
         Accession(
             uid=SESSION_NAME,
             labels={"project": PROJECT_ID, "subject": SUBJECT_ID, "session": VISIT_ID},
-            scans=[
+            acquisitions=[
                 Acquisition(id="1", type="T", resources={"DIR": Directory(contents)})
             ],
         ).save(input_dir)
@@ -1192,7 +1204,7 @@ def test_deidentify_keeps_only_uid_in_output_metadata(
 
     reloaded = Accession.load(output_session)
     assert reloaded.uid == SESSION_NAME
-    assert reloaded.scans["1"].resources["RES"].checksums
+    assert reloaded.acquisitions["1"].resources["RES"].checksums
 
 
 def _with_uid(session_dir: Path, uid: str) -> None:

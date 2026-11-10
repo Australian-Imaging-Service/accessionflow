@@ -59,8 +59,8 @@ class Acquisition:
     )
     metadata: Metadata = attrs.field(eq=False, repr=False, init=False)
     attached: AttachedFiles | None = None
-    # Back-ref to parent session
-    session: "Accession" = attrs.field(default=None, eq=False, repr=False)
+    # Back-ref to parent accession
+    accession: "Accession" = attrs.field(default=None, eq=False, repr=False)
 
     def __contains__(self, resource_name: str) -> bool:
         return resource_name in self.resources
@@ -70,7 +70,7 @@ class Acquisition:
 
     def __attrs_post_init__(self) -> None:
         for resource in self.resources.values():
-            resource.scan = self
+            resource.acquisition = self
 
     def new_empty(self) -> Self:
         return type(self)(self.id, self.type)
@@ -117,7 +117,7 @@ class Acquisition:
                 build_dir=build_dir,
                 metadata_allowlist=metadata_allowlist,
             )
-            saved_resource.scan = saved
+            saved_resource.acquisition = saved
             saved.resources[saved_resource.name] = saved_resource
         self.metadata.save(scan_dir, allowlist=metadata_allowlist)
         return saved
@@ -143,10 +143,10 @@ class Acquisition:
                     require_manifest=require_manifest,
                     check_checksums=check_checksums,
                 )
-                resource.scan = scan
+                resource.acquisition = scan
                 scan.resources[resource.name] = resource
         return scan
 
     @property
     def path(self) -> str:
-        return self.session.path + ":" + self.id + "-" + self.type
+        return self.accession.path + ":" + self.id + "-" + self.type

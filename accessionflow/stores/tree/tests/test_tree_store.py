@@ -38,7 +38,7 @@ def _staged(
         files[name].write_text(f"contents of {name}")
     accession = Accession(
         uid="1.2.3",
-        scans=[
+        acquisitions=[
             Acquisition(
                 "1",
                 "T1w",

@@ -55,9 +55,9 @@ def test_load_ignores_a_batch_folder_left_in_a_scan(session_dir: Path) -> None:
 
     session = Accession.load(session_dir, require_manifest=True)
 
-    scan = next(iter(session.scans.values()))
+    scan = next(iter(session.acquisitions.values()))
     assert set(scan.resources) == {resource_dir.name}
-    assert len(session.scans) == len(before.scans)
+    assert len(session.acquisitions) == len(before.acquisitions)
     assert orphan.is_dir(), "the orphan is kept for an operator"
 
 
@@ -69,6 +69,6 @@ def test_load_ignores_a_batch_folder_left_in_a_session(session_dir: Path) -> Non
 
     session = Accession.load(session_dir, require_manifest=True)
 
-    assert len(session.scans) == len(before.scans)
+    assert len(session.acquisitions) == len(before.acquisitions)
     assert session.session_resources == {}
     assert orphan.is_dir()

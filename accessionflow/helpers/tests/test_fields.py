@@ -20,7 +20,7 @@ def _staged_session(input_dir: Path) -> tuple[Accession, Path]:
     session = Accession(
         uid="uid",
         labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id="1",
                 type="CT",
@@ -29,8 +29,10 @@ def _staged_session(input_dir: Path) -> tuple[Accession, Path]:
         ],
     )
     session.metadata["session-field"] = "preserved"
-    session.scans["1"].metadata["scan-field"] = "preserved"
-    session.scans["1"].resources["SOURCE"].metadata["resource-field"] = "preserved"
+    session.acquisitions["1"].metadata["scan-field"] = "preserved"
+    session.acquisitions["1"].resources["SOURCE"].metadata["resource-field"] = (
+        "preserved"
+    )
     session.add_session_resource("REPORT", File(report_path))
     _, session_dir = session.save(input_dir)
     return session, session_dir
@@ -69,7 +71,7 @@ def test_fields_preserves_resources_and_metadata(tmp_path: Path) -> None:
     assert errors == []
     assert source_dir.exists(), "field extraction removed its input without being asked"
     out = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
-    scan = out.scans["1"]
+    scan = out.acquisitions["1"]
     assert scan.type == "CT"
     assert set(scan.resources) == {"SOURCE"}
     assert scan.resources["SOURCE"].fileset.fspath.read_text() == (

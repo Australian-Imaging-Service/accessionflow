@@ -629,7 +629,7 @@ def split_resource_by_modality(resource: Resource) -> ty.List[Resource]:
     """
     # If there is only one modality, or this isn't a DICOM scan resource, no split is needed.
     if (
-        resource.scan is None
+        resource.acquisition is None
         or not isinstance(resource.fileset, DicomCollection)
         or len(resource.metadata.get("Modality", [])) <= 1
     ):
@@ -649,13 +649,13 @@ def split_resource_by_modality(resource: Resource) -> ty.List[Resource]:
     )
     if groups is None:
         return [resource]
-    scan = resource.scan
+    scan = resource.acquisition
     return [
         Resource(
             name=resource.name,
             fileset=type(resource.fileset)(fspaths),
-            scan=Acquisition(
-                id=f"{scan.id}-{modality}", type=scan.type, session=scan.session
+            acquisition=Acquisition(
+                id=f"{scan.id}-{modality}", type=scan.type, accession=scan.accession
             ),
         )
         for modality, fspaths in groups.items()
@@ -695,7 +695,7 @@ def get_xnat_resource(
     xclasses = xsession.xnat_session.classes
     resource_name = resource.name
 
-    if resource.scan is None:
+    if resource.acquisition is None:
         try:
             xresource = xsession.resources[resource_name]
         except KeyError:
@@ -789,7 +789,7 @@ def get_xnat_resource(
     scan_sop_class_uids = sop_class_uids or resource.metadata.get("SOPClassUID")
 
     try:
-        xscan = xsession.scans[resource.scan.id]
+        xscan = xsession.scans[resource.acquisition.id]
     except KeyError:
         if scan_sop_class_uids:
             scan_type = xnat_scan_type_from_sop_class(scan_sop_class_uids)
@@ -802,12 +802,14 @@ def get_xnat_resource(
             # catch-all XNAT itself uses for an unrecognised SOP class.
             ScanClass = _xnat_scan_class_from_session(xsession)
         logger.debug(
-            "Creating scan %s in %s", resource.scan.id, resource.scan.session.path
+            "Creating scan %s in %s",
+            resource.acquisition.id,
+            resource.acquisition.accession.path,
         )
         xscan = ScanClass(
-            id=resource.scan.id,
-            type=resource.scan.type,
-            series_description=resource.scan.type,
+            id=resource.acquisition.id,
+            type=resource.acquisition.type,
+            series_description=resource.acquisition.type,
             parent=xsession,
         )
     if scan_sop_class_uids:
@@ -820,7 +822,7 @@ def get_xnat_resource(
             and existing_scan_type != expected_scan_type
         ):
             raise ValueError(
-                f"XNAT scan {resource.scan.id!r} in {resource.scan.session.path} "
+                f"XNAT scan {resource.acquisition.id!r} in {resource.acquisition.accession.path} "
                 f"has datatype {existing_scan_type!r}, but its SOPClassUID metadata "
                 f"requires {expected_scan_type!r}. Recreate the scan on XNAT "
                 "before retrying; XNAT cannot change a scan's datatype."
@@ -832,7 +834,7 @@ def get_xnat_resource(
     else:
         xnat_checksums = get_xnat_checksums(xresource)
         comparison = compare_resource_with_xnat(resource.checksums, xnat_checksums)
-        log_name_only_comparison(comparison, resource.path, resource.scan.path)
+        log_name_only_comparison(comparison, resource.path, resource.acquisition.path)
         if comparison.repairable:
             # We hold files XNAT does not and nothing else is wrong, so hand
             # back the shortfall. Not the whole resource: XNAT would reject or
@@ -842,7 +844,7 @@ def get_xnat_resource(
                 "file(s) held in the staged session. Uploading the missing "
                 "file(s): %s%s",
                 resource_name,
-                resource.scan.path,
+                resource.acquisition.path,
                 len(comparison.missing),
                 len(resource.checksums),
                 sorted(comparison.missing)[:10],
@@ -856,7 +858,7 @@ def get_xnat_resource(
                 "checksums.\nMissing paths: %s\nAdditional paths: %s\n"
                 "Differing paths: %s",
                 resource_name,
-                resource.scan.path,
+                resource.acquisition.path,
                 sorted(comparison.missing),
                 sorted(comparison.extra),
                 sorted(comparison.differing),
@@ -866,7 +868,7 @@ def get_xnat_resource(
                 # do not or a shared file differs. An upload can only add, so it
                 # cannot fix either. Raise, so the session is not reported clean.
                 raise IncompleteCheckumsException(
-                    f"'{resource_name}' resource in '{resource.scan.path}' exists "
+                    f"'{resource_name}' resource in '{resource.acquisition.path}' exists "
                     f"on XNAT but is missing {len(comparison.missing)} file(s) "
                     f"present in the staged session, and cannot be repaired by "
                     f"uploading because XNAT also holds "
@@ -890,7 +892,7 @@ def get_xnat_resource(
                     "'%s' resource in '%s' already exists on XNAT with "
                     "different checksums. Please delete on XNAT to overwrite:\n%s",
                     resource_name,
-                    resource.scan.path,
+                    resource.acquisition.path,
                     pprint.pformat(difference),
                 )
         # Ensure that catalog is rebuilt if the file counts are 0
@@ -904,13 +906,13 @@ def get_xnat_resource(
                     "'%s' resource in '%s' already exists on XNAT with "
                     "and is empty. Please delete on XNAT to overwrite\n",
                     resource_name,
-                    resource.scan.path,
+                    resource.acquisition.path,
                 )
         return None, None
     logger.debug(
         "Creating resource %s in %s",
         resource_name,
-        resource.scan.path,
+        resource.acquisition.path,
     )
     xresource = xscan.create_resource(resource_name)
     return xresource, None

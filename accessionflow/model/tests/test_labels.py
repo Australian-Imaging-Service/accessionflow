@@ -20,7 +20,9 @@ def _accession(tmp_path: Path, **metadata: str) -> Accession:
     seed.write_text("data")
     accession = Accession(
         uid="1.2.3",
-        scans=[Acquisition("1", "t1", resources={"RAW": Resource("RAW", File(seed))})],
+        acquisitions=[
+            Acquisition("1", "t1", resources={"RAW": Resource("RAW", File(seed))})
+        ],
     )
     for key, value in metadata.items():
         accession.metadata[key] = value

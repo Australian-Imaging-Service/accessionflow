@@ -122,7 +122,7 @@ def staged_resources(
     store_dir = accession_dir(accession, root)
     resource_dirs = [
         (resource, f"{scan.id}.{scan.type or ''}/{resource.name}")
-        for scan in accession.scans.values()
+        for scan in accession.acquisitions.values()
         for resource in scan.resources.values()
     ] + [(resource, resource.name) for resource in accession.session_resources.values()]
     for resource, relpath in resource_dirs:

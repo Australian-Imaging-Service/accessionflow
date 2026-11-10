@@ -114,7 +114,7 @@ def imaging_session() -> Accession:
     return Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=scans,
+        acquisitions=scans,
     )
 
 
@@ -219,10 +219,10 @@ def test_session_select_resources(
     resources = list(resources_iter)
 
     assert len(resources) == 5  # 6
-    assert set([r.scan.id for r in resources]) == set(
+    assert set([r.acquisition.id for r in resources]) == set(
         ("1", "2", "4", "602")
     )  # , "603"))
-    assert set([r.scan.type for r in resources]) == set(
+    assert set([r.acquisition.type for r in resources]) == set(
         [
             "AC CT 30  SWB HD_FoV",
             "PET SWB 8MIN",
@@ -266,7 +266,7 @@ def test_session_save_roundtrip(tmp_path: Path, imaging_session: Accession) -> N
     # # Load from saved directory, this time only using directory structure instead of
     # # manifest. Should be the same with the exception of the detected fileformats
     # loaded_no_manifest = Accession.load(session_dir, require_manifest=False)
-    # for scan in loaded_no_manifest.scans.values():
+    # for scan in loaded_no_manifest.acquisitions.values():
     #     for key, resource in list(scan.resources.items()):
     #         if key == "DICOM":
     #             assert isinstance(resource, FileSet)
@@ -284,7 +284,7 @@ def test_unlink_keep_metadata(tmp_path: Path, imaging_session: Accession) -> Non
     # 'label' would do in production when resolving a scan description from
     # metadata — otherwise the lazily-populated Metadata objects are still empty
     # at save time and nothing meaningful ends up in '__METADATA__.json'
-    for scan in imaging_session.scans.values():
+    for scan in imaging_session.acquisitions.values():
         assert "SeriesDescription" in scan.metadata
 
     saved, session_dir = imaging_session.save(tmp_path)
@@ -293,7 +293,7 @@ def test_unlink_keep_metadata(tmp_path: Path, imaging_session: Accession) -> Non
     # direct children of their scan's own directory
     resource_dirs = [
         resource.fileset.parent
-        for scan in saved.scans.values()
+        for scan in saved.acquisitions.values()
         for resource in scan.resources.values()
     ]
     scan_dirs = {resource_dir.parent for resource_dir in resource_dirs}
@@ -316,11 +316,11 @@ def test_unlink_keep_metadata(tmp_path: Path, imaging_session: Accession) -> Non
     reloaded = Accession.load(session_dir)
     assert reloaded.uid == saved.uid
     assert reloaded.labels["project"] == saved.labels["project"]
-    for scan_id, scan in reloaded.scans.items():
+    for scan_id, scan in reloaded.acquisitions.items():
         assert scan.resources == {}
         assert (
             scan.metadata["SeriesDescription"]
-            == imaging_session.scans[scan_id].metadata["SeriesDescription"]
+            == imaging_session.acquisitions[scan_id].metadata["SeriesDescription"]
         )
 
 
@@ -379,8 +379,8 @@ def test_stage_raw_data_directly(raw_frameset: FrameSet, tmp_path: Path) -> None
         resources = list(staged_session.select_resources(raw_frameset))
 
         assert len(resources) == 2
-        assert set([r.scan.id for r in resources]) == set(["602"])
-        assert set([r.scan.type for r in resources]) == set(["PET Raw Data"])
+        assert set([r.acquisition.id for r in resources]) == set(["602"])
+        assert set([r.acquisition.type for r in resources]) == set(["PET Raw Data"])
         assert set(r.name for r in resources) == set(("PET_LISTMODE", "PET_COUNTRATE"))
         assert set(type(r.fileset) for r in resources) == set(
             [
@@ -407,7 +407,7 @@ def test_path_metadata_regex_extracts_named_groups(tmp_path: Path) -> None:
     )
 
     assert len(sessions) == 1
-    scan = next(iter(sessions[0].scans.values()))
+    scan = next(iter(sessions[0].acquisitions.values()))
     resource = next(iter(scan.resources.values()))
     assert resource.metadata["cohort"] == "cohort-A"
 
@@ -446,7 +446,7 @@ def test_from_paths_injects_datatype_metadata_field(tmp_path: Path) -> None:
         path_metadata_regex=[PathMetadataRegex(r".*/(?P<sess>[^/]+)\.txt", File)],
     )
 
-    scan = next(iter(sessions[0].scans.values()))
+    scan = next(iter(sessions[0].acquisitions.values()))
     assert list(scan.resources) == ["res_File"]
     resource = next(iter(scan.resources.values()))
     assert resource.fileset.metadata["__datatype__"] == "File"
@@ -469,7 +469,7 @@ def test_from_paths_resource_label_defaults_to_mime_like_type_name(
         # resource_field omitted -> mime-like(type_name)
     )
 
-    assert list(next(iter(sessions[0].scans.values())).resources) == ["file"]
+    assert list(next(iter(sessions[0].acquisitions.values())).resources) == ["file"]
 
 
 @pytest.mark.parametrize(
@@ -540,7 +540,7 @@ def test_from_paths_recursive_pulls_nested_directory_datatype(tmp_path: Path) ->
     )
 
     assert len(sessions) == 1
-    scans = sessions[0].scans
+    scans = sessions[0].acquisitions
     # both DirectoryOf[Json] dirs (analysis/ and plain/deep/) pulled, nothing else
     assert set(scans) == {"analysis", "deep"}
 
@@ -584,7 +584,7 @@ def test_from_paths_recursive_allow_unrecognised_wildcard_pulls_only_wanted_dirs
     )
 
     assert len(sessions) == 1
-    assert set(sessions[0].scans) == {"analysis", "dexi"}
+    assert set(sessions[0].acquisitions) == {"analysis", "dexi"}
 
 
 def test_from_paths_recursive_raises_on_unlisted_type(tmp_path: Path) -> None:
@@ -665,7 +665,9 @@ def test_from_paths_exclude_path_drops_recognised_by_relative_depth(
         path_metadata_regex=[PathMetadataRegex(r".*/(?P<name>[^/]+)\.txt$", File)],
     )
 
-    resources = [r for s in sessions for sc in s.scans.values() for r in sc.resources]
+    resources = [
+        r for s in sessions for sc in s.acquisitions.values() for r in sc.resources
+    ]
     assert resources == ["shallow"]
 
 
@@ -741,7 +743,7 @@ def test_from_paths_recursive_extracts_nested_dirs_from_canfield_shaped_tree(
     )
 
     assert len(sessions) == 1
-    scans = sessions[0].scans
+    scans = sessions[0].acquisitions
     assert set(scans) == {"20260805133937", "20260805135303357", "20260805135325459"}
     assert list(scans["20260805133937"].resources) == ["analysis"]
     # '.' in 'DexiData_2.1' is escaped to '_' like any other ID/label
@@ -767,7 +769,7 @@ def test_from_paths_scan_id_defaults_to_resource_label(tmp_path: Path) -> None:
         # scan_field / resource_field omitted
     )
 
-    scan = next(iter(sessions[0].scans.values()))
+    scan = next(iter(sessions[0].acquisitions.values()))
     assert scan.id == "file"
     assert list(scan.resources) == ["file"]
 
@@ -787,7 +789,7 @@ def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> N
         scan_field=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
     )
 
-    assert next(iter(sessions[0].scans.values())).id == "file"
+    assert next(iter(sessions[0].acquisitions.values())).id == "file"
 
 
 def test_from_paths_session_spec_not_matching_type_raises_clearly(
@@ -824,7 +826,7 @@ def test_clash_duplicate(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> No
     session = Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -853,7 +855,7 @@ def test_clash_overwrite(caplog: pytest.LogCaptureFixture) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -893,7 +895,7 @@ def test_clash_avoid(caplog: pytest.LogCaptureFixture) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -910,7 +912,7 @@ def test_clash_avoid(caplog: pytest.LogCaptureFixture) -> None:
         on_clash="avoid",
     )
     assert "to avoid clash with existing resources" in caplog.text
-    assert sorted(session.scans[CLASH_SCAN_ID].resources) == [
+    assert sorted(session.acquisitions[CLASH_SCAN_ID].resources) == [
         CLASH_RESOURCE_NAME,
         CLASH_RESOURCE_NAME + "__2",
     ]
@@ -920,7 +922,7 @@ def _clash_session() -> Accession:
     return Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -972,7 +974,7 @@ def test_clash_merge(caplog: pytest.LogCaptureFixture) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -989,7 +991,7 @@ def test_clash_merge(caplog: pytest.LogCaptureFixture) -> None:
         on_clash="merge",
     )
     assert "Merging resource" in caplog.text
-    merged = session.scans[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME]
+    merged = session.acquisitions[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME]
     assert isinstance(merged.fileset, SetOf)
     assert merged.fileset.content_types == (File,)
     assert set(merged.fileset.fspaths) == set(file1.fspaths) | set(file2.fspaths)
@@ -1015,7 +1017,7 @@ def test_clash_merge_saves_combined_resource(tmp_path: Path) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJECTID", "subject": "SUBJECTID", "session": "SESSIONID"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -1032,7 +1034,7 @@ def test_clash_merge_saves_combined_resource(tmp_path: Path) -> None:
         on_clash="merge",
     )
 
-    merged = session.scans[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME]
+    merged = session.acquisitions[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME]
     assert isinstance(merged.fileset, SetOf)
     assert merged.fileset.content_types == (File,)
     assert sorted(p.name for p in merged.fileset.fspaths) == [
@@ -1047,7 +1049,9 @@ def test_clash_merge_saves_combined_resource(tmp_path: Path) -> None:
     session_dir = (tmp_path / "staged").joinpath(*session.staging_relpath)
     reloaded = Accession.load(session_dir)
 
-    reloaded_resource = reloaded.scans[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME]
+    reloaded_resource = reloaded.acquisitions[CLASH_SCAN_ID].resources[
+        CLASH_RESOURCE_NAME
+    ]
     assert sorted(p.name for p in reloaded_resource.fileset.fspaths) == [
         "lesion-clinical.dat",
         "lesion-dermoscopy.dat",
@@ -1056,7 +1060,7 @@ def test_clash_merge_saves_combined_resource(tmp_path: Path) -> None:
     assert reloaded_resource.metadata["View"] == ["dermoscopy", "clinical"]
     assert (
         reloaded_resource.checksums
-        == saved.scans[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME].checksums
+        == saved.acquisitions[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME].checksums
     )
 
 
@@ -1095,7 +1099,7 @@ def _png_clash_session(tmp_path: Path) -> tuple[Accession, ty.Any]:
     session = Accession(
         uid="12345",
         labels={"project": "P", "subject": "S", "session": "V"},
-        scans=[
+        acquisitions=[
             Acquisition(
                 id=CLASH_SCAN_ID,
                 type=CLASH_SCAN_TYPE,
@@ -1120,7 +1124,7 @@ def test_add_resource_clash_spec_union_scope_merges_cross_type(tmp_path: Path) -
         fileset=Jpeg(_jpg(tmp_path / "b.jpg")),
         on_clash=[ClashSpec("merge", "image/png|image/jpeg")],
     )
-    merged = session.scans[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME].fileset
+    merged = session.acquisitions[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME].fileset
     assert isinstance(merged, SetOf)
     assert set(merged.content_types) == {Png, Jpeg}
 
@@ -1171,7 +1175,7 @@ def test_add_resource_clash_spec_avoid_within_scope(tmp_path: Path) -> None:
         fileset=Png(_png(tmp_path / "b.png")),
         on_clash=[ClashSpec("avoid", "image/png|image/jpeg")],
     )
-    assert sorted(session.scans[CLASH_SCAN_ID].resources) == [
+    assert sorted(session.acquisitions[CLASH_SCAN_ID].resources) == [
         CLASH_RESOURCE_NAME,
         CLASH_RESOURCE_NAME + "__2",
     ]
@@ -1199,7 +1203,7 @@ def test_add_resource_clash_spec_remerge_into_existing_setof(tmp_path: Path) -> 
         Png(_png(tmp_path / "c.png")),
         on_clash=spec,
     )
-    merged = session.scans[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME].fileset
+    merged = session.acquisitions[CLASH_SCAN_ID].resources[CLASH_RESOURCE_NAME].fileset
     assert isinstance(merged, SetOf)
     assert len(merged.fspaths) == 3
 
@@ -1220,7 +1224,7 @@ def test_from_metadata_yaml(tmp_path: Path) -> None:
     assert session.labels["project"] == "PROJ"
     assert session.labels["subject"] == "SUBJ"
     assert session.labels["session"] == "VIS"
-    assert session.scans == {}
+    assert session.acquisitions == {}
     assert dict(session.metadata) == metadata
 
 
@@ -1237,7 +1241,7 @@ def test_attach_files_metadata_only(tmp_path: Path) -> None:
     session = Accession.from_metadata_yaml(yaml_path)
 
     # Verify metadata-only session
-    assert session.scans == {}
+    assert session.acquisitions == {}
     assert len(session.primary_parents) == 0
 
     # Generate dummy .ptd files
@@ -1261,9 +1265,9 @@ def test_attach_files_metadata_only(tmp_path: Path) -> None:
     )
 
     # Scans should now have been populated from the attached files
-    assert len(session.scans) > 0
-    assert "602" in session.scans
-    assert set(session.scans["602"].resources.keys()) == {
+    assert len(session.acquisitions) > 0
+    assert "602" in session.acquisitions
+    assert set(session.acquisitions["602"].resources.keys()) == {
         "PET_LISTMODE",
         "PET_COUNTRATE",
     }
@@ -1276,7 +1280,7 @@ def test_session_resource_save_roundtrip(tmp_path: Path) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "VIS"},
-        scans=[],
+        acquisitions=[],
     )
     session.add_session_resource("radiology-doc-report", pdf)
 
@@ -1301,12 +1305,12 @@ def test_session_save_filters_scan_and_session_resources(
     dicom_saved, _ = imaging_session.save(tmp_path / "dicom", include=[DicomSeries])
     report_saved, _ = imaging_session.save(tmp_path / "report", include=[File])
 
-    assert dicom_saved.scans
+    assert dicom_saved.acquisitions
     assert dicom_saved.session_resources == {}
     assert all(
         isinstance(resource.fileset, DicomSeries) for resource in dicom_saved.resources
     )
-    assert report_saved.scans == {}
+    assert report_saved.acquisitions == {}
     assert set(report_saved.session_resources) == {"report"}
     assert isinstance(report_saved.session_resources["report"].fileset, File)
 
@@ -1494,11 +1498,11 @@ def test_deidentify_empty_session(tmp_path: Path) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[],
+        acquisitions=[],
     )
     deid_session, reid_mdata = session.deidentify(tmp_path / "dest")
     assert deid_session.labels["project"] == "PROJ"
-    assert deid_session.scans == {}
+    assert deid_session.acquisitions == {}
     assert reid_mdata == {}
 
 
@@ -1508,12 +1512,12 @@ def test_deidentify_no_phi_copies_files(tmp_path: Path) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
+        acquisitions=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
     )
     deid_session, reid_mdata = session.deidentify(tmp_path / "dest")
-    assert "1" in deid_session.scans
+    assert "1" in deid_session.acquisitions
     assert reid_mdata == {}
-    for scan in deid_session.scans.values():
+    for scan in deid_session.acquisitions.values():
         for resource in scan.resources.values():
             for fspath in resource.fileset.fspaths:
                 assert fspath.exists()
@@ -1525,13 +1529,13 @@ def test_deidentify_collects_reid_metadata(tmp_path: Path, recipe_file: Path) ->
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
+        acquisitions=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
     )
     deid_session, reid_mdata = session.deidentify(
         tmp_path / "dest", recipe_files={DeidTestFile: recipe_file}
     )
     assert reid_mdata == DEIDENTIFY_REID_MDATA
-    assert "1" in deid_session.scans
+    assert "1" in deid_session.acquisitions
 
 
 def test_deidentify_missing_recipe_file_raises(tmp_path: Path) -> None:
@@ -1540,7 +1544,7 @@ def test_deidentify_missing_recipe_file_raises(tmp_path: Path) -> None:
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
+        acquisitions=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
     )
     with pytest.raises(KeyError):
         session.deidentify(
@@ -1557,14 +1561,14 @@ def test_deidentify_missing_recipe_file_warns(
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
+        acquisitions=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
     )
     with caplog.at_level(logging.WARNING, logger="accessionflow"):
         deid_session, reid_mdata = session.deidentify(
             tmp_path / "dest", recipe_files={}, require_matching_recipe_file=False
         )
     assert "No deidentification recipe file" in caplog.text
-    assert "1" in deid_session.scans
+    assert "1" in deid_session.acquisitions
     assert reid_mdata == DEIDENTIFY_REID_MDATA
 
 
@@ -1577,7 +1581,7 @@ def test_deidentify_merges_reid_metadata_across_resources(
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[
+        acquisitions=[
             Acquisition(id="1", type="scan-a", resources={"FILE": f1}),
             Acquisition(id="2", type="scan-b", resources={"FILE": f2}),
         ],
@@ -1610,7 +1614,7 @@ def test_deidentify_passes_max_workers_to_resource(
     session = Accession(
         uid="12345",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
+        acquisitions=[Acquisition(id="1", type="test-scan", resources={"FILE": f})],
     )
     session.deidentify(
         tmp_path / "dest", recipe_files={DeidTestFile: recipe_file}, max_workers=3
@@ -1622,7 +1626,7 @@ def test_deidentify_carries_session_level_resources(tmp_path: Path) -> None:
     """A resource attached to the SESSION must survive de-identification.
 
     deidentify() builds its output from new_empty(), which copies the ids and
-    nothing else, and then walks self.scans. Session-level resources were in
+    nothing else, and then walks self.acquisitions. Session-level resources were in
     neither, so they were silently dropped: not de-identified, not copied, and
     nothing reported.
 
@@ -1637,7 +1641,9 @@ def test_deidentify_carries_session_level_resources(tmp_path: Path) -> None:
     session = Accession(
         uid="PROJ.SUBJ.SESS",
         labels={"project": "PROJ", "subject": "SUBJ", "session": "SESS"},
-        scans=[Acquisition(id="1", type="T", resources={"RES": File.sample(seed=1)})],
+        acquisitions=[
+            Acquisition(id="1", type="T", resources={"RES": File.sample(seed=1)})
+        ],
     )
     session.add_session_resource("report", File.sample(seed=42))
     assert "report" in session.session_resources
@@ -1648,7 +1654,9 @@ def test_deidentify_carries_session_level_resources(tmp_path: Path) -> None:
         "the session-level resource was dropped by deidentify(), so it never "
         "reaches XNAT and the completeness gate refuses the unlink for ever"
     )
-    assert set(deid.scans) == set(session.scans), "scans must be unaffected"
+    assert set(deid.acquisitions) == set(session.acquisitions), (
+        "scans must be unaffected"
+    )
 
 
 def test_load_recipe_dicom(tmp_path: Path) -> None:

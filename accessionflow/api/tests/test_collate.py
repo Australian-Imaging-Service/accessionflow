@@ -79,7 +79,7 @@ def test_collate_output_reloadable_with_no_labelled_ids(
     assert reloaded.labels == {}
     assert reloaded.uid == session_dir.name[len(Accession.PRE_LABEL_PREFIX) :]
     # scan description hasn't been resolved yet either
-    scan = next(iter(reloaded.scans.values()))
+    scan = next(iter(reloaded.acquisitions.values()))
     assert scan.type is None
 
 
@@ -261,7 +261,9 @@ def patient_id(dicom_dir: Path) -> str:
     sessions = Accession.from_paths(
         dicom_dir, [DicomSeries], SESSION_FIELD, SCAN_FIELD, RESOURCE_FIELD
     )
-    resource = next(iter(next(iter(sessions[0].scans.values())).resources.values()))
+    resource = next(
+        iter(next(iter(sessions[0].acquisitions.values())).resources.values())
+    )
     return str(resource.fileset.metadata["PatientID"])
 
 
@@ -317,7 +319,9 @@ def test_from_paths_injects_resource_metadata_from_table(
         ],
     )
 
-    resource = next(iter(next(iter(sessions[0].scans.values())).resources.values()))
+    resource = next(
+        iter(next(iter(sessions[0].acquisitions.values())).resources.values())
+    )
     assert resource.metadata["Radiotracer"] == "FDG"
 
 
