@@ -30,16 +30,16 @@ _DEFAULT_DATATYPES: tuple[type[FileSet], ...] = (DicomSeries,)
 
 
 def collate(
-    input_paths: list[Path],
+    # required
+    input_file_paths: list[Path],
     output_dir: Path,
+
+    # optional
     datatypes: ty.Sequence[type[FileSet]] = _DEFAULT_DATATYPES,
     accession_uid: ty.Sequence[IDSpec] = DEFAULT_ACCESSION_UID_FIELD,
     acquisition_id: ty.Sequence[IDSpec] = DEFAULT_ACQUISITION_ID_FIELD,
     resource: ty.Sequence[IDSpec] = DEFAULT_RESOURCE_FIELD,
     path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
-    unlink_source: str | None = None,
-    raise_errors: bool = False,
-    copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
     collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None,
     conversion_map: (
         dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None
@@ -48,6 +48,9 @@ def collate(
     ignore_datatypes: ty.Sequence[type[FileSet]] = (),
     on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
     metadata_tables: list[MetadataTable] | None = None,
+    unlink_source: str | None = None,
+    raise_errors: bool = False,
+    copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
 ) -> list[str]:
     """Collates the input files into accessions/acquisitions/resources and saves them
     directly into the staging directory. Project/subject/visit IDs and scan descriptions are not
@@ -55,7 +58,7 @@ def collate(
 
     Parameters
     ----------
-    input_paths: list[Path]
+    input_file_paths: list[Path]
         The files to collate. Each path must be an existing file, local or on a mounted
         file system; directories are not walked (see
         ``accessionflow.sources.folder.discovery.find_files``).
@@ -151,7 +154,7 @@ def collate(
     """
 
     sessions = Accession.from_paths(
-        files=input_paths,
+        files=input_file_paths,
         datatypes=datatypes,
         accession_uid_field=accession_uid,
         acquisition_id_field=acquisition_id,

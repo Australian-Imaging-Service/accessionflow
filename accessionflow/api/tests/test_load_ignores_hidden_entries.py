@@ -29,7 +29,7 @@ def session_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     get_pet_image(out_dir=dicom_dir)
     collated_dir = tmp_path_factory.mktemp("collated")
     errors = collate(
-        input_paths=sorted(dicom_dir.iterdir()),
+        input_file_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],

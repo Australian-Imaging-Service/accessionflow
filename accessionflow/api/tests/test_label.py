@@ -437,7 +437,7 @@ def test_label_end_to_end_resolves_ids_from_collated_metadata(
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
     collate_errors = collate(
-        input_paths=sorted(dicom_dir.iterdir()),
+        input_file_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
@@ -482,7 +482,7 @@ def test_label_end_to_end_routes_datatypes_to_separate_projects(
     collated_dir.mkdir()
     assert (
         collate(
-            input_paths=sorted(dicom_dir.iterdir()),
+            input_file_paths=sorted(dicom_dir.iterdir()),
             output_dir=collated_dir,
             datatypes=[DicomSeries],
             accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
@@ -548,7 +548,7 @@ def test_label_end_to_end_unresolvable_project_field_goes_to_invalid_dir(
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
     collate_errors = collate(
-        input_paths=sorted(dicom_dir.iterdir()),
+        input_file_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
@@ -590,7 +590,7 @@ def test_label_skips_duplicate_invalid_sessions(
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
     collate_errors = collate(
-        input_paths=sorted(dicom_dir.iterdir()),
+        input_file_paths=sorted(dicom_dir.iterdir()),
         output_dir=collated_dir,
         datatypes=[DicomSeries],
         accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],

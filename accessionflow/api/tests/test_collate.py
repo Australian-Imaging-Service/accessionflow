@@ -36,7 +36,7 @@ def test_collate_creates_pre_label_session_dir(dicom_dir: Path, tmp_path: Path) 
     output_dir.mkdir()
 
     errors = collate(
-        input_paths=_files(dicom_dir),
+        input_file_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -64,7 +64,7 @@ def test_collate_output_reloadable_with_no_labelled_ids(
     output_dir.mkdir()
 
     collate(
-        input_paths=_files(dicom_dir),
+        input_file_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -93,7 +93,7 @@ def test_collate_collects_errors_without_raising(tmp_path: Path) -> None:
     empty_input.mkdir()
 
     errors = collate(
-        input_paths=_files(empty_input),
+        input_file_paths=_files(empty_input),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -116,7 +116,7 @@ def test_collate_unrecognised_file_raises_without_allow_unrecognised(
 
     with pytest.raises(FormatRecognitionError, match="notes.txt"):
         collate(
-            input_paths=_files(input_dir),
+            input_file_paths=_files(input_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -135,7 +135,7 @@ def test_collate_allow_unrecognised_skips_matching_files(
     (input_dir / "notes.txt").write_text("not a recognised format")
 
     errors = collate(
-        input_paths=_files(input_dir),
+        input_file_paths=_files(input_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -160,7 +160,7 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_raises(
 
     with pytest.raises(FormatRecognitionError, match="notes.txt"):
         collate(
-            input_paths=_files(input_dir),
+            input_file_paths=_files(input_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -180,7 +180,7 @@ def test_collate_ignore_datatypes_excludes_recognised_but_unwanted_files(
     (input_dir / "notes.json").write_text("{}")
 
     errors = collate(
-        input_paths=_files(input_dir),
+        input_file_paths=_files(input_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -208,7 +208,7 @@ def test_collate_without_ignore_datatypes_raises_on_recognised_extra_type(
 
     with pytest.raises(FormatRecognitionError, match="notes.json"):
         collate(
-            input_paths=_files(input_dir),
+            input_file_paths=_files(input_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -225,7 +225,7 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
 
     with pytest.raises(ValueError, match="listed for both"):
         collate(
-            input_paths=_files(dicom_dir),
+            input_file_paths=_files(dicom_dir),
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -240,7 +240,7 @@ def test_collate_saves_directly_to_output_dir(dicom_dir: Path, tmp_path: Path) -
     output_dir.mkdir()
 
     errors = collate(
-        input_paths=_files(dicom_dir),
+        input_file_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,
@@ -262,7 +262,7 @@ def test_collate_directory_input_raises(dicom_dir: Path, tmp_path: Path) -> None
 
     with pytest.raises(ValueError, match="not files"):
         collate(
-            input_paths=[dicom_dir],
+            input_file_paths=[dicom_dir],
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -277,7 +277,7 @@ def test_collate_directory_datatype_raises(dicom_dir: Path, tmp_path: Path) -> N
 
     with pytest.raises(ValueError, match="Directory datatypes are not supported"):
         collate(
-            input_paths=_files(dicom_dir),
+            input_file_paths=_files(dicom_dir),
             output_dir=output_dir,
             datatypes=[DicomDir],
             accession_uid=ACCESSION_UID_FIELD,
@@ -316,7 +316,7 @@ def test_collate_injects_session_metadata_from_table(
     )
 
     errors = collate(
-        input_paths=_files(dicom_dir),
+        input_file_paths=_files(dicom_dir),
         output_dir=output_dir,
         datatypes=[DicomSeries],
         accession_uid=ACCESSION_UID_FIELD,

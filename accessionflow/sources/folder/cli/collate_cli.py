@@ -289,7 +289,7 @@ def collate_cmd(
     while True:
         start_time = time.monotonic()
         errors = collate(
-            input_paths=find_files(
+            input_file_paths=find_files(
                 input_paths, recursive=recursive, exclude_paths=exclude_paths
             ),
             output_dir=output_dir,

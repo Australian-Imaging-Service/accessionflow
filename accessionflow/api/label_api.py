@@ -63,9 +63,12 @@ def _acquisitions_with_several_resources(
 
 
 def label(
+    # required
     input_dir: Path,
     output_dir: Path,
     label_fields: ty.Mapping[str, str],
+
+    # optional
     acquisition_field: str | None = None,
     constant_labels: ty.Mapping[str, str] | None = None,
     store_type: str | None = None,
