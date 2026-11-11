@@ -3,7 +3,6 @@ import typing as ty
 from pathlib import Path
 
 from fileformats.core import FileSet
-from tqdm import tqdm
 
 from accessionflow.helpers.logging import logger
 from accessionflow.model.accession import Accession
@@ -15,7 +14,6 @@ BUILD_NAME_DEFAULT = "__build__"
 
 def save_accessions_to_dir(
     accessions: list[Accession],
-    msg: str,
     copy_mode: FileSet.CopyMode,
     output_dir: Path,
     collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None,
@@ -31,8 +29,6 @@ def save_accessions_to_dir(
     ----------
     accessions : list[Accession]
         the collated accessions, referencing their files at the source
-    msg : str
-        the description of the progress bar
     copy_mode : FileSet.CopyMode
         how the files are copied from the source
     output_dir : Path
@@ -56,7 +52,7 @@ def save_accessions_to_dir(
     """
     errors = []
     try:
-        for session in tqdm(accessions, msg):
+        for session in accessions:
             try:
                 _, saved_dir = session.save(
                     output_dir,
@@ -80,12 +76,12 @@ def save_accessions_to_dir(
             except Exception as e:
                 if raise_errors:
                     raise
-                msg = (
+                error_msg = (
                     f"Skipping '{session.uid}' session due to error in collation: \"{e}\""
                     f"\n{traceback.format_exc()}\n\n"
                 )
-                logger.error(msg)
-                errors.append(msg)
+                logger.error(error_msg)
+                errors.append(error_msg)
     finally:
         # Accession.save copies each resource into a temporary directory under
         # __build__ before moving it into place. rmdir, not rmtree: it only removes

@@ -165,7 +165,6 @@ def collate(
 
     errors = save_accessions_to_dir(
         sessions,
-        f"Collating {len(input_paths)} files to {output_dir!s}",
         copy_mode=copy_mode,
         output_dir=output_dir,
         unlink_source=unlink_source,
