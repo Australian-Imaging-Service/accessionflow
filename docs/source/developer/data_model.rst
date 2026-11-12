@@ -11,7 +11,7 @@ intermediate format (see :ref:`concepts-staging` for the layout, and
 Nothing stops you from reading the JSON files directly, but the
 :doc:`model classes </reference/api>` give you a typed, correct way to work with the
 same structure, handling checksums, de-identification and staging consistently with the
-rest of the pipeline:
+stages:
 
 * :class:`~accessionflow.model.accession.Accession` — a whole accession: its labels,
   acquisitions, accession-level resources, metadata and fields. Load an existing one

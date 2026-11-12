@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="740" viewBox="0 0 1240 740" xmlns:c2pa="http://c2pa.org/manifest">
+<title>accessionflow architecture</title>
+<g id="background">
+  <rect x="0" y="0" width="1240" height="740" rx="16" fill="#FFFFFF" stroke="#E2E7EE" stroke-width="1"/>
+</g>
+<g id="title">
+  <text x="40" y="54" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#172033" text-anchor="start">accessionflow architecture</text>
+  <text x="40" y="81" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#5A6478" text-anchor="start">A small core of stages, driven by interfaces above and extended by plugins below</text>
+</g>
+<g id="layer-interfaces">
+  <rect x="40" y="116" width="1160" height="116" rx="16" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <text x="64" y="146" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6478" text-anchor="start">INTERFACES</text>
+  <g id="cli">
+  <rect x="250" y="144" width="260" height="62" rx="10" fill="#FFFFFF" stroke="#475569" stroke-width="1.5"/>
+  <text x="380.0" y="172.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Command line</text>
+  <text x="380.0" y="191.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">accessionflow &lt;stage&gt; …</text>
+</g>
+  <g id="prefect">
+  <rect x="540" y="144" width="260" height="62" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="670.0" y="172.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Prefect flows</text>
+  <text x="670.0" y="191.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#B45309" text-anchor="middle">orchestration &amp; scheduling</text>
+</g>
+  <g id="yaml">
+  <rect x="830" y="144" width="260" height="62" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="960.0" y="172.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Deployment config</text>
+  <text x="960.0" y="191.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#B45309" text-anchor="middle">constrained YAML</text>
+</g>
+</g>
+<g id="arrow-interfaces-core">
+  <line x1="620.0" y1="236" x2="620.0" y2="254.0" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="620.0,262.0 625.0,253.0 615.0,253.0" fill="#475569"/>
+</g>
+<g id="layer-core">
+  <rect x="40" y="262" width="1160" height="190" rx="16" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="64" y="292" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6478" text-anchor="start">CORE</text>
+  <g id="core-collate">
+  <rect x="250" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="310.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">collate</text>
+</g>
+  <g id="core-attach">
+  <rect x="384" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="444.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">attach</text>
+</g>
+  <g id="arrow">
+  <line x1="372" y1="311" x2="374.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="382.0,311.0 373.0,306.1 373.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-label">
+  <rect x="518" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="578.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">label</text>
+</g>
+  <g id="arrow-2">
+  <line x1="506" y1="311" x2="508.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="516.0,311.0 507.0,306.1 507.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-deidentify">
+  <rect x="652" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="712.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">deidentify</text>
+</g>
+  <g id="arrow-3">
+  <line x1="640" y1="311" x2="642.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="650.0,311.0 641.0,306.1 641.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-annotate">
+  <rect x="786" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="846.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">annotate</text>
+</g>
+  <g id="arrow-4">
+  <line x1="774" y1="311" x2="776.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="784.0,311.0 775.0,306.1 775.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-package">
+  <rect x="920" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="980.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">package</text>
+</g>
+  <g id="arrow-5">
+  <line x1="908" y1="311" x2="910.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="918.0,311.0 909.0,306.1 909.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-store">
+  <rect x="1054" y="288" width="120" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="1114.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">store</text>
+</g>
+  <g id="arrow-6">
+  <line x1="1042" y1="311" x2="1044.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="1052.0,311.0 1043.0,306.1 1043.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-model">
+  <rect x="250" y="358" width="452" height="66" rx="10" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.5"/>
+  <text x="476.0" y="388.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Shared data model</text>
+  <text x="476.0" y="407.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">accessions · acquisitions · resources</text>
+</g>
+  <g id="core-staging">
+  <rect x="722" y="358" width="452" height="66" rx="10" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.5"/>
+  <text x="948.0" y="388.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Staging storage</text>
+  <text x="948.0" y="407.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">local filesystem or S3</text>
+</g>
+</g>
+<g id="arrow-core-plugins">
+  <line x1="620.0" y1="456" x2="620.0" y2="474.0" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="620.0,482.0 625.0,473.0 615.0,473.0" fill="#475569"/>
+</g>
+<g id="layer-plugins">
+  <rect x="40" y="482" width="1160" height="200" rx="16" fill="#EEF0FD" stroke="none" stroke-width="0"/>
+  <text x="64" y="512" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6478" text-anchor="start">PLUGINS</text>
+  <text x="250" y="516" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#172033" text-anchor="start">Sources — provide collate subcommands</text>
+  <g id="source-folder">
+  <rect x="250" y="532" width="140" height="56" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.5"/>
+  <text x="320.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Folder</text>
+  <text x="320.0" y="576.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">collate folder</text>
+</g>
+  <g id="source-orthanc">
+  <rect x="402" y="532" width="140" height="56" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.5"/>
+  <text x="472.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Orthanc</text>
+  <text x="472.0" y="576.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">collate orthanc</text>
+</g>
+  <text x="600" y="516" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#172033" text-anchor="start">Data stores — provide label, store and check-store</text>
+  <g id="store-xnat">
+  <rect x="600" y="532" width="150" height="56" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.5"/>
+  <text x="675.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">XNAT</text>
+  <text x="675.0" y="576.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">store xnat</text>
+</g>
+  <g id="store-folder">
+  <rect x="762" y="532" width="180" height="56" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.5"/>
+  <text x="852.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Folder</text>
+  <text x="852.0" y="576.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">local · S3 · SFTP</text>
+</g>
+  <g id="store-others">
+  <rect x="954" y="532" width="156" height="56" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1032.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Other stores</text>
+  <text x="1032.0" y="576.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#B45309" text-anchor="middle">store &lt;repo&gt;</text>
+</g>
+  <text x="250" y="628" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5A6478" text-anchor="start">Plugins are installed per deployment, so a site only carries the sources and stores it uses.</text>
+  <text x="250" y="648" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5A6478" text-anchor="start">File-type support comes from the FileFormats package and its extensions.</text>
+</g>
+<g id="legend">
+  <rect x="40" y="700" width="26" height="16" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.4"/>
+  <text x="76" y="713" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="500" fill="#5A6478" text-anchor="start">Available</text>
+  <rect x="160" y="700" width="26" height="16" rx="4" fill="#FEF3E2" stroke="#B45309" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <text x="196" y="713" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="500" fill="#5A6478" text-anchor="start">Planned / exploratory</text>
+</g>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTozZDc2OTViMy0zMzdjLTRiMGItOTg2NC1iNGY4NzhlNDdiZTUAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaL/kFlrFZ6kfZTcn65jnRBsAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDplMzNkZGU0Zi0yZTZiLTRlYjMtYjA0Yy1jZThlYmUyNDhkNWFscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNo0BDT5aerSA2vFG2R0nPFQgAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggLuBWvWjgCqk4qPS5dr7kHMPGZ7T7C1kkKj3RbYD3u5ikZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaAS7Xz2Zk59sJabVDmFb3GwAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIOpoyQ0xAfbG/UcELdiIJyyajpqw2qMdmUxWIMogCPX8ZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GTBrZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjNkNzY5NWIzLTMzN2MtNGIwYi05ODY0LWI0Zjg3OGU0N2JlNS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOmJjODhjOWY2LTQ1NTctNDMyMy05YmNiLTU1NmQ3YzNkZjNkMXJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAu4Fa9aOAKqTio9Ll2vuQcw8ZntPsLWSQqPdFtgPe7mKJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggVz3WQoljJ3XoJQOijMX13fb1f4FyWyuZMYe5biZ1LHuiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggD63YRUM2z/CTbZIv0Dg+RHms7qnh5cYw7wJS/zdIisl0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQCjLwe6FWuPMSJ6nEg6rsEBwWHdhJY0zbBOkws6pMis4TKjDSpFggKiEnJNjV6+rvYlWWuAQ5QkCHPgZ4TX4LL4=</c2pa:manifest></metadata></svg>

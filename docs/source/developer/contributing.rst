@@ -4,7 +4,7 @@ Contribution guide
 ==================
 
 Contributions of any size are welcome — fixing a typo, improving an example, reporting
-a bug, reviewing a pull request, or adding a whole new pipeline stage are all useful.
+a bug, reviewing a pull request, or adding a whole new stage are all useful.
 You don't need to be an expert in XNAT, DICOM, or Python packaging to contribute
 something worthwhile; a lot of the most useful contributions to scientific software
 come from people hitting a rough edge as a user and fixing it, or writing down the

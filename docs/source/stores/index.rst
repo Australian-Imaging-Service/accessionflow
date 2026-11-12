@@ -3,7 +3,7 @@
 Data stores
 ===========
 
-A data store is where the accessions are deposited at the end of the pipeline. Each
+A data store is where the accessions are deposited at the end of an accession flow. Each
 store provides three subcommands:
 
 ``label <store>``

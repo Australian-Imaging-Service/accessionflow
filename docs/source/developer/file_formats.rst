@@ -8,7 +8,7 @@ format baked into its core logic. Instead, every file on disk is represented as 
 typed ``FileSet`` from the `FileFormats
 <https://arcanaframework.github.io/fileformats/>`_ package (e.g. ``DicomSeries``,
 ``NiftiGz``), and format-specific behaviour is provided by that type rather than by
-``accessionflow`` itself. This is what lets the same pipeline code handle a wildly
+``accessionflow`` itself. This is what lets the same code handle a wildly
 different data — clinical DICOMs, derived NIfTIs, proprietary raw PET data — without
 a format-specific branch for each one.
 

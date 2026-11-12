@@ -22,21 +22,12 @@ in a data store. Support for various file types is provided through
 the [FileFormats](https://python-fileformats.github.io/fileformats/) package and its extensions
 (e.g. [FileFormats MedImage](https://python-fileformats.github.io/fileformats-medimage/), [FileFormats Siemens](https://python-fileformats.github.io/fileformats-vendor-siemens/),...).
 
-```mermaid
-flowchart LR
-    Folder(["folder"]) --> Collate["collate (source)"]
-    Orthanc(["Orthanc"]) --> Collate
-    Collate --> Label["label (store)"]
-    Label --> Deidentify["deidentify (optional)"]
-    Deidentify --> Store["store (store)"]
-    Store --> XNAT[("XNAT")]
-    Store --> FolderStore[("folder store\n(local, S3, SFTP)")]
-    Store -.-> CheckStore["check-store (store)"]
-
-    Extra(["files without\nsorting metadata"]) -.-> Attach["attach (optional)"]
-    Collate -.-> Attach
-    Attach -.-> Label
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/source/_static/images/diagrams/accessionflow-overview-dark.svg">
+    <img src="docs/source/_static/images/diagrams/accessionflow-overview.svg" alt="accessionflow overview" width="100%">
+  </picture>
+</p>
 
 Where the files come from and where they go are both plugins: sources provide the
 `collate` subcommands (`collate folder`, `collate orthanc`), and data stores provide the

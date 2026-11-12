@@ -477,8 +477,10 @@ def _labels_converter(labels: ty.Mapping[str, str]) -> dict[str, str]:
 
 @attrs.define(slots=False)
 class Accession:
-    """Representation of an accession to be deposited in a data store, which is a set
-    of acquisitions that belong together under the same labels.
+    """Representation of an accession to be deposited in a data store: the data from
+    one experiment (e.g. an imaging session of a patient, a preclinical scan, or the
+    imaging of a specimen or phantom), as a set of acquisitions that belong together
+    under the same labels.
 
     Parameters
     ----------

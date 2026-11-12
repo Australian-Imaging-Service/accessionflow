@@ -3,7 +3,7 @@
 Quick start
 ===========
 
-This walks through a small pipeline on a synthetic sample DICOM series, so you don't
+This walks through a small accession flow on a synthetic sample DICOM series, so you don't
 need real patient data to follow along. The series is collated once, then deposited
 twice from the same collated copy: first in a folder store on your own disk, which
 needs no server, then in an XNAT project. Only the ``label`` and ``store`` subcommands

@@ -45,6 +45,18 @@ provide the ``collate`` subcommands, and :ref:`data stores <stores>` provide the
 ``label``, ``store`` and ``check-store`` subcommands. The stages in between work the same
 way whatever the source and store.
 
+.. figure:: /_static/images/diagrams/accessionflow-overview.svg
+   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
+   :width: 100%
+   :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-overview-dark.svg
+   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
+   :width: 100%
+   :align: center
+   :figclass: only-dark
+
 Start with the :doc:`quick_start`, which collates sample data and deposits it in a
 folder store and then in XNAT, then see:
 
@@ -52,7 +64,7 @@ folder store and then in XNAT, then see:
 * :ref:`Sources <sources>` — collating from folders or an Orthanc server
 * :ref:`Stages <stages>` — attaching, labelling, de-identifying and packaging
 * :ref:`Data stores <stores>` — depositing in XNAT or a folder store
-* :doc:`deployment` — running the pipeline continuously with Docker or Kubernetes
+* :doc:`deployment` — running an accession flow continuously with Docker or Kubernetes
 * :doc:`reference/cli` — the full command-line reference
 
 

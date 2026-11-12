@@ -8,13 +8,14 @@ This page covers the ideas that every stage relies on. The pages for the
 back here rather than repeating them.
 
 
-.. _concepts-pipeline:
+.. _concepts-accession-flows:
 
-The pipeline
-------------
+Accession flows
+---------------
 
-*AccessionFlow* is a chain of stages, each a separate command that reads the previous
-stage's output directory and writes its own:
+An *accession flow* is the chain of stages that takes accessions from where their files
+come from to the data store they are deposited in. Each stage is a separate command that
+reads the previous stage's output directory and writes its own:
 
 .. code-block:: text
 
@@ -42,11 +43,12 @@ Accessions, acquisitions and resources
 The data is modelled so that it isn't specific to imaging or to one data store:
 
 Accession
-    Everything received from one subject on one occasion and handed from stage to
-    stage, e.g. an imaging session or a sequencing run. Its labels, which say where it
-    belongs in the data store, are set by the ``label`` stage. An accession is not a RIS
-    accession number: DICOM's ``AccessionNumber`` is just one metadata field that can be
-    used to label it.
+    The data from one experiment, handed from stage to stage, e.g. an imaging session
+    of a patient, a preclinical scan of an animal, the imaging of a tissue specimen or
+    phantom, or a sequencing run. Its labels, which say where it belongs in the data
+    store, are set by the ``label`` stage. An accession is not a RIS accession number:
+    DICOM's ``AccessionNumber`` is just one metadata field that can be used to label
+    it.
 Acquisition
     One distinct dataset within an accession, e.g. a scan or a sequencing library. For
     DICOM it is one series, not DICOM's narrower sense of an acquisition within a
@@ -64,7 +66,7 @@ Each data store has its own names for these:
       - XNAT
       - Folder store
     * - accession
-      - session (within a project and subject)
+      - session, a kind of XNAT experiment (within a project and subject)
       - the innermost label folder
     * - acquisition
       - scan
@@ -72,6 +74,19 @@ Each data store has its own names for these:
     * - resource
       - resource
       - resource folder
+
+
+.. figure:: /_static/images/diagrams/accessionflow-model.svg
+   :alt: An accession containing acquisitions, each containing resources, and what XNAT and a folder store call each level
+   :width: 100%
+   :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-model-dark.svg
+   :alt: An accession containing acquisitions, each containing resources, and what XNAT and a folder store call each level
+   :width: 100%
+   :align: center
+   :figclass: only-dark
 
 
 .. _concepts-staging:
@@ -103,6 +118,18 @@ Accessions are built in a ``__build__`` subdirectory of the output directory and
 into place once they are complete, so a later stage never sees a partly written one.
 The manifests let the stages check that files haven't changed since an earlier stage
 wrote them.
+
+.. figure:: /_static/images/diagrams/accessionflow-staging.svg
+   :alt: Accessions moving from a source through the collated, labelled and deidentified staging directories to a data store
+   :width: 100%
+   :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-staging-dark.svg
+   :alt: Accessions moving from a source through the collated, labelled and deidentified staging directories to a data store
+   :width: 100%
+   :align: center
+   :figclass: only-dark
 
 See :doc:`developer/data_model` for working with this layout from your own scripts.
 
