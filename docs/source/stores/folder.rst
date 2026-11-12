@@ -46,7 +46,7 @@ Each accession is deposited as:
     <root>/<site>/<subject>/<visit>/__FIELDS__.json
 
 The resources' manifests (the checksums of their files) and the accessions' fields (see
-:doc:`/stages/select_fields`) are deposited with them, but not their metadata. Each
+:doc:`/stages/annotate`) are deposited with them, but not their metadata. Each
 manifest is written after the files it lists, so a resource with a manifest is
 complete: depositing again skips resources that are already there, and finishes any
 that an interrupted run left without one. A resource that is already in the store with

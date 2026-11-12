@@ -14,13 +14,14 @@ from accessionflow.model.accession import Accession
 from .collate_api import BUILD_NAME_DEFAULT
 
 
-def select_fields(
+def annotate(
     input_dir: Path,
     output_dir: Path,
     extract: ty.Mapping[str, IDSpec],
     raise_errors: bool = False,
 ) -> list[str]:
-    """Extract session metadata into XNAT fields and write staged sessions."""
+    """Annotates the accessions with fields extracted from their metadata, which the
+    data store records alongside them (e.g. as custom variables on XNAT sessions)."""
     if not extract:
         raise ValueError("At least one field must be specified")
 
@@ -46,7 +47,7 @@ def select_fields(
                 session.save(output_dir)
             else:
                 build_dir = output_dir / BUILD_NAME_DEFAULT
-                work_dir = build_dir / f"fields_{listing.name}"
+                work_dir = build_dir / f"annotate_{listing.name}"
                 if work_dir.exists():
                     shutil.rmtree(work_dir)
                 work_dir.mkdir(parents=True)

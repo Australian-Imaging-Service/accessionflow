@@ -28,7 +28,7 @@ Stages
 
 .. autofunction:: accessionflow.api.package
 
-.. autofunction:: accessionflow.api.select_fields_api.select_fields
+.. autofunction:: accessionflow.api.annotate_api.annotate
 
 
 Data stores

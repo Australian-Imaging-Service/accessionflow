@@ -36,8 +36,8 @@ Stages
 .. click:: accessionflow.cli.package_cli:package_cmd
    :prog: accessionflow package
 
-.. click:: accessionflow.cli.select_fields_cli:select_fields_cmd
-   :prog: accessionflow select-fields
+.. click:: accessionflow.cli.annotate_cli:annotate_cmd
+   :prog: accessionflow annotate
 
 
 Folder store
