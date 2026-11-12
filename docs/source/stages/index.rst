@@ -39,3 +39,10 @@ de-identify the fields (see :doc:`select_fields`).
    :alt: What each stage does to an accession, from unsorted input files to the repository
    :width: 100%
    :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-stages-dark.svg
+   :alt: What each stage does to an accession, from unsorted input files to the repository
+   :width: 100%
+   :align: center
+   :figclass: only-dark

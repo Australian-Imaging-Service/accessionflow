@@ -16,6 +16,13 @@ same mechanism:
    :alt: accessionflow architecture: interfaces, core stages and data model, and source and store plugins
    :width: 100%
    :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-architecture-dark.svg
+   :alt: accessionflow architecture: interfaces, core stages and data model, and source and store plugins
+   :width: 100%
+   :align: center
+   :figclass: only-dark
 
 ``accessionflow``, ``accessionflow.sources`` and ``accessionflow.stores`` are namespace
 packages, so none of them may contain an ``__init__.py``. That lets plugins be installed

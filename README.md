@@ -23,7 +23,10 @@ the [FileFormats](https://python-fileformats.github.io/fileformats/) package and
 (e.g. [FileFormats MedImage](https://python-fileformats.github.io/fileformats-medimage/), [FileFormats Siemens](https://python-fileformats.github.io/fileformats-vendor-siemens/),...).
 
 <p align="center">
-  <img src="docs/source/_static/images/diagrams/accessionflow-overview.svg" alt="accessionflow overview" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/source/_static/images/diagrams/accessionflow-overview-dark.svg">
+    <img src="docs/source/_static/images/diagrams/accessionflow-overview.svg" alt="accessionflow overview" width="100%">
+  </picture>
 </p>
 
 Where the files come from and where they go are both plugins: sources provide the

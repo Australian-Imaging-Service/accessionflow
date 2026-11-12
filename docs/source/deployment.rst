@@ -13,6 +13,15 @@ files as they arrive. Every stage except ``check-store`` supports this directly 
    :alt: Reference deployment: current routes from scanner to XNAT, and planned edge/server-side configurations using the push stage
    :width: 100%
    :align: center
+   :figclass: only-light
+
+   Where stages run: today's two routes to XNAT, and planned site configurations that split stages between the edge and server side with ``push``.
+
+.. figure:: /_static/images/diagrams/accessionflow-deployment-dark.svg
+   :alt: Reference deployment: current routes from scanner to XNAT, and planned edge/server-side configurations using the push stage
+   :width: 100%
+   :align: center
+   :figclass: only-dark
 
    Where stages run: today's two routes to XNAT, and planned site configurations that split stages between the edge and server side with ``push``.
 

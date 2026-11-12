@@ -4,7 +4,7 @@ Usage (from anywhere):
 
     python docs/diagram-dev/generate_diagrams.py
 
-Writes the SVGs to docs/source/_static/images/diagrams/, which the Sphinx pages and
+Writes the SVGs (plus a -dark variant of each) to docs/source/_static/images/diagrams/, which the Sphinx pages and
 README.md reference. Stage names, order and descriptions live in OVERVIEW_STAGES and
 COMING_STAGES near the top of the overview section.
 
@@ -15,6 +15,7 @@ Design rules for Illustrator-friendliness:
   * arrowheads are plain polygons (no <marker>)
 """
 
+import re
 from math import atan2, cos, sin
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -27,6 +28,8 @@ MUTED = "#5A6478"
 LINE = "#C3CBD6"
 PANEL = "#F5F7FA"
 WHITE = "#FFFFFF"
+IMG = "#111827"  # image thumbnails
+ON = "#FFFFFE"  # text/marks drawn on solid accent fills
 
 TEAL = "#0E7C86"
 TEAL_L = "#E3F3F4"
@@ -242,13 +245,16 @@ def mini(x, y, label, kind="stage", w=None, h=30):
         "repo": (INDIGO_L, INDIGO, INDIGO, None),
     }
     fill, stroke, ink, dash = styles[kind]
-    return group(
-        f"mini-{label.replace(' ', '-')}",
-        [
-            rect(x, y, w, h, rx=h / 2, fill=fill, stroke=stroke, sw=1.4, dash=dash),
-            text(x + w / 2, y + h / 2 + 4.5, label, 12.5, 700, ink, mono=True),
-        ],
-    ), w
+    return (
+        group(
+            f"mini-{label.replace(' ', '-')}",
+            [
+                rect(x, y, w, h, rx=h / 2, fill=fill, stroke=stroke, sw=1.4, dash=dash),
+                text(x + w / 2, y + h / 2 + 4.5, label, 12.5, 700, ink, mono=True),
+            ],
+        ),
+        w,
+    )
 
 
 def flex_panel(x, y, w, h, title, sub):
@@ -376,7 +382,7 @@ def overview():
                 dash="6 5" if opt else None,
             ),
             f'<circle cx="{x + sw_ / 2}" cy="{top + 32}" r="14" fill="{TEAL}"/>',
-            text(x + sw_ / 2, top + 37, str(i + 1), 13, 700, WHITE),
+            text(x + sw_ / 2, top + 37, str(i + 1), 13, 700, ON),
             text(x + sw_ / 2, top + 76, name, size, 700, TEAL_D, mono=True),
             text(x + sw_ / 2, top + 101, desc[0], 12, 400, MUTED),
             text(x + sw_ / 2, top + 118, desc[1], 12, 400, MUTED),
@@ -529,8 +535,8 @@ def overview():
                     dash="5 4",
                 ),
                 f'<circle cx="{cx_ + 30}" cy="{sy + 46}" r="11" fill="{AMBER}"/>',
-                line(cx_ + 24.5, sy + 46, cx_ + 35.5, sy + 46, WHITE, 2),
-                line(cx_ + 30, sy + 40.5, cx_ + 30, sy + 51.5, WHITE, 2),
+                line(cx_ + 24.5, sy + 46, cx_ + 35.5, sy + 46, ON, 2),
+                line(cx_ + 30, sy + 40.5, cx_ + 30, sy + 51.5, ON, 2),
                 text(cx_ + 52, sy + 42, "Site-specific stages", 14, 700, INK, "start"),
                 text(
                     cx_ + 52,
@@ -562,9 +568,7 @@ def session_box(cx, y, w=144, h=150, label="accession"):
             stroke="none",
             sw=0,
         ),
-        text(
-            cx - w / 2 + 17 + len(label) * 3.6, y + 4, label, 11, 600, WHITE, mono=True
-        ),
+        text(cx - w / 2 + 17 + len(label) * 3.6, y + 4, label, 11, 600, ON, mono=True),
     ]
 
 
@@ -696,8 +700,8 @@ def stage_by_stage():
                         "plus",
                         [
                             f'<circle cx="{ax_ + 24}" cy="{ay_ - 2}" r="9" fill="{AMBER}"/>',
-                            line(ax_ + 19.5, ay_ - 2, ax_ + 28.5, ay_ - 2, WHITE, 2),
-                            line(ax_ + 24, ay_ - 6.5, ax_ + 24, ay_ + 2.5, WHITE, 2),
+                            line(ax_ + 19.5, ay_ - 2, ax_ + 28.5, ay_ - 2, ON, 2),
+                            line(ax_ + 24, ay_ - 6.5, ax_ + 24, ay_ + 2.5, ON, 2),
                         ],
                     )
                 )
@@ -784,7 +788,7 @@ def stage_by_stage():
                             sw=0,
                         )
                     )
-                    md.append(text(cx + 11, yy, "fx", 9, 700, WHITE, italic=True))
+                    md.append(text(cx + 11, yy, "fx", 9, 700, ON, italic=True))
             ill.append(group("metadata-card", md))
         elif name == "deidentify":
             card = [
@@ -883,7 +887,7 @@ def stage_by_stage():
                 rect(
                     rx_ + 20, iy + 112, 30, 30, rx=3, fill=SLATE_L, stroke=SLATE, sw=1
                 ),
-                rect(rx_ + 17, iy + 115, 30, 30, rx=3, fill=INK, stroke=SLATE, sw=1),
+                rect(rx_ + 17, iy + 115, 30, 30, rx=3, fill=IMG, stroke=SLATE, sw=1),
                 f'<ellipse cx="{rx_ + 32}" cy="{iy + 130}" rx="9" ry="11" fill="#9AA4B2"/>',
                 f'<ellipse cx="{rx_ + 32}" cy="{iy + 130}" rx="4.5" ry="6" fill="#5A6478"/>',
                 text(rx_ + 34, iy + 162, ".gif", 10, 600, MUTED, mono=True),
@@ -1275,17 +1279,20 @@ def chip2(x, y, label, kind="stage", h=30, size=12):
     styles = {
         "stage": (WHITE, TEAL, TEAL_D, None),
         "opt": (WHITE, TEAL, TEAL_D, "5 4"),
-        "push": (AMBER, AMBER, WHITE, None),
+        "push": (AMBER, AMBER, ON, None),
         "repo": (INDIGO_L, INDIGO, INDIGO, None),
     }
     fill, stroke, ink, dash = styles[kind]
-    return group(
-        f"stage-{label.replace(' ', '-')}",
-        [
-            rect(x, y, w, h, rx=h / 2, fill=fill, stroke=stroke, sw=1.4, dash=dash),
-            text(x + w / 2, y + h / 2 + 4.3, label, size, 700, ink, mono=True),
-        ],
-    ), w
+    return (
+        group(
+            f"stage-{label.replace(' ', '-')}",
+            [
+                rect(x, y, w, h, rx=h / 2, fill=fill, stroke=stroke, sw=1.4, dash=dash),
+                text(x + w / 2, y + h / 2 + 4.3, label, size, 700, ink, mono=True),
+            ],
+        ),
+        w,
+    )
 
 
 def chip_row(x, y, names, gap=14, size=12):
@@ -1338,7 +1345,7 @@ def badge(cx, cy, letter, color, r=10):
         f"badge-{letter}",
         [
             f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{color}" stroke="{WHITE}" stroke-width="2"/>',
-            text(cx, cy + 4.2, letter, 12, 700, WHITE),
+            text(cx, cy + 4.2, letter, 12, 700, ON),
         ],
     )
 
@@ -1720,6 +1727,39 @@ def deployment():
     return svg(W, H, "accessionflow reference deployment", out)
 
 
+# ---------------------------------------------------------------- dark mode
+# The dark variants are made by remapping the light palette, so every diagram only has
+# to be drawn once. Keys must match the colour constants above.
+DARK_PALETTE = {
+    WHITE: "#181C23",  # cards and background
+    PANEL: "#20252E",
+    "#E2E7EE": "#2A303A",  # background border
+    INK: "#E6EAF0",
+    MUTED: "#9AA4B2",
+    LINE: "#3A4250",
+    "#98A2B3": "#6B7484",  # struck-through fields
+    "#9AA4B2": "#5A6478",  # snapshot image
+    ON: "#0E1116",
+    IMG: "#0B0E13",
+    TEAL: "#2CB5BF",
+    TEAL_L: "#123438",
+    TEAL_D: "#6AD3DA",
+    SLATE: "#94A3B8",
+    SLATE_L: "#262C36",
+    INDIGO: "#8F92F7",
+    INDIGO_L: "#23264A",
+    AMBER: "#F0A04B",
+    AMBER_L: "#3A2A14",
+}
+
+
+def to_dark(svg_text):
+    """Return a dark-mode copy of a diagram by swapping palette colours in one pass."""
+    lookup = {k.upper(): v for k, v in DARK_PALETTE.items()}
+    pattern = re.compile("|".join(re.escape(k) for k in lookup), re.IGNORECASE)
+    return pattern.sub(lambda m: lookup[m.group(0).upper()], svg_text)
+
+
 if __name__ == "__main__":
     # docs/diagram-dev/generate_diagrams.py -> docs/source/_static/images/diagrams/
     outdir = (
@@ -1736,5 +1776,7 @@ if __name__ == "__main__":
         ("accessionflow-architecture", architecture),
         ("accessionflow-deployment", deployment),
     ]:
-        (outdir / f"{name}.svg").write_text(fn())
+        light = fn()
+        (outdir / f"{name}.svg").write_text(light)
+        (outdir / f"{name}-dark.svg").write_text(to_dark(light))
         print("wrote", name)

@@ -49,6 +49,13 @@ way whatever the source and store.
    :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
    :width: 100%
    :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-overview-dark.svg
+   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
+   :width: 100%
+   :align: center
+   :figclass: only-dark
 
 Start with the :doc:`quick_start`, which collates sample data and deposits it in a
 folder store and then in XNAT, then see:
