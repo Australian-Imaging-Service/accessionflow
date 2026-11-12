@@ -1921,7 +1921,8 @@ def concepts_model():
 
 # ------------------------------------------------- 6. concepts: staging directories
 def tree(x, y, rows, w, dy=19):
-    """rows: (indent, label, style) where style in {'dir','file','acc','acq','res','warn','dim'}"""
+    """Draw a directory listing. rows: (indent, label, style), where style is one of
+    dir, file, acc, acq, res, warn, dim, new (added by this stage) or redacted."""
     styles = {
         "dir": (INK, 600),
         "file": (MUTED, 400),
@@ -1930,15 +1931,37 @@ def tree(x, y, rows, w, dy=19):
         "res": (AMBER, 700),
         "warn": (AMBER, 700),
         "dim": ("#98A2B3", 500),
+        "new": (TEAL_D, 700),
+        "redacted": (MUTED, 400),
     }
     p = []
     for k, (ind, label, st) in enumerate(rows):
         col, wt = styles[st]
         yy = y + k * dy
+        tx = x + ind * 14
         if ind:
-            p.append(line(x + ind * 14 - 8, yy - 13, x + ind * 14 - 8, yy - 4, LINE, 1))
-            p.append(line(x + ind * 14 - 8, yy - 4, x + ind * 14 - 2, yy - 4, LINE, 1))
-        p.append(text(x + ind * 14, yy, label, 11, wt, col, "start", mono=True))
+            p.append(line(tx - 8, yy - 13, tx - 8, yy - 4, LINE, 1))
+            p.append(line(tx - 8, yy - 4, tx - 2, yy - 4, LINE, 1))
+        p.append(text(tx, yy, label, 11, wt, col, "start", mono=True))
+        end = tx + len(label) * 6.65
+        if st == "redacted":
+            for j, bw in enumerate((22, 14, 18)):
+                p.append(
+                    rect(
+                        end + 8 + j * 26,
+                        yy - 9,
+                        bw,
+                        9,
+                        rx=1.5,
+                        fill=INK,
+                        stroke="none",
+                        sw=0,
+                    )
+                )
+        elif st == "new":
+            p.append(
+                tag(end + 8, yy - 12, "new", TEAL_D, TEAL_L, size=9, anchor="start")
+            )
     return p
 
 
@@ -1980,7 +2003,7 @@ def stage_link(x1, x2, y, name, optional=False):
 
 
 def concepts_staging():
-    W, H = 1560, 510
+    W, H = 1200, 874
     out = [
         title_block(
             40,
@@ -1988,32 +2011,42 @@ def concepts_staging():
             "Each stage reads the previous stage's output directory and writes its own",
         )
     ]
-    top, ch = 130, 250
-    cy = top + 120
-    # source
+    cw, ch = 240, 250
+    r1, r2 = 120, 474  # row tops
+    c1, c2 = 304, 668  # card columns (shared by both rows)
+
+    def notes(x, y, a, b):
+        return group(
+            "note",
+            [
+                text(x, y + 26, a, 11.5, 400, MUTED, "start"),
+                text(x, y + 42, b, 11.5, 400, MUTED, "start"),
+            ],
+        )
+
+    # ---- row 1: source -> collated/ -> labelled/
     out.append(
         group(
             "source",
             [
-                rect(40, top, 150, ch, rx=12, fill=SLATE_L, stroke=SLATE, sw=1.4),
-                text(115, top + 26, "Source", 14, 700, INK),
-                text(115, top + 44, "folder or Orthanc", 11.5, 400, MUTED),
+                rect(40, r1, 140, ch, rx=12, fill=SLATE_L, stroke=SLATE, sw=1.4),
+                text(110, r1 + 26, "Source", 14, 700, INK),
+                text(110, r1 + 44, "folder or Orthanc", 11.5, 400, MUTED),
             ]
             + [
                 file_icon(
-                    70 + (k % 3) * 30,
-                    top + 80 + (k // 3) * 42,
-                    fill=WHITE,
-                    stroke=SLATE,
+                    66 + (k % 3) * 30, r1 + 80 + (k // 3) * 42, fill=WHITE, stroke=SLATE
                 )
                 for k in range(9)
             ],
         )
     )
-    cw, gap = 248, 124
-    xs = [190 + gap + i * (cw + gap) for i in range(3)]
-    cards = [
-        (
+    out.append(
+        dir_card(
+            c1,
+            r1,
+            cw,
+            ch,
             "collated/",
             [
                 (0, "_.1.2.840.113619…/", "acc"),
@@ -2026,82 +2059,148 @@ def concepts_staging():
                 (0, "__build__/", "dim"),
                 (1, "(accessions being written)", "dim"),
             ],
-        ),
-        (
+            id="dir-collated",
+        )
+    )
+    out.append(
+        dir_card(
+            c2,
+            r1,
+            cw,
+            ch,
             "labelled/",
             [
                 (0, "PRJ001.SUBJ042.MR01/", "acc"),
+                (1, "__METADATA__.json", "file"),
                 (1, "1.T1w_MPRAGE/", "acq"),
+                (2, "__METADATA__.json", "file"),
                 (2, "DICOM/", "res"),
+                (3, "__MANIFEST__.json", "file"),
                 (3, "*.dcm", "file"),
                 (0, "__invalid__/", "warn"),
-                (1, "INVALID_MISSING_PROJECT_ab12…/", "warn"),
+                (1, "INVALID_MISSING_PROJECT_…/", "warn"),
             ],
-        ),
-        (
+            id="dir-labelled",
+        )
+    )
+    y1 = r1 + 120
+    out.append(stage_link(180, c1, y1, "collate"))
+    out.append(stage_link(c1 + cw, c2, y1, "label"))
+    out.append(
+        notes(
+            c1,
+            r1 + ch,
+            "Unlabelled accessions are named _.<UID>;",
+            "acquisitions have no description yet",
+        )
+    )
+    out.append(
+        notes(
+            c2,
+            r1 + ch,
+            "Named by their labels; ones that can't be",
+            "labelled go to __invalid__/ for review",
+        )
+    )
+
+    # ---- wrap from the end of row 1 to the start of row 2
+    y2 = r2 + 120
+    turn = r1 + ch + 66
+    out.append(
+        group(
+            "wrap",
+            [
+                f'<polyline points="{c2 + cw + 2},{y1} {c2 + cw + 60},{y1} {c2 + cw + 60},{turn} '
+                f'110,{turn} 110,{y2}" fill="none" stroke="{TEAL}" stroke-width="1.6" '
+                f'stroke-linejoin="round" stroke-dasharray="1 0"/>',
+            ],
+        )
+    )
+
+    # ---- row 2: deidentified/ -> annotated/ -> store
+    out.append(
+        dir_card(
+            c1,
+            r2,
+            cw,
+            ch,
             "deidentified/",
             [
                 (0, "PRJ001.SUBJ042.MR01/", "acc"),
+                (1, "__METADATA__.json", "redacted"),
                 (1, "1.T1w_MPRAGE/", "acq"),
+                (2, "__METADATA__.json", "redacted"),
                 (2, "DICOM/", "res"),
+                (3, "__MANIFEST__.json", "file"),
                 (3, "*.dcm  (de-identified)", "file"),
             ],
-        ),
-    ]
-    for i, (title, rows) in enumerate(cards):
-        out.append(
-            dir_card(xs[i], top, cw, ch, title, rows, id=f"dir-{title.strip('/')}")
+            id="dir-deidentified",
         )
-    links = [
-        (190, xs[0], "collate", False),
-        (xs[0] + cw, xs[1], "label", False),
-        (xs[1] + cw, xs[2], "deidentify", True),
-        (xs[2] + cw, xs[2] + cw + gap, "store", False),
-    ]
-    for x1, x2, n, opt in links:
-        out.append(stage_link(x1, x2, cy, n, opt))
-    rx = xs[2] + cw + gap
-    out.append(cylinder(rx + 60, top + 60, 120, 120))
-    out.append(text(rx + 60, top + 140, "data store", 12.5, 700, INDIGO))
-    # callouts under cards
-    notes = [
-        (
-            xs[0],
-            "Unlabelled accessions are named _.<UID>;",
-            "acquisitions have no description yet",
-        ),
-        (
-            xs[1],
-            "Labelled: named by their labels. Ones that",
-            "can't be labelled go to __invalid__/ for review",
-        ),
-        (
-            xs[2],
-            "Each stage carries the metadata, manifests",
-            "and fields through to the next",
-        ),
-    ]
-    for x, a, b in notes:
-        out.append(
-            group(
-                "note",
-                [
-                    text(x, top + ch + 26, a, 11.5, 400, MUTED, "start"),
-                    text(x, top + ch + 42, b, 11.5, 400, MUTED, "start"),
-                ],
-            )
+    )
+    out.append(
+        dir_card(
+            c2,
+            r2,
+            cw,
+            ch,
+            "annotated/",
+            [
+                (0, "PRJ001.SUBJ042.MR01/", "acc"),
+                (1, "__METADATA__.json", "redacted"),
+                (1, "__FIELDS__.json", "new"),
+                (1, "1.T1w_MPRAGE/", "acq"),
+                (2, "__METADATA__.json", "redacted"),
+                (2, "DICOM/", "res"),
+                (3, "__MANIFEST__.json", "file"),
+                (3, "*.dcm", "file"),
+            ],
+            id="dir-annotated",
         )
-    by = top + ch + 76
+    )
+    out.append(stage_link(110, c1, y2, "deidentify", optional=True))
+    out.append(stage_link(c1 + cw, c2, y2, "annotate", optional=True))
+    sx = c2 + cw + 124
+    out.append(stage_link(c2 + cw, sx, y2, "store"))
+    out.append(cylinder(sx + 60, r2 + 60, 120, 120))
+    out.append(text(sx + 60, r2 + 140, "data store", 12.5, 700, INDIGO))
+    out.append(
+        notes(
+            c1,
+            r2 + ch,
+            "Files de-identified, and identifying entries",
+            "in __METADATA__.json redacted",
+        )
+    )
+    out.append(
+        notes(
+            c2,
+            r2 + ch,
+            "__FIELDS__.json holds the fields the store",
+            "records with the accession",
+        )
+    )
+
+    by = r2 + ch + 66
     out.append(
         group(
             "footer",
             [
-                rect(40, by, W - 80, 44, rx=10, fill=PANEL, stroke="none", sw=0),
+                rect(40, by, W - 80, 64, rx=10, fill=PANEL, stroke="none", sw=0),
                 text(
                     60,
-                    by + 27,
-                    "Accessions are built in __build__/ and moved into place once complete, so a later stage "
-                    "never sees a partial one.  --unlink-source removes a stage's input once its output is saved.",
+                    by + 26,
+                    "Accessions are built in __build__/ and moved into place once complete, "
+                    "so a later stage never sees a partial one.",
+                    12.5,
+                    400,
+                    INK,
+                    "start",
+                ),
+                text(
+                    60,
+                    by + 46,
+                    "Every stage carries the metadata and manifests through, and "
+                    "--unlink-source removes a stage's input once its output is saved.",
                     12.5,
                     400,
                     INK,

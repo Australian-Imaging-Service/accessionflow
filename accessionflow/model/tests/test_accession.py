@@ -775,7 +775,7 @@ def test_from_paths_scan_id_defaults_to_resource_label(tmp_path: Path) -> None:
 
 
 def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> None:
-    """A datatype-scoped --acquisition-id spec that doesn't apply to a fileset's type (the
+    """A datatype-scoped --acquisition spec that doesn't apply to a fileset's type (the
     DICOM 'SeriesNumber' default vs a plain File) names the scan after the resource
     rather than raising."""
     src = tmp_path / "src"
@@ -943,8 +943,8 @@ def test_add_resource_clash_hint_in_error() -> None:
             fileset=File.sample(seed=2),
             on_clash="error",
             clash_hint=(
-                "the --acquisition-id and --resource ID(s) for this resource were "
-                "auto-derived from its fileset type; pass explicit --acquisition-id / "
+                "the --acquisition and --resource ID(s) for this resource were "
+                "auto-derived from its fileset type; pass explicit --acquisition / "
                 "--resource specifier(s) to control collation"
             ),
         )
@@ -960,9 +960,9 @@ def test_add_resource_clash_hint_in_avoid_warning(
         resource_name=CLASH_RESOURCE_NAME,
         fileset=File.sample(seed=2),
         on_clash="avoid",
-        clash_hint="pass explicit --acquisition-id / --resource specifier(s) to control collation",
+        clash_hint="pass explicit --acquisition / --resource specifier(s) to control collation",
     )
-    assert "pass explicit --acquisition-id / --resource specifier(s)" in caplog.text
+    assert "pass explicit --acquisition / --resource specifier(s)" in caplog.text
 
 
 def test_clash_merge(caplog: pytest.LogCaptureFixture) -> None:

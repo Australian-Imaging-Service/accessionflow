@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 from fileformats.core import FileSet
 
+from accessionflow.cli.aliases import resolve_deprecated_alias
 from accessionflow.cli.collate_cli import (
     check_loop_options,
     collate_group,
@@ -48,16 +49,18 @@ ready to be labelled
     "output_dir", type=click.Path(path_type=Path), envvar="ACFLOW_OUTPUT_DIR"
 )
 @click.option(
-    "--accession-uid",
+    "--accession",
+    "accession_uid",
     type=IDSpec.cli_type,
     nargs=2,
     multiple=True,
     default=DEFAULT_ACCESSION_UID_FIELD,
     metavar="<specifier> <datatype>",
-    envvar="ACFLOW_ACCESSION_UID",
+    envvar="ACFLOW_ACCESSION",
     help=(
         "The metadata field whose value identifies the accession each file is collated "
-        "into, before it is labelled (ACFLOW_ACCESSION_UID env. var). Defaults to "
+        "into, before it is labelled, so it must be unique across all accessions "
+        "(ACFLOW_ACCESSION env. var). Defaults to "
         "'StudyInstanceUID' for DICOM collections; other fileset types need an explicit "
         "spec. Can also be a "
         "Python format string over several fields, e.g. '{PatientID}_{StudyDate:%Y%m%d}', "
@@ -66,20 +69,44 @@ ready to be labelled
     ),
 )
 @click.option(
-    "--acquisition-id",
+    "--accession-uid",
+    "accession_uid_deprecated",
+    type=IDSpec.cli_type,
+    nargs=2,
+    multiple=True,
+    default=(),
+    envvar="ACFLOW_ACCESSION_UID",
+    hidden=True,
+    help="Deprecated alias of --accession (ACFLOW_ACCESSION_UID env. var)",
+)
+@click.option(
+    "--acquisition",
+    "acquisition_id",
     type=IDSpec.cli_type,
     nargs=2,
     multiple=True,
     default=DEFAULT_ACQUISITION_ID_FIELD,
     metavar="<specifier> <datatype>",
-    envvar="ACFLOW_ACQUISITION_ID",
+    envvar="ACFLOW_ACQUISITION",
     help=(
-        "The keyword of the metadata field to extract the acquisition ID from, or a "
-        "Python format string over several fields (see --accession-uid). Defaults to "
+        "The keyword of the metadata field to extract the acquisition ID from, which must "
+        "be unique within its accession, or a "
+        "Python format string over several fields (see --accession). Defaults to "
         "'SeriesNumber' for DICOM collections (one acquisition per series); for any "
-        "fileset type not matched by an --acquisition-id spec the acquisition is named "
-        "after the resource (ACFLOW_ACQUISITION_ID env. var)"
+        "fileset type not matched by an --acquisition spec the acquisition is named "
+        "after the resource (ACFLOW_ACQUISITION env. var)"
     ),
+)
+@click.option(
+    "--acquisition-id",
+    "acquisition_id_deprecated",
+    type=IDSpec.cli_type,
+    nargs=2,
+    multiple=True,
+    default=(),
+    envvar="ACFLOW_ACQUISITION_ID",
+    hidden=True,
+    help="Deprecated alias of --acquisition (ACFLOW_ACQUISITION_ID env. var)",
 )
 @click.option(
     "--resource",
@@ -92,7 +119,7 @@ ready to be labelled
     help=(
         "The keywords of the metadata field to extract the resource ID from "
         "for different datatypes (use `generic/file-set` as a catch-all if required), or a "
-        "Python format string over several fields (see --accession-uid). If not given, each "
+        "Python format string over several fields (see --accession). If not given, each "
         "resource is labelled with the mime-like rendering of its fileset type name, "
         "e.g. 'vectra-export', 'sqlite3-db' (ACFLOW_RESOURCE env. var)"
     ),
@@ -256,7 +283,9 @@ def collate_cmd(
     input_paths: list[str],
     output_dir: Path,
     accession_uid: ty.Sequence[IDSpec],
+    accession_uid_deprecated: ty.Sequence[IDSpec],
     acquisition_id: ty.Sequence[IDSpec],
+    acquisition_id_deprecated: ty.Sequence[IDSpec],
     resource: ty.Sequence[IDSpec],
     datatype: list[MimeType] | None,
     path_metadata_regex: list[PathMetadataRegex],
@@ -276,6 +305,18 @@ def collate_cmd(
     conversions: tuple[Convert, ...],
     metadata_tables: tuple[MetadataTable, ...],
 ) -> None:
+    accession_uid = resolve_deprecated_alias(
+        accession_uid,
+        accession_uid_deprecated,
+        param="accession_uid",
+        deprecated_param="accession_uid_deprecated",
+    )
+    acquisition_id = resolve_deprecated_alias(
+        acquisition_id,
+        acquisition_id_deprecated,
+        param="acquisition_id",
+        deprecated_param="acquisition_id_deprecated",
+    )
     check_loop_options(raise_errors, loop)
 
     set_logger_handling(

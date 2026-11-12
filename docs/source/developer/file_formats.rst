@@ -17,7 +17,7 @@ Collating files into resources
 
 ``collate folder``'s ``--datatype`` option (see :doc:`/sources/folder`) is a `FileFormats MIME-like
 identifier <https://arcanaframework.github.io/fileformats/mime.html>`_ (or a ``|``-separated union of several) that says which types of file to
-look for in the input paths at all. Within a matched accession, ``--acquisition-id``/
+look for in the input paths at all. Within a matched accession, ``--acquisition``/
 ``--resource`` (:class:`~accessionflow.helpers.arg_types.IDSpec`) then decide which
 acquisition and resource each file belongs to, based on values read out of the file's own
 metadata (e.g. DICOM ``SeriesNumber``, ``ImageType``) — see

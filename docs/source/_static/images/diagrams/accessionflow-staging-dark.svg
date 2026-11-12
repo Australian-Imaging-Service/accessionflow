@@ -1,181 +1,262 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="510" viewBox="0 0 1560 510" xmlns:c2pa="http://c2pa.org/manifest">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="874" viewBox="0 0 1200 874" xmlns:c2pa="http://c2pa.org/manifest">
 <title>accessionflow staging directories</title>
 <g id="background">
-  <rect x="0" y="0" width="1560" height="510" rx="16" fill="#181C23" stroke="#2A303A" stroke-width="1"/>
+  <rect x="0" y="0" width="1200" height="874" rx="16" fill="#181C23" stroke="#2A303A" stroke-width="1"/>
 </g>
 <g id="title">
   <text x="40" y="54" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#E6EAF0" text-anchor="start">Accessions moving through staging directories</text>
   <text x="40" y="81" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#9AA4B2" text-anchor="start">Each stage reads the previous stage's output directory and writes its own</text>
 </g>
 <g id="source">
-  <rect x="40" y="130" width="150" height="250" rx="12" fill="#262C36" stroke="#94A3B8" stroke-width="1.4"/>
-  <text x="115" y="156" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#E6EAF0" text-anchor="middle">Source</text>
-  <text x="115" y="174" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="middle">folder or Orthanc</text>
+  <rect x="40" y="120" width="140" height="250" rx="12" fill="#262C36" stroke="#94A3B8" stroke-width="1.4"/>
+  <text x="110" y="146" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#E6EAF0" text-anchor="middle">Source</text>
+  <text x="110" y="164" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="middle">folder or Orthanc</text>
   <g id="file">
-  <path d="M70,210 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M85,210 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M66,200 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M81,200 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-2">
-  <path d="M100,210 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M115,210 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M96,200 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M111,200 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-3">
-  <path d="M130,210 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M145,210 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M126,200 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M141,200 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-4">
-  <path d="M70,252 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M85,252 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M66,242 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M81,242 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-5">
-  <path d="M100,252 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M115,252 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M96,242 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M111,242 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-6">
-  <path d="M130,252 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M145,252 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M126,242 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M141,242 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-7">
-  <path d="M70,294 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M85,294 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M66,284 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M81,284 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-8">
-  <path d="M100,294 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M115,294 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M96,284 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M111,284 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
   <g id="file-9">
-  <path d="M130,294 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
-  <path d="M145,294 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M126,284 h15 l7,7 v21 h-22 z" fill="#181C23" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M141,284 v7 h7" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
 </g>
 <g id="dir-collated">
-  <rect x="314" y="130" width="248" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
-  <rect x="314" y="130" width="248" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
-  <rect x="314" y="152" width="248" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
-  <line x1="314" y1="164" x2="562" y2="164" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
-  <rect x="314" y="130" width="248" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
-  <text x="328" y="153" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">collated/</text>
-  <text x="328" y="188" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">_.1.2.840.113619…/</text>
-  <line x1="334" y1="194" x2="334" y2="203" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="334" y1="203" x2="340" y2="203" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="342" y="207" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
-  <line x1="334" y1="213" x2="334" y2="222" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="334" y1="222" x2="340" y2="222" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="342" y="226" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1/</text>
-  <line x1="348" y1="232" x2="348" y2="241" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="348" y1="241" x2="354" y2="241" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="356" y="245" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
-  <line x1="348" y1="251" x2="348" y2="260" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="348" y1="260" x2="354" y2="260" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="356" y="264" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
-  <line x1="362" y1="270" x2="362" y2="279" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="362" y1="279" x2="368" y2="279" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="370" y="283" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__MANIFEST__.json</text>
-  <line x1="362" y1="289" x2="362" y2="298" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="362" y1="298" x2="368" y2="298" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="370" y="302" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm</text>
-  <text x="328" y="321" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="500" fill="#6B7484" text-anchor="start">__build__/</text>
-  <line x1="334" y1="327" x2="334" y2="336" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="334" y1="336" x2="340" y2="336" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="342" y="340" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="500" fill="#6B7484" text-anchor="start">(accessions being written)</text>
+  <rect x="304" y="120" width="240" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
+  <rect x="304" y="120" width="240" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
+  <rect x="304" y="142" width="240" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
+  <line x1="304" y1="154" x2="544" y2="154" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="304" y="120" width="240" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
+  <text x="318" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">collated/</text>
+  <text x="318" y="178" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">_.1.2.840.113619…/</text>
+  <line x1="324" y1="184" x2="324" y2="193" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="324" y1="193" x2="330" y2="193" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="332" y="197" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <line x1="324" y1="203" x2="324" y2="212" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="324" y1="212" x2="330" y2="212" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="332" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1/</text>
+  <line x1="338" y1="222" x2="338" y2="231" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="338" y1="231" x2="344" y2="231" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="346" y="235" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <line x1="338" y1="241" x2="338" y2="250" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="338" y1="250" x2="344" y2="250" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="346" y="254" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
+  <line x1="352" y1="260" x2="352" y2="269" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="352" y1="269" x2="358" y2="269" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="360" y="273" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__MANIFEST__.json</text>
+  <line x1="352" y1="279" x2="352" y2="288" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="352" y1="288" x2="358" y2="288" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="360" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm</text>
+  <text x="318" y="311" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="500" fill="#6B7484" text-anchor="start">__build__/</text>
+  <line x1="324" y1="317" x2="324" y2="326" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="324" y1="326" x2="330" y2="326" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="332" y="330" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="500" fill="#6B7484" text-anchor="start">(accessions being written)</text>
 </g>
 <g id="dir-labelled">
-  <rect x="686" y="130" width="248" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
-  <rect x="686" y="130" width="248" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
-  <rect x="686" y="152" width="248" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
-  <line x1="686" y1="164" x2="934" y2="164" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
-  <rect x="686" y="130" width="248" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
-  <text x="700" y="153" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">labelled/</text>
-  <text x="700" y="188" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">PRJ001.SUBJ042.MR01/</text>
-  <line x1="706" y1="194" x2="706" y2="203" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="706" y1="203" x2="712" y2="203" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="714" y="207" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1.T1w_MPRAGE/</text>
-  <line x1="720" y1="213" x2="720" y2="222" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="720" y1="222" x2="726" y2="222" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="728" y="226" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
-  <line x1="734" y1="232" x2="734" y2="241" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="734" y1="241" x2="740" y2="241" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="742" y="245" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm</text>
-  <text x="700" y="264" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">__invalid__/</text>
-  <line x1="706" y1="270" x2="706" y2="279" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="706" y1="279" x2="712" y2="279" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="714" y="283" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">INVALID_MISSING_PROJECT_ab12…/</text>
-</g>
-<g id="dir-deidentified">
-  <rect x="1058" y="130" width="248" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
-  <rect x="1058" y="130" width="248" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
-  <rect x="1058" y="152" width="248" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
-  <line x1="1058" y1="164" x2="1306" y2="164" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
-  <rect x="1058" y="130" width="248" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
-  <text x="1072" y="153" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">deidentified/</text>
-  <text x="1072" y="188" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">PRJ001.SUBJ042.MR01/</text>
-  <line x1="1078" y1="194" x2="1078" y2="203" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="1078" y1="203" x2="1084" y2="203" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="1086" y="207" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1.T1w_MPRAGE/</text>
-  <line x1="1092" y1="213" x2="1092" y2="222" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="1092" y1="222" x2="1098" y2="222" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="1100" y="226" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
-  <line x1="1106" y1="232" x2="1106" y2="241" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <line x1="1106" y1="241" x2="1112" y2="241" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
-  <text x="1114" y="245" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm  (de-identified)</text>
+  <rect x="668" y="120" width="240" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
+  <rect x="668" y="120" width="240" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
+  <rect x="668" y="142" width="240" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
+  <line x1="668" y1="154" x2="908" y2="154" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="668" y="120" width="240" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
+  <text x="682" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">labelled/</text>
+  <text x="682" y="178" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">PRJ001.SUBJ042.MR01/</text>
+  <line x1="688" y1="184" x2="688" y2="193" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="688" y1="193" x2="694" y2="193" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="696" y="197" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <line x1="688" y1="203" x2="688" y2="212" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="688" y1="212" x2="694" y2="212" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="696" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1.T1w_MPRAGE/</text>
+  <line x1="702" y1="222" x2="702" y2="231" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="702" y1="231" x2="708" y2="231" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="710" y="235" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <line x1="702" y1="241" x2="702" y2="250" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="702" y1="250" x2="708" y2="250" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="710" y="254" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
+  <line x1="716" y1="260" x2="716" y2="269" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="716" y1="269" x2="722" y2="269" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="724" y="273" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__MANIFEST__.json</text>
+  <line x1="716" y1="279" x2="716" y2="288" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="716" y1="288" x2="722" y2="288" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="724" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm</text>
+  <text x="682" y="311" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">__invalid__/</text>
+  <line x1="688" y1="317" x2="688" y2="326" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="688" y1="326" x2="694" y2="326" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="696" y="330" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">INVALID_MISSING_PROJECT_…/</text>
 </g>
 <g id="stage-collate">
-  <line x1="192" y1="250" x2="209.3" y2="250" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <rect x="211.3" y="235" width="81.39999999999999" height="30" rx="15" fill="#123438" stroke="#2CB5BF" stroke-width="1.5"/>
-  <text x="252.0" y="254.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">collate</text>
+  <line x1="182" y1="240" x2="199.3" y2="240" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="201.3" y="225" width="81.39999999999999" height="30" rx="15" fill="#123438" stroke="#2CB5BF" stroke-width="1.5"/>
+  <text x="242.0" y="244.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">collate</text>
   <g id="arrow">
-  <line x1="294.7" y1="250" x2="304.0" y2="250.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <polygon points="312.0,250.0 303.0,245.1 303.0,254.9" fill="#2CB5BF"/>
+  <line x1="284.7" y1="240" x2="294.0" y2="240.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <polygon points="302.0,240.0 293.0,235.1 293.0,244.9" fill="#2CB5BF"/>
 </g>
 </g>
 <g id="stage-label">
-  <line x1="564" y1="250" x2="589.5" y2="250" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <rect x="591.5" y="235" width="65.0" height="30" rx="15" fill="#123438" stroke="#2CB5BF" stroke-width="1.5"/>
-  <text x="624.0" y="254.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">label</text>
+  <line x1="546" y1="240" x2="571.5" y2="240" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="573.5" y="225" width="65.0" height="30" rx="15" fill="#123438" stroke="#2CB5BF" stroke-width="1.5"/>
+  <text x="606.0" y="244.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">label</text>
   <g id="arrow-2">
-  <line x1="658.5" y1="250" x2="676.0" y2="250.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <polygon points="684.0,250.0 675.0,245.1 675.0,254.9" fill="#2CB5BF"/>
+  <line x1="640.5" y1="240" x2="658.0" y2="240.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <polygon points="666.0,240.0 657.0,235.1 657.0,244.9" fill="#2CB5BF"/>
 </g>
+</g>
+<g id="note">
+  <text x="304" y="396" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">Unlabelled accessions are named _.&lt;UID&gt;;</text>
+  <text x="304" y="412" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">acquisitions have no description yet</text>
+</g>
+<g id="note-2">
+  <text x="668" y="396" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">Named by their labels; ones that can't be</text>
+  <text x="668" y="412" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">labelled go to __invalid__/ for review</text>
+</g>
+<g id="wrap">
+  <polyline points="910,240 968,240 968,436 110,436 110,594" fill="none" stroke="#2CB5BF" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="1 0"/>
+</g>
+<g id="dir-deidentified">
+  <rect x="304" y="474" width="240" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
+  <rect x="304" y="474" width="240" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
+  <rect x="304" y="496" width="240" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
+  <line x1="304" y1="508" x2="544" y2="508" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="304" y="474" width="240" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
+  <text x="318" y="497" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">deidentified/</text>
+  <text x="318" y="532" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">PRJ001.SUBJ042.MR01/</text>
+  <line x1="324" y1="538" x2="324" y2="547" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="324" y1="547" x2="330" y2="547" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="332" y="551" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <rect x="453.05" y="542" width="22" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="479.05" y="542" width="14" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="505.05" y="542" width="18" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <line x1="324" y1="557" x2="324" y2="566" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="324" y1="566" x2="330" y2="566" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="332" y="570" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1.T1w_MPRAGE/</text>
+  <line x1="338" y1="576" x2="338" y2="585" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="338" y1="585" x2="344" y2="585" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="346" y="589" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <rect x="467.05" y="580" width="22" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="493.05" y="580" width="14" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="519.05" y="580" width="18" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <line x1="338" y1="595" x2="338" y2="604" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="338" y1="604" x2="344" y2="604" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="346" y="608" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
+  <line x1="352" y1="614" x2="352" y2="623" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="352" y1="623" x2="358" y2="623" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="360" y="627" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__MANIFEST__.json</text>
+  <line x1="352" y1="633" x2="352" y2="642" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="352" y1="642" x2="358" y2="642" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="360" y="646" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm  (de-identified)</text>
+</g>
+<g id="dir-annotated">
+  <rect x="668" y="474" width="240" height="250" rx="12" fill="#181C23" stroke="#94A3B8" stroke-width="1.4"/>
+  <rect x="668" y="474" width="240" height="34" rx="12" fill="#262C36" stroke="none" stroke-width="0"/>
+  <rect x="668" y="496" width="240" height="12" rx="0" fill="#262C36" stroke="none" stroke-width="0"/>
+  <line x1="668" y1="508" x2="908" y2="508" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="668" y="474" width="240" height="250" rx="12" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
+  <text x="682" y="497" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">annotated/</text>
+  <text x="682" y="532" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">PRJ001.SUBJ042.MR01/</text>
+  <line x1="688" y1="538" x2="688" y2="547" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="688" y1="547" x2="694" y2="547" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="696" y="551" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <rect x="817.05" y="542" width="22" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="843.05" y="542" width="14" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="869.05" y="542" width="18" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <line x1="688" y1="557" x2="688" y2="566" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="688" y1="566" x2="694" y2="566" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="696" y="570" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#6AD3DA" text-anchor="start">__FIELDS__.json</text>
+  <g id="tag">
+  <rect x="803.75" y="558" width="31.82" height="18" rx="9.0" fill="#123438" stroke="none" stroke-width="0"/>
+  <text x="819.66" y="569.5" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#6AD3DA" text-anchor="middle">NEW</text>
+</g>
+  <line x1="688" y1="576" x2="688" y2="585" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="688" y1="585" x2="694" y2="585" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="696" y="589" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#8F92F7" text-anchor="start">1.T1w_MPRAGE/</text>
+  <line x1="702" y1="595" x2="702" y2="604" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="702" y1="604" x2="708" y2="604" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="710" y="608" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__METADATA__.json</text>
+  <rect x="831.05" y="599" width="22" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="857.05" y="599" width="14" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <rect x="883.05" y="599" width="18" height="9" rx="1.5" fill="#E6EAF0" stroke="none" stroke-width="0"/>
+  <line x1="702" y1="614" x2="702" y2="623" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="702" y1="623" x2="708" y2="623" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="710" y="627" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM/</text>
+  <line x1="716" y1="633" x2="716" y2="642" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="716" y1="642" x2="722" y2="642" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="724" y="646" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">__MANIFEST__.json</text>
+  <line x1="716" y1="652" x2="716" y2="661" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <line x1="716" y1="661" x2="722" y2="661" stroke="#3A4250" stroke-width="1" stroke-linecap="round"/>
+  <text x="724" y="665" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9AA4B2" text-anchor="start">*.dcm</text>
 </g>
 <g id="stage-deidentify">
-  <line x1="936" y1="250" x2="941.0" y2="250" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <rect x="943.0" y="235" width="106.0" height="30" rx="15" fill="#181C23" stroke="#2CB5BF" stroke-width="1.5" stroke-dasharray="5 4"/>
-  <text x="996.0" y="254.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">deidentify</text>
+  <line x1="112" y1="594" x2="152.0" y2="594" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="154.0" y="579" width="106.0" height="30" rx="15" fill="#181C23" stroke="#2CB5BF" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="207.0" y="598.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">deidentify</text>
   <g id="arrow-3">
-  <line x1="1051.0" y1="250" x2="1048.0" y2="250.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <polygon points="1056.0,250.0 1047.0,245.1 1047.0,254.9" fill="#2CB5BF"/>
+  <line x1="262.0" y1="594" x2="294.0" y2="594.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <polygon points="302.0,594.0 293.0,589.0 293.0,599.0" fill="#2CB5BF"/>
+</g>
+</g>
+<g id="stage-annotate">
+  <line x1="546" y1="594" x2="559.2" y2="594" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="561.2" y="579" width="89.6" height="30" rx="15" fill="#181C23" stroke="#2CB5BF" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="606.0" y="598.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">annotate</text>
+  <g id="arrow-4">
+  <line x1="652.8" y1="594" x2="658.0" y2="594.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <polygon points="666.0,594.0 657.0,589.0 657.0,599.0" fill="#2CB5BF"/>
 </g>
 </g>
 <g id="stage-store">
-  <line x1="1308" y1="250" x2="1333.5" y2="250" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <rect x="1335.5" y="235" width="65.0" height="30" rx="15" fill="#123438" stroke="#2CB5BF" stroke-width="1.5"/>
-  <text x="1368.0" y="254.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">store</text>
-  <g id="arrow-4">
-  <line x1="1402.5" y1="250" x2="1420.0" y2="250.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
-  <polygon points="1428.0,250.0 1419.0,245.1 1419.0,254.9" fill="#2CB5BF"/>
+  <line x1="910" y1="594" x2="935.5" y2="594" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="937.5" y="579" width="65.0" height="30" rx="15" fill="#123438" stroke="#2CB5BF" stroke-width="1.5"/>
+  <text x="970.0" y="598.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#6AD3DA" text-anchor="middle">store</text>
+  <g id="arrow-5">
+  <line x1="1004.5" y1="594" x2="1022.0" y2="594.0" stroke="#2CB5BF" stroke-width="1.6" stroke-linecap="round"/>
+  <polygon points="1030.0,594.0 1021.0,589.0 1021.0,599.0" fill="#2CB5BF"/>
 </g>
 </g>
 <g id="repository">
-  <path d="M1430.0,206.8 v86.4 a60.0,16.8 0 0 0 120,0 v-86.4" fill="#23264A" stroke="#8F92F7" stroke-width="1.6"/>
-  <ellipse cx="1490" cy="206.8" rx="60.0" ry="16.8" fill="#181C23" stroke="#8F92F7" stroke-width="1.6"/>
-  <path d="M1430.0,244.0 a60.0,16.8 0 0 0 120,0" fill="none" stroke="#8F92F7" stroke-width="1.1199999999999999" opacity="0.5"/>
+  <path d="M1032.0,550.8 v86.4 a60.0,16.8 0 0 0 120,0 v-86.4" fill="#23264A" stroke="#8F92F7" stroke-width="1.6"/>
+  <ellipse cx="1092" cy="550.8" rx="60.0" ry="16.8" fill="#181C23" stroke="#8F92F7" stroke-width="1.6"/>
+  <path d="M1032.0,588.0 a60.0,16.8 0 0 0 120,0" fill="none" stroke="#8F92F7" stroke-width="1.1199999999999999" opacity="0.5"/>
 </g>
-<text x="1490" y="270" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#8F92F7" text-anchor="middle">data store</text>
-<g id="note">
-  <text x="314" y="406" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">Unlabelled accessions are named _.&lt;UID&gt;;</text>
-  <text x="314" y="422" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">acquisitions have no description yet</text>
-</g>
-<g id="note-2">
-  <text x="686" y="406" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">Labelled: named by their labels. Ones that</text>
-  <text x="686" y="422" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">can't be labelled go to __invalid__/ for review</text>
-</g>
+<text x="1092" y="614" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#8F92F7" text-anchor="middle">data store</text>
 <g id="note-3">
-  <text x="1058" y="406" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">Each stage carries the metadata, manifests</text>
-  <text x="1058" y="422" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">and fields through to the next</text>
+  <text x="304" y="750" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">Files de-identified, and identifying entries</text>
+  <text x="304" y="766" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">in __METADATA__.json redacted</text>
+</g>
+<g id="note-4">
+  <text x="668" y="750" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">__FIELDS__.json holds the fields the store</text>
+  <text x="668" y="766" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">records with the accession</text>
 </g>
 <g id="footer">
-  <rect x="40" y="456" width="1480" height="44" rx="10" fill="#20252E" stroke="none" stroke-width="0"/>
-  <text x="60" y="483" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#E6EAF0" text-anchor="start">Accessions are built in __build__/ and moved into place once complete, so a later stage never sees a partial one.  --unlink-source removes a stage's input once its output is saved.</text>
+  <rect x="40" y="790" width="1120" height="64" rx="10" fill="#20252E" stroke="none" stroke-width="0"/>
+  <text x="60" y="816" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#E6EAF0" text-anchor="start">Accessions are built in __build__/ and moved into place once complete, so a later stage never sees a partial one.</text>
+  <text x="60" y="836" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#E6EAF0" text-anchor="start">Every stage carries the metadata and manifests through, and --unlink-source removes a stage's input once its output is saved.</text>
 </g>
-<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTphNmQ0ZGQ0My05YzcxLTRiZWEtYjRkZS1kMWQzM2ZkODcwMDgAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaAn/auayaCZA+zziLXtmdYcAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDpiODcxZmNmNC1iMDRlLTRmZjktYTllNC0wN2MzNWVkMTFhZWJscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNozK7kPpTZ11I2+VB3LUolWgAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFgg68JKxUjrnbVW+VykVLN42nJKZLEbZmIpFbqdhlvAqROkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaEdK+b/M/VLYzw4jYQSMNZMAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIGbmMEuyz6d6N2OZoQbaT24RCyphmovS5rADfnpxJ07fZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GUGZZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOmE2ZDRkZDQzLTljNzEtNGJlYS1iNGRlLWQxZDMzZmQ4NzAwOC9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjdlYTA5Y2M0LTQxMTAtNDA3NC1iNTJmLWVhNmY5ZDdmYzE3ZHJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCDrwkrFSOudtVb5XKRUs3jackpksRtmYikVup2GW8CpE6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgg7xWXIg8xllZkcbOuNsdr0J0cpbxXD05SSlJLDoXRzWiiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFgg7eyrA+YneE4mQVjrGwwCg3XXRpwJMSU7BZnktqNoROB0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQCzrAZqQ863VH7AHr92ngcvKtJI/IJT3iN/twoBtyRGM9ZjnDh27iy6kGLMJWudQ9fJM2qcKtSK2KSzN02ctSBc=</c2pa:manifest></metadata></svg>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo0MDk4MzE5Ni03M2U1LTQ1OTAtYWQwYi0yOWNmNDhmZTNjNDIAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaHN8HgqB2n+xyI27U2xBRYgAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo4ZTRiMmEzZC0xNWU3LTRlNzgtODM5Mi0yMzBlMjczYTA2YThscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNof+kGP+s2FdF7z4UI49xGnwAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggSbOJRsH8+oMlSP43VGhas/AzBwQJKRhVK1Thxf5ewFWkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaN8xSJl44wxWm4SoWGX++t4AAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIFvyb8xQzPbOg7/KpntyDBKatDfzRQ2o6/eD/rHOoUWIZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GWQxZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjQwOTgzMTk2LTczZTUtNDU5MC1hZDBiLTI5Y2Y0OGZlM2M0Mi9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjRjMjNlOWI0LWIwNzMtNGRiZS1hMTY1LTRiNjFkMWZlM2Q5Y3JjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCBJs4lGwfz6gyVI/jdUaFqz8DMHBAkpGFUrVOHF/l7AVaJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggk0fAHdXui/2s9PfLcV29o25qsDjTzMwJ2Q8CbXLkOz+iY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFgghZ5nVqVzx3uVlTgeSTNmbduhC2EbAyO6TU5s5jg3AV10Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQD+lxfMwGmT9/h/bsplJ3Ghg8h310sv2n8EoZehHbvSjiW8gx0gciCY/zWOk3ZlI652ZnDBkW27l1y6s2o/F9w4=</c2pa:manifest></metadata></svg>

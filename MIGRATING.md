@@ -76,12 +76,16 @@ keeps its name and meaning.
 
 | xnat-ingest | AccessionFlow | Environment variable |
 |---|---|---|
-| `--session <spec> <datatype>` | `--accession-uid <spec> <datatype>` | `XINGEST_SESSION` → `ACFLOW_ACCESSION_UID` |
-| `--scan <spec> <datatype>` | `--acquisition-id <spec> <datatype>` | `XINGEST_SCAN` → `ACFLOW_ACQUISITION_ID` |
+| `--session <spec> <datatype>` | `--accession <spec> <datatype>` | `XINGEST_SESSION` → `ACFLOW_ACCESSION` |
+| `--scan <spec> <datatype>` | `--acquisition <spec> <datatype>` | `XINGEST_SCAN` → `ACFLOW_ACQUISITION` |
 
 The defaults are unchanged (`StudyInstanceUID` and `SeriesNumber` for DICOM).
-`--accession-uid` is the value files are grouped into accessions by; it isn't DICOM's
+`--accession` is the value files are grouped into accessions by; it isn't DICOM's
 `AccessionNumber`, although that can be used for it.
+
+Earlier AccessionFlow releases called these `--accession-uid` and `--acquisition-id`
+(`ACFLOW_ACCESSION_UID` and `ACFLOW_ACQUISITION_ID`). The old names still work as
+deprecated aliases, with a warning, but will be removed in a future release.
 
 The row frequencies of `--metadata-table` were renamed in the same way: `session` is now
 `accession` and `scan` is now `acquisition`; `resource`, `fileset` and
@@ -120,8 +124,8 @@ command.** xnat-ingest used the same names for two different things:
 
 | Set for | xnat-ingest | AccessionFlow |
 |---|---|---|
-| `group` → `collate folder` | `XINGEST_SESSION` | `ACFLOW_ACCESSION_UID` |
-| `group` → `collate folder` | `XINGEST_SCAN` | `ACFLOW_ACQUISITION_ID` |
+| `group` → `collate folder` | `XINGEST_SESSION` | `ACFLOW_ACCESSION` |
+| `group` → `collate folder` | `XINGEST_SCAN` | `ACFLOW_ACQUISITION` |
 | `assign` → `label xnat` | `XINGEST_SESSION` | `ACFLOW_SESSION` |
 | `assign` → `label xnat` | `XINGEST_SCAN` | `ACFLOW_SCAN` |
 
@@ -203,7 +207,7 @@ and AccessionFlow stages on the same directories.
 +    command: collate folder /input /staging/grouped --loop 300
      environment:
 -      XINGEST_SESSION: "StudyInstanceUID medimage/dicom-collection"
-+      ACFLOW_ACCESSION_UID: "StudyInstanceUID medimage/dicom-collection"
++      ACFLOW_ACCESSION: "StudyInstanceUID medimage/dicom-collection"
      volumes:
        - /data/incoming:/input
        - staging:/staging
@@ -298,13 +302,13 @@ The model classes and their attributes were renamed:
 - [ ] Every command updated: `group` → `collate folder`, `group-orthanc` →
       `collate orthanc`, `assign` → `label xnat`, `associate` → `attach`, `upload` →
       `store xnat`, `check-upload` → `check-store xnat`
-- [ ] `collate folder`'s `--session`/`--scan` changed to `--accession-uid`/`--acquisition-id`,
+- [ ] `collate folder`'s `--session`/`--scan` changed to `--accession`/`--acquisition`,
       and any `--metadata-table` row frequency of `session`/`scan` changed to
       `accession`/`acquisition`
 - [ ] No `XINGEST_` variables left anywhere: Compose files, Helm values, `ConfigMap`s,
       `Secret`s, `.env` files, scripts
 - [ ] The collate stage's `XINGEST_SESSION`/`XINGEST_SCAN` renamed to
-      `ACFLOW_ACCESSION_UID`/`ACFLOW_ACQUISITION_ID`, not `ACFLOW_SESSION`/`ACFLOW_SCAN`
+      `ACFLOW_ACCESSION`/`ACFLOW_ACQUISITION`, not `ACFLOW_SESSION`/`ACFLOW_SCAN`
 - [ ] If `store xnat --date` (or any later stage) reads a metadata field after
       `deidentify`, that field listed in `deidentify --metadata-allowlist`
 - [ ] If adopting `deidentify --hash-uid-key`, `--no-uid-check` set on `store xnat` and

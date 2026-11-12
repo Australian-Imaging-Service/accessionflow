@@ -37,6 +37,8 @@ def collect() -> dict[str, dict[str, list[str]]]:
     envvars: dict[str, dict[str, list[str]]] = {}
     for path, command in _commands(cli, ctx, "accessionflow"):
         for param in command.params:
+            if getattr(param, "hidden", False):  # e.g. deprecated aliases
+                continue
             names = param.envvar
             if not names:
                 continue

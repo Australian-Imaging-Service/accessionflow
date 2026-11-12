@@ -899,10 +899,10 @@ def test_collate_metadata_table_detailed_example(
             "--recursive",
             "--datatype",
             "image/png",
-            "--accession-uid",
+            "--accession",
             "SubjectID",
             "all",
-            "--acquisition-id",
+            "--acquisition",
             "LesionID",
             "all",
             "--resource",
@@ -1318,10 +1318,10 @@ def test_check_upload_missing_scan(
         [
             str(inputs_dir),
             str(sorted_dir),
-            "--accession-uid",
+            "--accession",
             "StudyInstanceUID",
             "all",
-            "--acquisition-id",
+            "--acquisition",
             "SeriesNumber",
             "all",
             "--raise-errors",
@@ -1463,9 +1463,9 @@ def test_check_upload_empty_scan(
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
-            # --accession-uid/--acquisition-id specs don't apply - set them explicitly
-            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
-            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
+            # --accession/--acquisition specs don't apply - set them explicitly
+            "ACFLOW_ACCESSION": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION": "SeriesNumber all",
         },
     )
 
@@ -1605,9 +1605,9 @@ def test_check_upload_missing_resource(
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
             # these test formats aren't DICOM, so the default DICOM-scoped
-            # --accession-uid/--acquisition-id specs don't apply - set them explicitly
-            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
-            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
+            # --accession/--acquisition specs don't apply - set them explicitly
+            "ACFLOW_ACCESSION": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION": "SeriesNumber all",
         },
     )
 
@@ -1744,10 +1744,10 @@ def test_check_upload_checksum_fail(
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
-            # non-DICOM test formats: the default DICOM-scoped --accession-uid/--acquisition-id
+            # non-DICOM test formats: the default DICOM-scoped --accession/--acquisition
             # specs don't apply, set them explicitly
-            "ACFLOW_ACCESSION_UID": "StudyInstanceUID all",
-            "ACFLOW_ACQUISITION_ID": "SeriesNumber all",
+            "ACFLOW_ACCESSION": "StudyInstanceUID all",
+            "ACFLOW_ACQUISITION": "SeriesNumber all",
         },
     )
 
@@ -1870,10 +1870,10 @@ def test_upload_snapshots_display_in_xnat(
             "--recursive",
             "--datatype",
             "image/png",
-            "--accession-uid",
+            "--accession",
             "SessionID",
             "all",
-            "--acquisition-id",
+            "--acquisition",
             "ScanID",
             "all",
             "--on-resource-clash",

@@ -289,7 +289,7 @@ def _resolve_clash_policy(
         f"{type(incoming).__name__} {where}, and no --on-resource-clash spec's "
         "scope covers both. Add one (e.g. "
         f"'--on-resource-clash avoid \"{to_mime(type(existing))}|{to_mime(type(incoming))}\"'), "
-        "or tighten --acquisition-id / --resource so the two don't collide."
+        "or tighten --acquisition / --resource so the two don't collide."
     )
 
 
@@ -528,7 +528,7 @@ class Accession:
     STORE_TYPE_METADATA_KEY = "__store_type__"
     # Metadata key under which each fileset's resolved fileformats type name (e.g.
     # 'VectraExport', 'Sqlite3Db') is stashed during collation, so it can be
-    # referenced from --accession-uid/--acquisition-id/--resource specs (e.g. '{__datatype__}')
+    # referenced from --accession/--acquisition/--resource specs (e.g. '{__datatype__}')
     TYPE_METADATA_KEY = "__datatype__"
 
     def __attrs_post_init__(self) -> None:
@@ -944,7 +944,7 @@ class Accession:
                         fileset.metadata.update(match.groupdict())
 
         # Expose each fileset's resolved type name as a metadata field so it can be
-        # referenced from --accession-uid/--acquisition-id/--resource specs (setdefault so an
+        # referenced from --accession/--acquisition/--resource specs (setdefault so an
         # explicit path-regex group of the same name still wins)
         for fileset in filesets:
             fileset.metadata.setdefault(cls.TYPE_METADATA_KEY, fileset.type_name)
@@ -979,7 +979,7 @@ class Accession:
                 resource_label = IDSpec.get_value_from_matching_spec(
                     fileset, resource_field
                 )
-            # No --acquisition-id spec matches this fileset's type (e.g. the datatype-scoped
+            # No --acquisition spec matches this fileset's type (e.g. the datatype-scoped
             # 'SeriesNumber' default doesn't apply to a non-DICOM fileset): put the
             # resource in a scan of the same name
             scan_id = IDSpec.get_value_from_matching_spec(
@@ -991,7 +991,7 @@ class Accession:
             derived_specs = [
                 spec
                 for spec, was_derived in (
-                    ("--acquisition-id", scan_derived),
+                    ("--acquisition", scan_derived),
                     ("--resource", resource_derived),
                 )
                 if was_derived
@@ -1392,7 +1392,7 @@ class Accession:
         clash_hint : str, optional
             extra context appended to the message when a resource-name clash is
             hit (raised for ``on_clash="error"``, logged for ``"avoid"``), e.g. to
-            note that the clashing IDs were auto-derived because no ``--acquisition-id``/
+            note that the clashing IDs were auto-derived because no ``--acquisition``/
             ``--resource`` spec was given.
         """
         try:
@@ -1507,7 +1507,7 @@ class Accession:
                     f"Clash between resource names ('{resource_name}') for {scan_id} scan in "
                     f"{self.name} session. Pass --on-resource-clash <policy> <scope> "
                     "(policy one of 'avoid'/'merge'/'overwrite') with a scope covering "
-                    "the clashing datatype(s), or tighten --acquisition-id / --resource so they "
+                    "the clashing datatype(s), or tighten --acquisition / --resource so they "
                     "don't collide." + (f" {clash_hint}" if clash_hint else ""),
                 )
             else:

@@ -28,13 +28,13 @@ Grouping files into accessions, acquisitions and resources
 Three options decide which accession, acquisition and resource each file belongs to,
 each taking a :ref:`specifier <concepts-specifiers>` and the datatype it applies to:
 
-* ``--accession-uid`` — files with the same value are collated into the same
+* ``--accession`` — files with the same value are collated into the same
   accession, and the value is its UID. Defaults to ``StudyInstanceUID`` for DICOM. This
   isn't DICOM's ``AccessionNumber``, which is just another field that can be used here
   or to label the accession
-* ``--acquisition-id`` — files with the same value are collated into the same
+* ``--acquisition`` — files with the same value are collated into the same
   acquisition, and the value is its ID. Defaults to ``SeriesNumber`` for DICOM. If no
-  ``--acquisition-id`` spec matches a fileset, its
+  ``--acquisition`` spec matches a fileset, its
   acquisition is named after its resource
 * ``--resource`` — names the resource. If no ``--resource`` spec matches a fileset, its
   resource is named after its type, e.g. ``dicom-series`` or ``vectra-export``
@@ -44,7 +44,7 @@ datatypes differently.
 
 Non-DICOM data (raw exports, image files, vendor directory formats) needs ``--datatype``
 set to the relevant `FileFormats <https://arcanaframework.github.io/fileformats/>`_
-MIME-like type(s), and usually its own ``--accession-uid``/``--acquisition-id``/``--resource`` specs,
+MIME-like type(s), and usually its own ``--accession``/``--acquisition``/``--resource`` specs,
 since the DICOM defaults won't apply. Any format that FileFormats can read metadata from
 can be collated (see :doc:`/developer/file_formats`).
 
@@ -180,7 +180,7 @@ repeatable; a clash is resolved by the first entry whose ``<scope>`` (a MIME-lik
 * ``overwrite`` replaces the existing resource
 
 A clash that no entry's scope covers (e.g. a PNG colliding with a directory format)
-always raises. Tighten ``--acquisition-id``/``--resource`` so the two don't collide, or add a scope
+always raises. Tighten ``--acquisition``/``--resource`` so the two don't collide, or add a scope
 that deliberately covers both.
 
 
@@ -198,7 +198,7 @@ is ``siblings``).
 Series without numbers
 ----------------------
 
-The default ``--acquisition-id`` spec, ``SeriesNumber``, must resolve for every DICOM series. For
+The default ``--acquisition`` spec, ``SeriesNumber``, must resolve for every DICOM series. For
 sources that don't number their series, give an explicit
-``--acquisition-id SeriesInstanceUID medimage/dicom-collection`` instead. (``collate orthanc``
+``--acquisition SeriesInstanceUID medimage/dicom-collection`` instead. (``collate orthanc``
 falls back to the ``SeriesInstanceUID`` automatically, see :ref:`source-orthanc-fallbacks`.)

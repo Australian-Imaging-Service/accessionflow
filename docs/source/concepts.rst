@@ -120,13 +120,13 @@ The manifests let the stages check that files haven't changed since an earlier s
 wrote them.
 
 .. figure:: /_static/images/diagrams/accessionflow-staging.svg
-   :alt: Accessions moving from a source through the collated, labelled and deidentified staging directories to a data store
+   :alt: Accessions moving from a source through the collated, labelled, deidentified and annotated staging directories to a data store
    :width: 100%
    :align: center
    :figclass: only-light
 
 .. figure:: /_static/images/diagrams/accessionflow-staging-dark.svg
-   :alt: Accessions moving from a source through the collated, labelled and deidentified staging directories to a data store
+   :alt: Accessions moving from a source through the collated, labelled, deidentified and annotated staging directories to a data store
    :width: 100%
    :align: center
    :figclass: only-dark
@@ -139,7 +139,7 @@ See :doc:`developer/data_model` for working with this layout from your own scrip
 Metadata fields and specifiers
 ------------------------------
 
-The options that decide how files are collated (``--accession-uid``, ``--acquisition-id``,
+The options that decide how files are collated (``--accession``, ``--acquisition``,
 ``--resource``) and labelled (e.g. ``--project`` or ``--level``) take a *specifier*: the
 name of a metadata field to take the value from. For DICOM the fields are the DICOM
 keywords, e.g. ``StudyInstanceUID`` or ``SeriesDescription``, and a specifier can index
@@ -151,7 +151,7 @@ value from more than one and/or apply formatting:
 
 .. code-block:: console
 
-    $ accessionflow collate folder ... --accession-uid '{PatientID}_{StudyDate:%Y%m%d}' all
+    $ accessionflow collate folder ... --accession '{PatientID}_{StudyDate:%Y%m%d}' all
 
 A specifier is treated as a format string if it contains a ``{``, and as a plain field
 name otherwise. A ``%``-style format spec on a field (``{StudyDate:%Y%m%d}``) works
@@ -162,7 +162,7 @@ specifier can't be resolved at all, that part of the value falls back to a place
 (see :ref:`concepts-invalid`).
 
 The options of ``collate folder`` take a specifier and the datatype it applies to,
-e.g. ``--acquisition-id SeriesNumber medimage/dicom-collection``, and can be repeated to treat
+e.g. ``--acquisition SeriesNumber medimage/dicom-collection``, and can be repeated to treat
 datatypes differently. ``all`` applies a specifier to every datatype, as above.
 
 
