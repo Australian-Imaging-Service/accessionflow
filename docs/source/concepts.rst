@@ -26,7 +26,7 @@ stage's output directory and writes its own:
 * :ref:`Data stores <stores>` are where accessions are deposited. Each one provides
   ``label``, ``store`` and ``check-store`` subcommands, e.g. ``label xnat``.
 * The :ref:`stages <stages>` in between (``attach``, ``deidentify``, ``package`` and
-  ``select-fields``) work the same way whatever the source and store, and are all
+  ``annotate``) work the same way whatever the source and store, and are all
   optional.
 
 Because the stages only communicate through directories, they can be run one after
@@ -96,8 +96,8 @@ layout:
 A collated accession hasn't been labelled yet, so its directory is named ``_.`` followed
 by its UID (e.g. the DICOM ``StudyInstanceUID``) and its acquisitions have no
 description yet. Once labelled, it is named by its labels joined by ``.``, e.g.
-``<project>.<subject>.<session>`` for XNAT. ``select-fields`` adds a ``__FIELDS__.json``
-alongside the accession's metadata (see :doc:`stages/select_fields`).
+``<project>.<subject>.<session>`` for XNAT. ``annotate`` adds a ``__FIELDS__.json``
+alongside the accession's metadata (see :doc:`stages/annotate`).
 
 Accessions are built in a ``__build__`` subdirectory of the output directory and moved
 into place once they are complete, so a later stage never sees a partly written one.

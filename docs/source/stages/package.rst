@@ -28,7 +28,7 @@ every conversion and manifest has been written successfully. ``--on-resource-cla
 decides what happens when an output label clashes with another resource of the same
 acquisition.
 
-The accession's fields (see :doc:`select_fields`) are carried through to the output
+The accession's fields (see :doc:`annotate`) are carried through to the output
 unchanged.
 
 

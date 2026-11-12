@@ -57,7 +57,7 @@ There are no aliases for the old names: `accessionflow upload ...` fails with
 
 AccessionFlow also has commands xnat-ingest didn't:
 
-- `select-fields` — copies metadata into an accession's fields, which `store xnat` sets
+- `annotate` — copies metadata into an accession's fields, which `store xnat` sets
   as custom variables on the XNAT session
 - `label folder`, `store folder` and `check-store folder` — deposit accessions in a
   folder hierarchy on a local path, a mount, S3 or SFTP instead of XNAT

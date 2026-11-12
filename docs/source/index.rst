@@ -117,7 +117,7 @@ This work is licensed under the
     stages/label
     stages/deidentify
     stages/package
-    stages/select_fields
+    stages/annotate
 
 .. toctree::
     :maxdepth: 2

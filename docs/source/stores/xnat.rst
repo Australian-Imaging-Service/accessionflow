@@ -81,7 +81,7 @@ resource in the accession. The alternative is to define the expected columns for
 project with the `FrameTree <https://arcanaframework.github.io/frametree/>`_ tool, in
 which case only data with a matching column in the dataset definition is uploaded.
 
-The accession's fields (see :doc:`/stages/select_fields`) are set as custom variables on
+The accession's fields (see :doc:`/stages/annotate`) are set as custom variables on
 the session.
 
 To attach session-level resources to an existing XNAT session, the staging directory
