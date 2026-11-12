@@ -134,7 +134,9 @@ exclude_patterns: ty.List[str] = []
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "lovelace"
-pygments_dark_style = "fruity"
+# "fruity" was hard to read in dark mode: its strings (the quoted arguments in most
+# examples) and command output had too little contrast with its background
+pygments_dark_style = "github-dark"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []

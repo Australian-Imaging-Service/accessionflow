@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="740" viewBox="0 0 1240 740">
+<title>accessionflow architecture</title>
+<g id="background">
+  <rect x="0" y="0" width="1240" height="740" rx="16" fill="#FFFFFF" stroke="#E2E7EE" stroke-width="1"/>
+</g>
+<g id="title">
+  <text x="40" y="54" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#172033" text-anchor="start">accessionflow architecture</text>
+  <text x="40" y="81" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#5A6478" text-anchor="start">A small core of stages, driven by interfaces above and extended by plugins below</text>
+</g>
+<g id="layer-interfaces">
+  <rect x="40" y="116" width="1160" height="116" rx="16" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <text x="64" y="146" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6478" text-anchor="start">INTERFACES</text>
+  <g id="cli">
+  <rect x="250" y="144" width="260" height="62" rx="10" fill="#FFFFFF" stroke="#475569" stroke-width="1.5"/>
+  <text x="380.0" y="172.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Command line</text>
+  <text x="380.0" y="191.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">accessionflow &lt;stage&gt; …</text>
+</g>
+  <g id="prefect">
+  <rect x="540" y="144" width="260" height="62" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="670.0" y="172.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Prefect flows</text>
+  <text x="670.0" y="191.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#B45309" text-anchor="middle">orchestration &amp; scheduling</text>
+</g>
+  <g id="yaml">
+  <rect x="830" y="144" width="260" height="62" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="960.0" y="172.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Deployment config</text>
+  <text x="960.0" y="191.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#B45309" text-anchor="middle">constrained YAML</text>
+</g>
+</g>
+<g id="arrow-interfaces-core">
+  <line x1="620.0" y1="236" x2="620.0" y2="254.0" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="620.0,262.0 625.0,253.0 615.0,253.0" fill="#475569"/>
+</g>
+<g id="layer-core">
+  <rect x="40" y="262" width="1160" height="190" rx="16" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="64" y="292" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6478" text-anchor="start">CORE</text>
+  <g id="core-collate">
+  <rect x="250" y="288" width="132" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="316.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">collate</text>
+</g>
+  <g id="core-attach">
+  <rect x="396" y="288" width="132" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="462.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">attach</text>
+</g>
+  <g id="arrow">
+  <line x1="384" y1="311" x2="386.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="394.0,311.0 385.0,306.1 385.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-label">
+  <rect x="542" y="288" width="132" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="608.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">label</text>
+</g>
+  <g id="arrow-2">
+  <line x1="530" y1="311" x2="532.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="540.0,311.0 531.0,306.1 531.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-deidentify">
+  <rect x="688" y="288" width="132" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="754.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">deidentify</text>
+</g>
+  <g id="arrow-3">
+  <line x1="676" y1="311" x2="678.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="686.0,311.0 677.0,306.1 677.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-package">
+  <rect x="834" y="288" width="132" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="900.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">package</text>
+</g>
+  <g id="arrow-4">
+  <line x1="822" y1="311" x2="824.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="832.0,311.0 823.0,306.1 823.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-store">
+  <rect x="980" y="288" width="132" height="46" rx="23" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="1046.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#0A5C63" text-anchor="middle">store</text>
+</g>
+  <g id="arrow-5">
+  <line x1="968" y1="311" x2="970.0" y2="311.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="978.0,311.0 969.0,306.1 969.0,315.9" fill="#0E7C86"/>
+</g>
+  <g id="core-model">
+  <rect x="250" y="358" width="420" height="66" rx="10" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.5"/>
+  <text x="460.0" y="388.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Shared data model</text>
+  <text x="460.0" y="407.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">sessions · series · resources</text>
+</g>
+  <g id="core-staging">
+  <rect x="690" y="358" width="420" height="66" rx="10" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.5"/>
+  <text x="900.0" y="388.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Staging storage</text>
+  <text x="900.0" y="407.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">local filesystem or S3</text>
+</g>
+</g>
+<g id="arrow-core-plugins">
+  <line x1="620.0" y1="456" x2="620.0" y2="474.0" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="620.0,482.0 625.0,473.0 615.0,473.0" fill="#475569"/>
+</g>
+<g id="layer-plugins">
+  <rect x="40" y="482" width="1160" height="200" rx="16" fill="#EEF0FD" stroke="none" stroke-width="0"/>
+  <text x="64" y="512" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6478" text-anchor="start">PLUGINS</text>
+  <text x="250" y="516" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#172033" text-anchor="start">Repository plugins — provide the store subcommands</text>
+  <g id="plugin-xnat">
+  <rect x="250" y="532" width="200" height="56" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.5"/>
+  <text x="350.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">XNAT</text>
+  <text x="350.0" y="576.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#5A6478" text-anchor="middle">store xnat</text>
+</g>
+  <g id="plugin-other-repos">
+  <rect x="466" y="532" width="200" height="56" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="566.0" y="557.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Other repositories</text>
+  <text x="566.0" y="576.0" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11.5" font-weight="500" fill="#B45309" text-anchor="middle">store &lt;repo&gt;</text>
+</g>
+  <text x="710" y="516" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#172033" text-anchor="start">Data types</text>
+  <g id="type-dicom">
+  <rect x="710" y="532" width="120" height="56" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.5"/>
+  <text x="770.0" y="565.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">DICOM</text>
+</g>
+  <g id="type-biosignals">
+  <rect x="842" y="532" width="120" height="56" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="902.0" y="565.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Biosignals</text>
+</g>
+  <g id="type-omics">
+  <rect x="974" y="532" width="136" height="56" rx="10" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1042.0" y="565.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Bioinformatics</text>
+</g>
+  <text x="250" y="632" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5A6478" text-anchor="start">Plugins are installed per deployment, so a site only carries the repositories and data types it uses.</text>
+</g>
+<g id="legend">
+  <rect x="40" y="700" width="26" height="16" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.4"/>
+  <text x="76" y="713" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="500" fill="#5A6478" text-anchor="start">Available</text>
+  <rect x="160" y="700" width="26" height="16" rx="4" fill="#FEF3E2" stroke="#B45309" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <text x="196" y="713" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="500" fill="#5A6478" text-anchor="start">Planned / exploratory</text>
+</g>
+</svg>

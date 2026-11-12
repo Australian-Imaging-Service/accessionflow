@@ -21,7 +21,7 @@ its own subcommand, since each has its own label levels:
 
 Each label is taken from a metadata field, or composed from several with a format
 string, e.g. ``--subject '{PatientID}_{StudyDate:%Y}'`` (see
-:ref:`concepts-specifiers`). This is the part of a pipeline most likely to need
+:ref:`concepts-specifiers`). This is the part of an accession flow most likely to need
 adjusting for each site, since instruments populate different fields:
 
 * :doc:`/stores/xnat` has an option for each of its levels, ``--project``,

@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520">
+<title>accessionflow stage-by-stage</title>
+<g id="background">
+  <rect x="0" y="0" width="1440" height="520" rx="16" fill="#FFFFFF" stroke="#E2E7EE" stroke-width="1"/>
+</g>
+<g id="title">
+  <text x="40" y="54" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#172033" text-anchor="start">What each stage does</text>
+  <text x="40" y="81" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#5A6478" text-anchor="start">How a scanning session is transformed on its way to the repository</text>
+</g>
+<g id="column-incoming">
+  <g id="header">
+  <rect x="40" y="116" width="176" height="42" rx="21" fill="#EEF1F5" stroke="#475569" stroke-width="1.6"/>
+  <text x="128.0" y="143" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#475569" text-anchor="middle">input</text>
+</g>
+  <rect x="40" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration">
+  <g id="file">
+  <path d="M59.0,224 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M74.0,224 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-2">
+  <path d="M97.0,214 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M112.0,214 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-3">
+  <path d="M141.0,228 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M156.0,228 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-4">
+  <path d="M169.0,218 h15 l7,7 v21 h-22 z" fill="#FEF3E2" stroke="#B45309" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M184.0,218 v7 h7" fill="none" stroke="#B45309" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-5">
+  <path d="M71.0,270 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M86.0,270 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-6">
+  <path d="M111.0,262 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M126.0,262 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-7">
+  <path d="M153.0,276 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M168.0,276 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-8">
+  <path d="M59.0,320 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M74.0,320 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-9">
+  <path d="M101.0,310 h15 l7,7 v21 h-22 z" fill="#FEF3E2" stroke="#B45309" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M116.0,310 v7 h7" fill="none" stroke="#B45309" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-10">
+  <path d="M139.0,322 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M154.0,322 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-11">
+  <path d="M169.0,304 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M184.0,304 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-12">
+  <path d="M87.0,358 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M102.0,358 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-13">
+  <path d="M131.0,364 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M146.0,364 v7 h7" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+</g>
+  <g id="caption">
+  <text x="128.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Unsorted DICOM and</text>
+  <text x="128.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">raw files arrive</text>
+</g>
+</g>
+<g id="column-collate">
+  <g id="header-2">
+  <rect x="240" y="116" width="176" height="42" rx="21" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="328.0" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0A5C63" text-anchor="middle">collate</text>
+</g>
+  <g id="arrow">
+  <line x1="219" y1="137.0" x2="229.0" y2="137.0" stroke="#0E7C86" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="237.0,137.0 228.0,132.1 228.0,141.9" fill="#0E7C86"/>
+</g>
+  <rect x="240" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration-2">
+  <rect x="256.0" y="212" width="144" height="170" rx="10" fill="#FFFFFF" stroke="#475569" stroke-width="1.2" stroke-dasharray="4 4"/>
+  <rect x="266.0" y="203" width="64.4" height="18" rx="9" fill="#475569" stroke="none" stroke-width="0"/>
+  <text x="298.2" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#FFFFFF" text-anchor="middle">session</text>
+  <g id="series">
+  <g id="file-14">
+  <path d="M274.0,238 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M289.0,238 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-15">
+  <path d="M270.0,242 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M285.0,242 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-16">
+  <path d="M266.0,246 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M281.0,246 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="281.0" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S1</text>
+</g>
+  <g id="series-2">
+  <g id="file-17">
+  <path d="M318.0,238 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M333.0,238 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-18">
+  <path d="M314.0,242 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M329.0,242 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-19">
+  <path d="M310.0,246 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M325.0,246 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="325.0" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S2</text>
+</g>
+  <g id="series-3">
+  <g id="file-20">
+  <path d="M362.0,238 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M377.0,238 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-21">
+  <path d="M358.0,242 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M373.0,242 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-22">
+  <path d="M354.0,246 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M369.0,246 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="369.0" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S3</text>
+</g>
+  <g id="series-4">
+  <g id="file-23">
+  <path d="M274.0,304 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M289.0,304 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-24">
+  <path d="M270.0,308 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M285.0,308 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-25">
+  <path d="M266.0,312 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M281.0,312 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="281.0" y="358" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S4</text>
+</g>
+  <g id="series-5">
+  <g id="file-26">
+  <path d="M318.0,304 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M333.0,304 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-27">
+  <path d="M314.0,308 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M329.0,308 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-28">
+  <path d="M310.0,312 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M325.0,312 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="325.0" y="358" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S5</text>
+</g>
+  <g id="series-6">
+  <g id="file-29">
+  <path d="M362.0,304 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M377.0,304 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-30">
+  <path d="M358.0,308 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M373.0,308 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-31">
+  <path d="M354.0,312 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M369.0,312 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="369.0" y="358" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S6</text>
+</g>
+</g>
+  <g id="caption-2">
+  <text x="328.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Sorted into sessions</text>
+  <text x="328.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">and series</text>
+</g>
+</g>
+<g id="column-attach">
+  <g id="header-3">
+  <rect x="440" y="116" width="176" height="42" rx="21" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="528.0" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0A5C63" text-anchor="middle">attach</text>
+</g>
+  <g id="arrow-2">
+  <line x1="419" y1="137.0" x2="429.0" y2="137.0" stroke="#0E7C86" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="437.0,137.0 428.0,132.1 428.0,141.9" fill="#0E7C86"/>
+</g>
+  <rect x="440" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration-3">
+  <rect x="456.0" y="212" width="144" height="170" rx="10" fill="#FFFFFF" stroke="#475569" stroke-width="1.2" stroke-dasharray="4 4"/>
+  <rect x="466.0" y="203" width="64.4" height="18" rx="9" fill="#475569" stroke="none" stroke-width="0"/>
+  <text x="498.2" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#FFFFFF" text-anchor="middle">session</text>
+  <g id="series-7">
+  <g id="file-32">
+  <path d="M474.0,238 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M489.0,238 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-33">
+  <path d="M470.0,242 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M485.0,242 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-34">
+  <path d="M466.0,246 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M481.0,246 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="481.0" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S1</text>
+</g>
+  <g id="series-8">
+  <g id="file-35">
+  <path d="M518.0,238 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M533.0,238 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-36">
+  <path d="M514.0,242 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M529.0,242 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-37">
+  <path d="M510.0,246 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M525.0,246 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="525.0" y="292" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S2</text>
+</g>
+  <g id="series-9">
+  <g id="file-38">
+  <path d="M474.0,304 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M489.0,304 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-39">
+  <path d="M470.0,308 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M485.0,308 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-40">
+  <path d="M466.0,312 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M481.0,312 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="481.0" y="358" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S3</text>
+</g>
+  <g id="series-10">
+  <g id="file-41">
+  <path d="M518.0,304 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M533.0,304 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-42">
+  <path d="M514.0,308 h15 l7,7 v21 h-22 z" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M529.0,308 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <g id="file-43">
+  <path d="M510.0,312 h15 l7,7 v21 h-22 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M525.0,312 v7 h7" fill="none" stroke="#0E7C86" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+  <text x="525.0" y="358" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#0E7C86" text-anchor="middle">S4</text>
+</g>
+  <g id="file-44">
+  <path d="M564.0,270 h15 l7,7 v21 h-22 z" fill="#FEF3E2" stroke="#B45309" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M579.0,270 v7 h7" fill="none" stroke="#B45309" stroke-width="1.6" stroke-linejoin="round"/>
+</g>
+  <text x="575.0" y="316" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#B45309" text-anchor="middle">raw</text>
+  <g id="plus">
+  <circle cx="588.0" cy="268" r="9" fill="#B45309"/>
+  <line x1="583.5" y1="268" x2="592.5" y2="268" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  <line x1="588.0" y1="263.5" x2="588.0" y2="272.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+</g>
+</g>
+  <g id="caption-3">
+  <text x="528.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Associated non-DICOM</text>
+  <text x="528.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">files linked in</text>
+</g>
+</g>
+<g id="column-label">
+  <g id="header-4">
+  <rect x="640" y="116" width="176" height="42" rx="21" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="728.0" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0A5C63" text-anchor="middle">label</text>
+</g>
+  <g id="arrow-3">
+  <line x1="619" y1="137.0" x2="629.0" y2="137.0" stroke="#0E7C86" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="637.0,137.0 628.0,132.1 628.0,141.9" fill="#0E7C86"/>
+</g>
+  <rect x="640" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration-4">
+  <rect x="656.0" y="212" width="144" height="170" rx="10" fill="#FFFFFF" stroke="#475569" stroke-width="1.2" stroke-dasharray="4 4"/>
+  <rect x="666.0" y="203" width="42.8" height="18" rx="9" fill="#475569" stroke="none" stroke-width="0"/>
+  <text x="687.4" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="600" fill="#FFFFFF" text-anchor="middle">MR01</text>
+  <g id="id-project">
+  <text x="672.0" y="246" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="500" fill="#5A6478" text-anchor="start">project</text>
+  <rect x="670.0" y="252" width="116" height="24" rx="6" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.2"/>
+  <text x="728.0" y="269" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">PRJ001</text>
+</g>
+  <g id="id-subject">
+  <text x="672.0" y="292" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="500" fill="#5A6478" text-anchor="start">subject</text>
+  <rect x="670.0" y="298" width="116" height="24" rx="6" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.2"/>
+  <text x="728.0" y="315" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">SUBJ042</text>
+</g>
+  <g id="id-session">
+  <text x="672.0" y="338" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="500" fill="#5A6478" text-anchor="start">session</text>
+  <rect x="670.0" y="344" width="116" height="24" rx="6" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.2"/>
+  <text x="728.0" y="361" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">MR01</text>
+</g>
+</g>
+  <g id="caption-4">
+  <text x="728.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Project, subject and</text>
+  <text x="728.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">session IDs assigned</text>
+</g>
+</g>
+<g id="column-deidentify">
+  <g id="header-5">
+  <rect x="840" y="116" width="176" height="42" rx="21" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="928.0" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0A5C63" text-anchor="middle">deidentify</text>
+</g>
+  <g id="tag">
+  <rect x="893.28" y="92" width="69.44" height="19.5" rx="9.75" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="928.0" y="105.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0A5C63" text-anchor="middle">OPTIONAL</text>
+</g>
+  <g id="arrow-4">
+  <line x1="819" y1="137.0" x2="829.0" y2="137.0" stroke="#0E7C86" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="837.0,137.0 828.0,132.1 828.0,141.9" fill="#0E7C86"/>
+</g>
+  <rect x="840" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration-5">
+  <g id="header-card">
+  <rect x="856.0" y="212" width="144" height="170" rx="10" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+  <text x="868.0" y="234" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="700" fill="#172033" text-anchor="start">DICOM header</text>
+  <text x="868.0" y="258" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="500" fill="#5A6478" text-anchor="start">PatientName</text>
+  <rect x="944.0" y="248" width="42" height="12" rx="2" fill="#172033" stroke="none" stroke-width="0"/>
+  <text x="868.0" y="279" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="500" fill="#5A6478" text-anchor="start">PatientID</text>
+  <rect x="944.0" y="269" width="42" height="12" rx="2" fill="#172033" stroke="none" stroke-width="0"/>
+  <text x="868.0" y="300" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="500" fill="#5A6478" text-anchor="start">BirthDate</text>
+  <rect x="944.0" y="290" width="42" height="12" rx="2" fill="#172033" stroke="none" stroke-width="0"/>
+  <text x="868.0" y="321" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="500" fill="#5A6478" text-anchor="start">Institution</text>
+  <rect x="944.0" y="311" width="42" height="12" rx="2" fill="#172033" stroke="none" stroke-width="0"/>
+  <text x="868.0" y="342" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="500" fill="#5A6478" text-anchor="start">Modality</text>
+  <text x="944.0" y="342" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="600" fill="#172033" text-anchor="start">MR</text>
+  <text x="868.0" y="363" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="500" fill="#5A6478" text-anchor="start">SeriesDesc</text>
+  <text x="944.0" y="363" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="10" font-weight="600" fill="#172033" text-anchor="start">T1w</text>
+</g>
+</g>
+  <g id="caption-5">
+  <text x="928.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Identifying header</text>
+  <text x="928.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">fields removed</text>
+</g>
+</g>
+<g id="column-package">
+  <g id="header-6">
+  <rect x="1040" y="116" width="176" height="42" rx="21" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="1128.0" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0A5C63" text-anchor="middle">package</text>
+</g>
+  <g id="tag-2">
+  <rect x="1093.28" y="92" width="69.44" height="19.5" rx="9.75" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="1128.0" y="105.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0A5C63" text-anchor="middle">OPTIONAL</text>
+</g>
+  <g id="arrow-5">
+  <line x1="1019" y1="137.0" x2="1029.0" y2="137.0" stroke="#0E7C86" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="1037.0,137.0 1028.0,132.1 1028.0,141.9" fill="#0E7C86"/>
+</g>
+  <rect x="1040" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration-6">
+  <g id="archive">
+  <path d="M1098.0,226 h44 l16,16 v96 h-60 z" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M1142.0,226 v16 h16" fill="none" stroke="#0E7C86" stroke-width="1.8" stroke-linejoin="round"/>
+  <rect x="1120.0" y="232" width="8" height="7" rx="1" fill="#0E7C86" stroke="none" stroke-width="0"/>
+  <rect x="1128.0" y="241" width="8" height="7" rx="1" fill="#0E7C86" stroke="none" stroke-width="0"/>
+  <rect x="1120.0" y="250" width="8" height="7" rx="1" fill="#0E7C86" stroke="none" stroke-width="0"/>
+  <rect x="1128.0" y="259" width="8" height="7" rx="1" fill="#0E7C86" stroke="none" stroke-width="0"/>
+  <rect x="1120.0" y="268" width="8" height="7" rx="1" fill="#0E7C86" stroke="none" stroke-width="0"/>
+  <rect x="1128.0" y="277" width="8" height="7" rx="1" fill="#0E7C86" stroke="none" stroke-width="0"/>
+  <rect x="1118.0" y="290" width="20" height="20" rx="3" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="1128.0" y="362" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#0A5C63" text-anchor="middle">.zip</text>
+</g>
+</g>
+  <g id="caption-6">
+  <text x="1128.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Series bundled for</text>
+  <text x="1128.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">the target repository</text>
+</g>
+</g>
+<g id="column-store">
+  <g id="header-7">
+  <rect x="1240" y="116" width="176" height="42" rx="21" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.6"/>
+  <text x="1328.0" y="143" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0A5C63" text-anchor="middle">store</text>
+</g>
+  <g id="arrow-6">
+  <line x1="1219" y1="137.0" x2="1229.0" y2="137.0" stroke="#0E7C86" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="1237.0,137.0 1228.0,132.1 1228.0,141.9" fill="#0E7C86"/>
+</g>
+  <rect x="1240" y="178" width="176" height="300" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <g id="illustration-7">
+  <g id="repository">
+  <path d="M1276.0,246.56 v88.88 a52.0,14.560000000000002 0 0 0 104,0 v-88.88" fill="#EEF0FD" stroke="#4338CA" stroke-width="1.6"/>
+  <ellipse cx="1328.0" cy="246.56" rx="52.0" ry="14.560000000000002" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.6"/>
+  <path d="M1276.0,285.1 a52.0,14.560000000000002 0 0 0 104,0" fill="none" stroke="#4338CA" stroke-width="1.1199999999999999" opacity="0.5"/>
+</g>
+  <text x="1328.0" y="320" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12" font-weight="700" fill="#4338CA" text-anchor="middle">repository</text>
+  <g id="arrow-in">
+  <line x1="1328.0" y1="216" x2="1328.0" y2="226.0" stroke="#4338CA" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="1328.0,234.0 1333.0,225.0 1323.0,225.0" fill="#4338CA"/>
+</g>
+</g>
+  <g id="caption-7">
+  <text x="1328.0" y="436" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">Uploaded to the</text>
+  <text x="1328.0" y="455" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#172033" text-anchor="middle">repository</text>
+</g>
+</g>
+</svg>

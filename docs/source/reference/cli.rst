@@ -5,7 +5,7 @@ Command-line interface
 
 *AccessionFlow*'s command-line interface is a set of subcommands of the
 ``accessionflow`` command (or its shorter alias, ``acflow``). See :doc:`/concepts` for
-how they fit together into a pipeline.
+how they fit together into an accession flow.
 
 The ``collate`` stage has a subcommand for each :ref:`source <sources>`, e.g.
 ``accessionflow collate folder``, and the ``label``, ``store`` and ``check-store``

@@ -6,7 +6,7 @@ Stages
 Between collating the files from a :ref:`source <sources>` and depositing them in a
 :ref:`data store <stores>`, these stages work the same way whatever the source and
 store. Each reads the staging directory written by the stage before it and writes its
-own (see :ref:`concepts-pipeline`):
+own (see :ref:`concepts-accession-flows`):
 
 :doc:`attach`
     Links in files that don't carry the metadata to collate them by, e.g. raw PET
@@ -25,7 +25,7 @@ own (see :ref:`concepts-pipeline`):
     Copies metadata fields into the accession's fields, which the data store records
     alongside it, e.g. as XNAT custom variables.
 
-Only ``label`` is needed for every pipeline. A typical order is::
+Only ``label`` is needed in every accession flow. A typical order is::
 
     collate → [attach] → label → [deidentify] → [select-fields] → [package] → store
 

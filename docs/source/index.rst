@@ -52,7 +52,7 @@ folder store and then in XNAT, then see:
 * :ref:`Sources <sources>` — collating from folders or an Orthanc server
 * :ref:`Stages <stages>` — attaching, labelling, de-identifying and packaging
 * :ref:`Data stores <stores>` — depositing in XNAT or a folder store
-* :doc:`deployment` — running the pipeline continuously with Docker or Kubernetes
+* :doc:`deployment` — running an accession flow continuously with Docker or Kubernetes
 * :doc:`reference/cli` — the full command-line reference
 
 
