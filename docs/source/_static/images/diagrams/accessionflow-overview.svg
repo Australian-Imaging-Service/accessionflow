@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1610" height="740" viewBox="0 0 1610 740" xmlns:c2pa="http://c2pa.org/manifest">
+<title>accessionflow pipeline overview</title>
+<g id="background">
+  <rect x="0" y="0" width="1610" height="740" rx="16" fill="#FFFFFF" stroke="#E2E7EE" stroke-width="1"/>
+</g>
+<g id="title">
+  <text x="40" y="54" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#172033" text-anchor="start">accessionflow</text>
+  <text x="40" y="81" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#5A6478" text-anchor="start">From instrument to repository through a growing set of configurable, reorderable stages</text>
+</g>
+<g id="source">
+  <rect x="40" y="140" width="156" height="168" rx="14" fill="#EEF1F5" stroke="#475569" stroke-width="1.5"/>
+  <g id="scanner-icon">
+  <rect x="81.9" y="168.55" width="72.2" height="58.9" rx="13.299999999999999" fill="#FFFFFF" stroke="#475569" stroke-width="1.8"/>
+  <circle cx="118" cy="196.1" r="19.0" fill="#EEF1F5" stroke="#475569" stroke-width="1.8"/>
+  <rect x="101.66" y="203.7" width="32.68" height="4.75" rx="2.375" fill="#475569" stroke="none" stroke-width="0"/>
+  <rect x="89.5" y="225.55" width="57.0" height="5.699999999999999" rx="2.8499999999999996" fill="#475569" stroke="none" stroke-width="0"/>
+</g>
+  <text x="118" y="264" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#172033" text-anchor="middle">Instrument</text>
+  <text x="118" y="284" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="400" fill="#5A6478" text-anchor="middle">primary &amp; secondary data</text>
+</g>
+<g id="arrow-source">
+  <line x1="200" y1="224.0" x2="232.0" y2="224.0" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="240.0,224.0 231.0,219.1 231.0,228.9" fill="#475569"/>
+</g>
+<g id="stages">
+  <g id="stage-collate">
+  <rect x="244" y="140" width="136" height="168" rx="14" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.8"/>
+  <circle cx="312.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="312.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <text x="312.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">collate</text>
+  <text x="312.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Group files into</text>
+  <text x="312.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">accessions</text>
+</g>
+  <g id="stage-attach">
+  <rect x="404" y="140" width="136" height="168" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.8" stroke-dasharray="6 5"/>
+  <circle cx="472.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="472.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <text x="472.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">attach</text>
+  <text x="472.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Link secondary data</text>
+  <text x="472.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">to its accession</text>
+  <g id="tag">
+  <rect x="437.28" y="274" width="69.44" height="19.5" rx="9.75" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="472.0" y="287.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0A5C63" text-anchor="middle">OPTIONAL</text>
+</g>
+</g>
+  <g id="arrow-attach">
+  <line x1="384" y1="224.0" x2="392.0" y2="224.0" stroke="#0E7C86" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="400.0,224.0 391.0,219.1 391.0,228.9" fill="#0E7C86"/>
+</g>
+  <g id="stage-label">
+  <rect x="564" y="140" width="136" height="168" rx="14" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.8"/>
+  <circle cx="632.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="632.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <text x="632.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">label</text>
+  <text x="632.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Assign project,</text>
+  <text x="632.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">subject, session IDs</text>
+</g>
+  <g id="arrow-label">
+  <line x1="544" y1="224.0" x2="552.0" y2="224.0" stroke="#0E7C86" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="560.0,224.0 551.0,219.1 551.0,228.9" fill="#0E7C86"/>
+</g>
+  <g id="stage-deidentify">
+  <rect x="724" y="140" width="136" height="168" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.8" stroke-dasharray="6 5"/>
+  <circle cx="792.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="792.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+  <text x="792.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">deidentify</text>
+  <text x="792.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Remove identifying</text>
+  <text x="792.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">header metadata</text>
+  <g id="tag-2">
+  <rect x="757.28" y="274" width="69.44" height="19.5" rx="9.75" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="792.0" y="287.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0A5C63" text-anchor="middle">OPTIONAL</text>
+</g>
+</g>
+  <g id="arrow-deidentify">
+  <line x1="704" y1="224.0" x2="712.0" y2="224.0" stroke="#0E7C86" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="720.0,224.0 711.0,219.1 711.0,228.9" fill="#0E7C86"/>
+</g>
+  <g id="stage-annotate">
+  <rect x="884" y="140" width="136" height="168" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.8" stroke-dasharray="6 5"/>
+  <circle cx="952.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="952.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+  <text x="952.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">annotate</text>
+  <text x="952.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Record metadata to</text>
+  <text x="952.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">upload with the data</text>
+  <g id="tag-3">
+  <rect x="917.28" y="274" width="69.44" height="19.5" rx="9.75" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="952.0" y="287.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0A5C63" text-anchor="middle">OPTIONAL</text>
+</g>
+</g>
+  <g id="arrow-annotate">
+  <line x1="864" y1="224.0" x2="872.0" y2="224.0" stroke="#0E7C86" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="880.0,224.0 871.0,219.1 871.0,228.9" fill="#0E7C86"/>
+</g>
+  <g id="stage-package">
+  <rect x="1044" y="140" width="136" height="168" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.8" stroke-dasharray="6 5"/>
+  <circle cx="1112.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="1112.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+  <text x="1112.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">package</text>
+  <text x="1112.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Package acquisitions</text>
+  <text x="1112.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">into resources</text>
+  <g id="tag-4">
+  <rect x="1077.28" y="274" width="69.44" height="19.5" rx="9.75" fill="#E3F3F4" stroke="none" stroke-width="0"/>
+  <text x="1112.0" y="287.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0A5C63" text-anchor="middle">OPTIONAL</text>
+</g>
+</g>
+  <g id="arrow-package">
+  <line x1="1024" y1="224.0" x2="1032.0" y2="224.0" stroke="#0E7C86" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="1040.0,224.0 1031.0,219.1 1031.0,228.9" fill="#0E7C86"/>
+</g>
+  <g id="stage-store">
+  <rect x="1204" y="140" width="136" height="168" rx="14" fill="#E3F3F4" stroke="#0E7C86" stroke-width="1.8"/>
+  <circle cx="1272.0" cy="172" r="14" fill="#0E7C86"/>
+  <text x="1272.0" y="177" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+  <text x="1272.0" y="216" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#0A5C63" text-anchor="middle">store</text>
+  <text x="1272.0" y="241" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">Upload to the</text>
+  <text x="1272.0" y="258" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5A6478" text-anchor="middle">repository</text>
+</g>
+  <g id="arrow-store">
+  <line x1="1184" y1="224.0" x2="1192.0" y2="224.0" stroke="#0E7C86" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="1200.0,224.0 1191.0,219.1 1191.0,228.9" fill="#0E7C86"/>
+</g>
+</g>
+<g id="store-fan-out">
+  <g id="arrow-store-2">
+  <polyline points="1342,224.0 1366,224.0 1366,196 1394.0,196.0" fill="none" stroke="#4338CA" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <polygon points="1402.0,196.0 1393.0,191.1 1393.0,200.9" fill="#4338CA"/>
+</g>
+  <g id="arrow-store-3">
+  <polyline points="1342,224.0 1366,224.0 1366,240 1394.0,240.0" fill="none" stroke="#4338CA" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <polygon points="1402.0,240.0 1393.0,235.1 1393.0,244.9" fill="#4338CA"/>
+</g>
+  <g id="arrow-store-4">
+  <polyline points="1342,224.0 1366,224.0 1366,284 1394.0,284.0" fill="none" stroke="#4338CA" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 4"/>
+  <polygon points="1402.0,284.0 1393.0,279.1 1393.0,288.9" fill="#4338CA"/>
+</g>
+</g>
+<g id="repositories">
+  <text x="1486.0" y="162" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="middle">Repositories</text>
+  <rect x="1404" y="178" width="164" height="36" rx="10" fill="#EEF0FD" stroke="#4338CA" stroke-width="1.4"/>
+  <text x="1486.0" y="201" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#4338CA" text-anchor="middle">XNAT</text>
+  <rect x="1404" y="222" width="164" height="36" rx="10" fill="#EEF0FD" stroke="#4338CA" stroke-width="1.4"/>
+  <text x="1486.0" y="245" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#4338CA" text-anchor="middle">Folder store</text>
+  <rect x="1404" y="266" width="164" height="36" rx="10" fill="#FFFFFF" stroke="#4338CA" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="1486.0" y="289" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#5A6478" text-anchor="middle">Others via plugins</text>
+</g>
+<g id="stage-note">
+  <line x1="244" y1="330" x2="1340" y2="330" stroke="#C3CBD6" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="244" y1="322" x2="244" y2="330" stroke="#C3CBD6" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="1340" y1="322" x2="1340" y2="330" stroke="#C3CBD6" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="792.0" y="356" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#5A6478" text-anchor="middle">Example configuration — each stage is a standalone command, chosen and ordered per deployment</text>
+</g>
+<g id="example-reordered">
+  <rect x="244" y="380" width="538.0" height="176" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <text x="264" y="410" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="start">Reorder stages</text>
+  <text x="264" y="536" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5A6478" text-anchor="start">e.g. deidentify before labelling</text>
+  <g id="tag-5">
+  <rect x="682.0" y="394" width="76.37" height="19.5" rx="9.75" fill="#FEF3E2" stroke="none" stroke-width="0"/>
+  <text x="720.185" y="407.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#B45309" text-anchor="middle">REORDERED</text>
+</g>
+  <g id="mini-collate">
+  <rect x="268" y="451.0" width="83.39999999999999" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="309.7" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">collate</text>
+</g>
+  <g id="arrow">
+  <line x1="354.4" y1="466.0" x2="362.4" y2="466.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="370.4,466.0 361.4,461.1 361.4,470.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-deidentify">
+  <rect x="373.4" y="451.0" width="108.0" height="30" rx="15.0" fill="#FEF3E2" stroke="#B45309" stroke-width="1.4"/>
+  <text x="427.4" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#B45309" text-anchor="middle">deidentify</text>
+</g>
+  <g id="arrow-2">
+  <line x1="484.4" y1="466.0" x2="492.4" y2="466.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="500.4,466.0 491.4,461.1 491.4,470.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-label">
+  <rect x="503.4" y="451.0" width="67.0" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="536.9" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">label</text>
+</g>
+  <g id="arrow-3">
+  <line x1="573.4" y1="466.0" x2="581.4" y2="466.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="589.4,466.0 580.4,461.1 580.4,470.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-annotate">
+  <rect x="592.4" y="451.0" width="91.6" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="638.1999999999999" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">annotate</text>
+</g>
+  <g id="arrow-4">
+  <line x1="687.0" y1="466.0" x2="695.0" y2="466.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="703.0,466.0 694.0,461.1 694.0,470.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-store">
+  <rect x="706.0" y="451.0" width="67.0" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="739.5" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">store</text>
+</g>
+</g>
+<g id="example-branched">
+  <rect x="802.0" y="380" width="538.0" height="176" rx="14" fill="#F5F7FA" stroke="none" stroke-width="0"/>
+  <text x="822.0" y="410" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#172033" text-anchor="start">Branch to several destinations</text>
+  <text x="822.0" y="536" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5A6478" text-anchor="start">e.g. identifiable copy to a secure archive, de-identified copy to research</text>
+  <g id="tag-6">
+  <rect x="1244.0" y="394" width="69.44" height="19.5" rx="9.75" fill="#FEF3E2" stroke="none" stroke-width="0"/>
+  <text x="1278.72" y="407.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#B45309" text-anchor="middle">BRANCHED</text>
+</g>
+  <g id="mini-collate-2">
+  <rect x="826.0" y="451.0" width="83.39999999999999" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="867.7" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">collate</text>
+</g>
+  <g id="arrow-5">
+  <line x1="912.4" y1="466.0" x2="920.4" y2="466.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="928.4,466.0 919.4,461.1 919.4,470.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-label-2">
+  <rect x="931.4" y="451.0" width="67.0" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="964.9" y="470.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">label</text>
+</g>
+  <g id="arrow-7">
+  <line x1="1001.4" y1="466.0" x2="1017.4" y2="466.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+  <circle cx="1017.4" cy="466.0" r="4.5" fill="#B45309"/>
+  <g id="arrow-branch">
+  <polyline points="1017.4,466.0 1017.4,436.0 1029.4,436.0" fill="none" stroke="#0E7C86" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <polygon points="1037.4,436.0 1028.4,431.1 1028.4,440.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-deidentify-2">
+  <rect x="1039.4" y="421.0" width="108.0" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="1093.4" y="440.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">deidentify</text>
+</g>
+  <g id="arrow-8">
+  <line x1="1150.4" y1="436.0" x2="1158.4" y2="436.0" stroke="#0E7C86" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="1166.4,436.0 1157.4,431.1 1157.4,440.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-store-xnat">
+  <rect x="1169.4" y="421.0" width="108.0" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="1223.4" y="440.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">store xnat</text>
+</g>
+  <g id="arrow-branch-2">
+  <polyline points="1017.4,466.0 1017.4,496.0 1029.4,496.0" fill="none" stroke="#0E7C86" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <polygon points="1037.4,496.0 1028.4,491.1 1028.4,500.9" fill="#0E7C86"/>
+</g>
+  <g id="mini-store-s3">
+  <rect x="1039.4" y="481.0" width="91.6" height="30" rx="15.0" fill="#FFFFFF" stroke="#0E7C86" stroke-width="1.4"/>
+  <text x="1085.2" y="500.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#0A5C63" text-anchor="middle">store s3</text>
+</g>
+</g>
+<g id="coming-stages">
+  <rect x="244" y="576" width="1096" height="92" rx="14" fill="#FEF3E2" stroke="#B45309" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <g id="tag-7">
+  <rect x="264" y="592" width="104.09" height="19.5" rx="9.75" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+  <text x="316.045" y="605.0" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#B45309" text-anchor="middle">COMING STAGES</text>
+</g>
+  <text x="264" y="640" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#172033" text-anchor="start">New stages slot into the chain</text>
+  <text x="264" y="657" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5A6478" text-anchor="start">wherever a deployment needs them</text>
+  <g id="coming-verify">
+  <rect x="544" y="594" width="300" height="56" rx="12" fill="#FFFFFF" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="694.0" y="618" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#B45309" text-anchor="middle">verify</text>
+  <text x="694.0" y="637" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#5A6478" text-anchor="middle">Check acquisitions against the expected protocol</text>
+</g>
+  <g id="coming-plugins">
+  <rect x="864" y="594" width="260" height="56" rx="12" fill="none" stroke="#B45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <circle cx="894" cy="622" r="11" fill="#B45309"/>
+  <line x1="888.5" y1="622" x2="899.5" y2="622" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  <line x1="894" y1="616.5" x2="894" y2="627.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  <text x="916" y="618" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#172033" text-anchor="start">Site-specific stages</text>
+  <text x="916" y="637" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#5A6478" text-anchor="start">added through plugins</text>
+</g>
+</g>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo3OGJkYWNjZi01YTMxLTRlMGYtODM2Mi01YjAxMDMxZDUwN2UAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaLjKoxN5PmOOKWMvMssiEJwAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo0NWI3NTUxMC04NWE2LTQwMTMtODgzNi0xM2VmYmRhNGMxNjdscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoBMaiW7V7etrkPGZdqurBawAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggHLOpxP4KKfbcg5rfhD9bxQFnyS0/8UB19QwmdmhfbUGkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaAVR6OVRDDyTyvzf8RjgpZcAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIKsYxaEWM1EFO9p5lc1moEDxVBhWC4i6w9qJTHtwcsD0ZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GVmSZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjc4YmRhY2NmLTVhMzEtNGUwZi04MzYyLTViMDEwMzFkNTA3ZS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjVhNmRlNjgxLTgyYzMtNDgzMi1iYzg2LWJiMGE5NWQyOGNlN3JjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAcs6nE/gop9tyDmt+EP1vFAWfJLT/xQHX1DCZ2aF9tQaJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggirnoSICn5TEGhmFu/210z6ZUAipe/I/OliKn84VetpKiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggai9y9aB/bg8sV+jrwm6q/nn3HVg7DRT3LWnBe5P+sfN0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQIShE/S3lQnc4EcgCcfi6U4cSmYZz+7NgoaZRaYuYptQz45fHJkBWmY8mDRZX8aoQ4Qw7Qbn4K2TmY26PsNRGo8=</c2pa:manifest></metadata></svg>

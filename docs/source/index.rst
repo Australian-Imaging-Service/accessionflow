@@ -45,6 +45,11 @@ provide the ``collate`` subcommands, and :ref:`data stores <stores>` provide the
 ``label``, ``store`` and ``check-store`` subcommands. The stages in between work the same
 way whatever the source and store.
 
+.. figure:: /_static/images/diagrams/accessionflow-overview.svg
+   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
+   :width: 100%
+   :align: center
+
 Start with the :doc:`quick_start`, which collates sample data and deposits it in a
 folder store and then in XNAT, then see:
 

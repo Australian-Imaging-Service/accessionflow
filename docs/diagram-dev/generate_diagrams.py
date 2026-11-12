@@ -1,5 +1,13 @@
 """Generate accessionflow documentation diagrams as hand-editable SVG.
 
+Usage (from anywhere):
+
+    python docs/diagram-dev/generate_diagrams.py
+
+Writes the SVGs to docs/source/_static/images/diagrams/, which the Sphinx pages and
+README.md reference. Stage names, order and descriptions live in OVERVIEW_STAGES and
+COMING_STAGES near the top of the overview section.
+
 Design rules for Illustrator-friendliness:
   * every visual unit is a named <g id="..."> (becomes a layer/group)
   * all styling is inline attributes (no CSS, no classes)
@@ -215,23 +223,121 @@ def title_block(x, title, subtitle):
 
 
 STAGES = [
-    ("collate", ["Group files into", "sessions & series"], False),
-    ("attach", ["Link non-DICOM", "files to sessions"], False),
+    ("collate", ["Group files into", "accessions"], False),
+    ("attach", ["Link secondary data", "to its accession"], True),
     ("label", ["Assign project,", "subject, session IDs"], False),
     ("deidentify", ["Remove identifying", "header metadata"], True),
-    ("package", ["Bundle data for the", "target repository"], True),
+    ("package", ["Package acquisitions", "into resources"], True),
     ("store", ["Upload to the", "repository"], False),
 ]
 
 
+def mini(x, y, label, kind="stage", w=None, h=30):
+    """Small stage/repository pill. Returns (svg, width)."""
+    w = w or len(label) * 8.2 + 26
+    styles = {
+        "stage": (WHITE, TEAL, TEAL_D, None),
+        "opt": (WHITE, TEAL, TEAL_D, "5 4"),
+        "moved": (AMBER_L, AMBER, AMBER, None),
+        "repo": (INDIGO_L, INDIGO, INDIGO, None),
+    }
+    fill, stroke, ink, dash = styles[kind]
+    return group(
+        f"mini-{label.replace(' ', '-')}",
+        [
+            rect(x, y, w, h, rx=h / 2, fill=fill, stroke=stroke, sw=1.4, dash=dash),
+            text(x + w / 2, y + h / 2 + 4.5, label, 12.5, 700, ink, mono=True),
+        ],
+    ), w
+
+
+def flex_panel(x, y, w, h, title, sub):
+    return [
+        rect(x, y, w, h, rx=14, fill=PANEL, stroke="none", sw=0),
+        text(x + 20, y + 30, title, 15, 700, INK, "start"),
+        text(x + 20, y + h - 20, sub, 12.5, 400, MUTED, "start"),
+    ]
+
+
+def flex_reordered(x, y, w, h):
+    P = flex_panel(x, y, w, h, "Reorder stages", "e.g. deidentify before labelling")
+    P.append(tag(x + w - 20 - 80, y + 14, "reordered", AMBER, AMBER_L, anchor="start"))
+    cy = y + h / 2 - 2
+    cx = x + 24
+    seq = [
+        ("collate", "stage"),
+        ("deidentify", "moved"),
+        ("label", "stage"),
+        ("annotate", "opt"),
+        ("store", "stage"),
+    ]
+    for i, (n, k) in enumerate(seq):
+        g, ww = mini(cx, cy - 15, n, k)
+        P.append(g)
+        if i < len(seq) - 1:
+            P.append(arrow(cx + ww + 3, cy, cx + ww + 19, cy, TEAL, sw=1.5, id="arrow"))
+        cx += ww + 22
+    return P
+
+
+def flex_branched(x, y, w, h):
+    P = flex_panel(
+        x,
+        y,
+        w,
+        h,
+        "Branch to several destinations",
+        "e.g. identifiable copy to a secure archive, de-identified copy to research",
+    )
+    P.append(tag(x + w - 20 - 76, y + 14, "branched", AMBER, AMBER_L, anchor="start"))
+    cy = y + h / 2 - 2
+    cx = x + 24
+    for n in ("collate", "label"):
+        g, ww = mini(cx, cy - 15, n)
+        P.append(g)
+        P.append(arrow(cx + ww + 3, cy, cx + ww + 19, cy, TEAL, sw=1.5, id="arrow"))
+        cx += ww + 22
+    # fork point
+    fx = cx - 3
+    P[-1] = group("arrow", [line(fx - 16, cy, fx, cy, TEAL, 1.5)])
+    P.append(f'<circle cx="{fx}" cy="{cy}" r="4.5" fill="{AMBER}"/>')
+    up, dn = cy - 30, cy + 30
+    bx = fx + 22
+    # upper branch: deidentify -> store xnat -> XNAT
+    P.append(elbow([(fx, cy), (fx, up), (bx - 2, up)], TEAL, sw=1.5, id="arrow-branch"))
+    g, ww = mini(bx, up - 15, "deidentify", "opt")
+    P.append(g)
+    ux = bx + ww
+    P.append(arrow(ux + 3, up, ux + 19, up, TEAL, sw=1.5, id="arrow"))
+    g, ww = mini(ux + 22, up - 15, "store xnat")
+    P.append(g)
+    # lower branch: store s3
+    P.append(elbow([(fx, cy), (fx, dn), (bx - 2, dn)], TEAL, sw=1.5, id="arrow-branch"))
+    g, ww = mini(bx, dn - 15, "store s3")
+    P.append(g)
+    return P
+
+
 # ------------------------------------------------- 1. pipeline overview (README)
+OVERVIEW_STAGES = [
+    ("collate", ["Group files into", "accessions"], False),
+    ("attach", ["Link secondary data", "to its accession"], True),
+    ("label", ["Assign project,", "subject, session IDs"], False),
+    ("deidentify", ["Remove identifying", "header metadata"], True),
+    ("annotate", ["Record metadata to", "upload with the data"], True),
+    ("package", ["Package acquisitions", "into resources"], True),
+    ("store", ["Upload to the", "repository"], False),
+]
+COMING_STAGES = [("verify", "Check acquisitions against the expected protocol")]
+
+
 def overview():
-    W, H = 1440, 420
+    W, H = 1610, 740
     out = [
         title_block(
             40,
             "accessionflow",
-            "From instrument to repository through configurable, reorderable stages",
+            "From instrument to repository through a growing set of configurable, reorderable stages",
         )
     ]
     top, h = 140, 168
@@ -245,18 +351,18 @@ def overview():
                 rect(40, top, 156, h, rx=14, fill=SLATE_L, stroke=SLATE, sw=1.5),
                 scanner_icon(118, top + 58, 0.95),
                 text(118, top + 124, "Instrument", 16, 700, INK),
-                text(118, top + 144, "DICOM & raw data", 12.5, 400, MUTED),
+                text(118, top + 144, "primary & secondary data", 11, 400, MUTED),
             ],
         )
     )
 
-    x0, sw_, gap = 244, 140, 24
-    xs = [x0 + i * (sw_ + gap) for i in range(len(STAGES))]
+    x0, sw_, gap = 244, 136, 24
+    xs = [x0 + i * (sw_ + gap) for i in range(len(OVERVIEW_STAGES))]
     out.append(arrow(196 + 4, cy, xs[0] - 4, cy, SLATE, id="arrow-source"))
     stage_groups = []
-    for i, (name, desc, opt) in enumerate(STAGES):
+    for i, (name, desc, opt) in enumerate(OVERVIEW_STAGES):
         x = xs[i]
-        stroke = TEAL
+        size = 18 if len(name) <= 10 else 15
         parts = [
             rect(
                 x,
@@ -265,13 +371,13 @@ def overview():
                 h,
                 rx=14,
                 fill=WHITE if opt else TEAL_L,
-                stroke=stroke,
+                stroke=TEAL,
                 sw=1.8,
                 dash="6 5" if opt else None,
             ),
             f'<circle cx="{x + sw_ / 2}" cy="{top + 32}" r="14" fill="{TEAL}"/>',
             text(x + sw_ / 2, top + 37, str(i + 1), 13, 700, WHITE),
-            text(x + sw_ / 2, top + 76, name, 18, 700, TEAL_D, mono=True),
+            text(x + sw_ / 2, top + 76, name, size, 700, TEAL_D, mono=True),
             text(x + sw_ / 2, top + 101, desc[0], 12, 400, MUTED),
             text(x + sw_ / 2, top + 118, desc[1], 12, 400, MUTED),
         ]
@@ -285,42 +391,51 @@ def overview():
     out.append(group("stages", stage_groups))
 
     # repositories
-    rx_, rw = 1236, 164
     end = xs[-1] + sw_
-    out.append(arrow(end + 4, cy, rx_ - 4, cy, INDIGO, id="arrow-repositories"))
-    repos = [
-        rect(rx_, top, rw, h, rx=14, fill=INDIGO_L, stroke=INDIGO, sw=1.5),
-        text(rx_ + rw / 2, top + 30, "Repositories", 16, 700, INK),
-    ]
+    rx_, rw = end + 64, 164
+    repos = [text(rx_ + rw / 2, top + 22, "Repositories", 15, 700, INK)]
+    fan = []
+    mx = end + 26
     for j, (lbl, dash) in enumerate(
-        [("XNAT", None), ("Object storage", None), ("Others via plugins", "5 4")]
+        [("XNAT", None), ("Folder store", None), ("Others via plugins", "5 4")]
     ):
-        yy = top + 46 + j * 38
+        yy = top + 38 + j * 44
         repos += [
             rect(
-                rx_ + 14,
+                rx_,
                 yy,
-                rw - 28,
-                30,
-                rx=8,
-                fill=WHITE,
+                rw,
+                36,
+                rx=10,
+                fill=INDIGO_L if not dash else WHITE,
                 stroke=INDIGO,
-                sw=1.2,
+                sw=1.4,
                 dash=dash,
             ),
             text(
                 rx_ + rw / 2,
-                yy + 20,
+                yy + 23,
                 lbl,
-                13,
-                600 if not dash else 400,
+                13.5,
+                700 if not dash else 400,
                 INDIGO if not dash else MUTED,
             ),
         ]
+        ty = yy + 18
+        fan.append(
+            elbow(
+                [(end + 2, cy), (mx, cy), (mx, ty), (rx_ - 2, ty)],
+                INDIGO,
+                sw=1.6,
+                dash="5 4" if dash else None,
+                id="arrow-store",
+            )
+        )
+    out.append(group("store-fan-out", fan))
     out.append(group("repositories", repos))
 
-    # bracket under stages
-    by = top + h + 26
+    # note under the chain
+    by = top + h + 22
     out.append(
         group(
             "stage-note",
@@ -328,11 +443,10 @@ def overview():
                 line(xs[0], by, end, by, LINE, 1.5),
                 line(xs[0], by - 8, xs[0], by, LINE, 1.5),
                 line(end, by - 8, end, by, LINE, 1.5),
-                line((xs[0] + end) / 2, by, (xs[0] + end) / 2, by + 8, LINE, 1.5),
                 text(
                     (xs[0] + end) / 2,
-                    by + 30,
-                    "Each stage is a standalone command — stages are configured per deployment and can be reordered",
+                    by + 26,
+                    "Example configuration — each stage is a standalone command, chosen and ordered per deployment",
                     13.5,
                     400,
                     MUTED,
@@ -340,11 +454,102 @@ def overview():
             ],
         )
     )
+
+    # flexible pipelines: reorder + branch examples
+    fy, fh = by + 50, 176
+    pw = (end - xs[0] - 20) / 2
+    out.append(group("example-reordered", flex_reordered(xs[0], fy, pw, fh)))
+    out.append(group("example-branched", flex_branched(xs[0] + pw + 20, fy, pw, fh)))
+
+    # coming-stages shelf
+    sy, sh = fy + fh + 20, 92
+    shelf = [
+        rect(
+            xs[0],
+            sy,
+            end - xs[0],
+            sh,
+            rx=14,
+            fill=AMBER_L,
+            stroke=AMBER,
+            sw=1.5,
+            dash="6 5",
+        ),
+        tag(xs[0] + 20, sy + 16, "coming stages", AMBER, WHITE, anchor="start"),
+        text(
+            xs[0] + 20, sy + 64, "New stages slot into the chain", 13, 600, INK, "start"
+        ),
+        text(
+            xs[0] + 20,
+            sy + 81,
+            "wherever a deployment needs them",
+            13,
+            400,
+            MUTED,
+            "start",
+        ),
+    ]
+    cx_ = xs[0] + 300
+    for name, desc in COMING_STAGES:
+        cw_ = 300
+        shelf.append(
+            group(
+                f"coming-{name}",
+                [
+                    rect(
+                        cx_,
+                        sy + 18,
+                        cw_,
+                        56,
+                        rx=12,
+                        fill=WHITE,
+                        stroke=AMBER,
+                        sw=1.5,
+                        dash="5 4",
+                    ),
+                    text(cx_ + cw_ / 2, sy + 42, name, 15, 700, AMBER, mono=True),
+                    text(cx_ + cw_ / 2, sy + 61, desc, 11.5, 400, MUTED),
+                ],
+            )
+        )
+        cx_ += cw_ + 20
+    shelf.append(
+        group(
+            "coming-plugins",
+            [
+                rect(
+                    cx_,
+                    sy + 18,
+                    260,
+                    56,
+                    rx=12,
+                    fill="none",
+                    stroke=AMBER,
+                    sw=1.5,
+                    dash="5 4",
+                ),
+                f'<circle cx="{cx_ + 30}" cy="{sy + 46}" r="11" fill="{AMBER}"/>',
+                line(cx_ + 24.5, sy + 46, cx_ + 35.5, sy + 46, WHITE, 2),
+                line(cx_ + 30, sy + 40.5, cx_ + 30, sy + 51.5, WHITE, 2),
+                text(cx_ + 52, sy + 42, "Site-specific stages", 14, 700, INK, "start"),
+                text(
+                    cx_ + 52,
+                    sy + 61,
+                    "added through plugins",
+                    11.5,
+                    400,
+                    MUTED,
+                    "start",
+                ),
+            ],
+        )
+    )
+    out.append(group("coming-stages", shelf))
     return svg(W, H, "accessionflow pipeline overview", out)
 
 
 # ------------------------------------------------- 2. stage-by-stage
-def session_box(cx, y, w=144, h=150, label="session"):
+def session_box(cx, y, w=144, h=150, label="accession"):
     return [
         rect(cx - w / 2, y, w, h, rx=10, fill=WHITE, stroke=SLATE, sw=1.2, dash="4 4"),
         rect(
@@ -374,25 +579,26 @@ def series_stack(x, y, lbl, color=TEAL, fill=TEAL_L):
 
 
 def stage_by_stage():
-    W, H = 1440, 520
+    W, H = 1656, 520
     out = [
         title_block(
             40,
             "What each stage does",
-            "How a scanning session is transformed on its way to the repository",
+            "How an accession is transformed on its way to the repository",
         )
     ]
-    cols = [("incoming", None, False)] + [(n, d, o) for n, d, o in STAGES]
+    cols = [("incoming", None, False)] + [(n, d, o) for n, d, o in OVERVIEW_STAGES]
     cw, gap, x0 = 176, 24, 40
     hy, hh = 116, 42
     py, ph = 178, 300
     captions = {
-        "incoming": ["Unsorted DICOM and", "raw files arrive"],
-        "collate": ["Sorted into sessions", "and series"],
-        "attach": ["Associated non-DICOM", "files linked in"],
+        "incoming": ["Primary and secondary", "data arrive unsorted"],
+        "collate": ["Sorted into accessions", "and acquisitions"],
+        "attach": ["Secondary data linked", "to its accession"],
         "label": ["Project, subject and", "session IDs assigned"],
+        "annotate": ["Chosen & derived fields", "recorded for upload"],
         "deidentify": ["Identifying header", "fields removed"],
-        "package": ["Series bundled for", "the target repository"],
+        "package": ["Each acquisition packaged", "into repository resources"],
         "store": ["Uploaded to the", "repository"],
     }
     for i, (name, _, opt) in enumerate(cols):
@@ -480,9 +686,11 @@ def stage_by_stage():
                 for k in range(2):
                     ill.append(series_stack(cx - 62 + k * 44, iy + 92, f"S{k + 3}"))
                 # attached raw file
-                ax_, ay_ = cx + 36, iy + 58
+                ax_, ay_ = cx + 28, iy + 58
                 ill.append(file_icon(ax_, ay_, fill=AMBER_L, stroke=AMBER, sw=1.6))
-                ill.append(text(ax_ + 11, ay_ + 46, "raw", 11, 600, AMBER, mono=True))
+                ill.append(
+                    text(ax_ + 11, ay_ + 46, "secondary", 9.5, 600, AMBER, mono=True)
+                )
                 ill.append(
                     group(
                         "plus",
@@ -517,6 +725,67 @@ def stage_by_stage():
                         ],
                     )
                 )
+        elif name == "annotate":
+            hdr = [
+                rect(cx - 72, iy, 144, 62, rx=8, fill=WHITE, stroke=SLATE, sw=1.2),
+                text(cx - 62, iy + 17, "DICOM header", 10.5, 700, INK, "start"),
+            ]
+            for k, (f, v) in enumerate(
+                [("Manufacturer", "Siemens"), ("PatientAge", "042Y")]
+            ):
+                hdr.append(
+                    text(
+                        cx - 62,
+                        iy + 35 + k * 15,
+                        f,
+                        9.5,
+                        500,
+                        MUTED,
+                        "start",
+                        mono=True,
+                    )
+                )
+                hdr.append(
+                    text(cx + 62, iy + 35 + k * 15, v, 9.5, 600, INK, "end", mono=True)
+                )
+            ill.append(group("header-card", hdr))
+            ill.append(arrow(cx, iy + 64, cx, iy + 84, TEAL, sw=1.6, id="arrow-fields"))
+            md = [
+                rect(cx - 72, iy + 86, 144, 84, rx=8, fill=TEAL_L, stroke=TEAL, sw=1.4),
+                text(
+                    cx - 62,
+                    iy + 103,
+                    "metadata for repository",
+                    10.5,
+                    700,
+                    TEAL_D,
+                    "start",
+                ),
+            ]
+            rows = [
+                ("vendor", "Siemens", False),
+                ("age", "42", False),
+                ("age_group", "40-49", True),
+            ]
+            for k, (f, v, derived) in enumerate(rows):
+                yy = iy + 122 + k * 16
+                md.append(text(cx - 62, yy, f, 9.5, 600, TEAL_D, "start", mono=True))
+                md.append(text(cx + 62, yy, v, 9.5, 600, INK, "end", mono=True))
+                if derived:
+                    md.append(
+                        rect(
+                            cx + 2,
+                            yy - 10,
+                            18,
+                            13,
+                            rx=3,
+                            fill=AMBER,
+                            stroke="none",
+                            sw=0,
+                        )
+                    )
+                    md.append(text(cx + 11, yy, "fx", 9, 700, WHITE, italic=True))
+            ill.append(group("metadata-card", md))
         elif name == "deidentify":
             card = [
                 rect(cx - 72, iy, 144, 170, rx=10, fill=WHITE, stroke=SLATE, sw=1.2),
@@ -561,31 +830,65 @@ def stage_by_stage():
                     )
             ill.append(group("header-card", card))
         elif name == "package":
-            zx, zy = cx - 30, iy + 14
-            zp = [
-                f'<path d="M{zx},{zy} h44 l16,16 v96 h-60 z" fill="{WHITE}" stroke="{TEAL}" '
-                f'stroke-width="1.8" stroke-linejoin="round"/>',
-                f'<path d="M{zx + 44},{zy} v16 h16" fill="none" stroke="{TEAL}" stroke-width="1.8" '
-                f'stroke-linejoin="round"/>',
+            ill.append(series_stack(cx - 15, iy, "acquisition"))
+            ill.append(
+                elbow(
+                    [
+                        (cx, iy + 62),
+                        (cx, iy + 72),
+                        (cx - 38, iy + 72),
+                        (cx - 38, iy + 86),
+                    ],
+                    TEAL,
+                    sw=1.5,
+                    id="arrow-resource",
+                )
+            )
+            ill.append(
+                elbow(
+                    [(cx, iy + 72), (cx + 38, iy + 72), (cx + 38, iy + 86)],
+                    TEAL,
+                    sw=1.5,
+                    id="arrow-resource",
+                )
+            )
+            # DICOM resource
+            lx = cx - 72
+            res = [
+                rect(lx, iy + 88, 68, 82, rx=8, fill=WHITE, stroke=TEAL, sw=1.4),
+                text(lx + 34, iy + 104, "DICOM", 10, 700, TEAL_D, mono=True),
+                f'<path d="M{lx + 22},{iy + 112} h18 l6,6 v28 h-24 z" fill="{WHITE}" stroke="{TEAL}" '
+                f'stroke-width="1.3" stroke-linejoin="round"/>',
             ]
-            for k in range(6):
-                zp.append(
+            for k in range(4):
+                res.append(
                     rect(
-                        zx + 22 + (k % 2) * 8,
-                        zy + 6 + k * 9,
-                        8,
-                        7,
-                        rx=1,
+                        lx + 31 + (k % 2) * 4,
+                        iy + 114 + k * 5,
+                        4,
+                        4,
+                        rx=0.5,
                         fill=TEAL,
                         stroke="none",
                         sw=0,
                     )
                 )
-            zp.append(
-                rect(zx + 20, zy + 64, 20, 20, rx=3, fill=TEAL_L, stroke=TEAL, sw=1.4)
-            )
-            zp.append(text(cx, zy + 136, ".zip", 13, 700, TEAL_D, mono=True))
-            ill.append(group("archive", zp))
+            res.append(text(lx + 34, iy + 162, ".zip", 10, 600, MUTED, mono=True))
+            ill.append(group("resource-dicom", res))
+            # SNAPSHOTS resource
+            rx_ = cx + 4
+            snap = [
+                rect(rx_, iy + 88, 68, 82, rx=8, fill=WHITE, stroke=TEAL, sw=1.4),
+                text(rx_ + 34, iy + 104, "SNAPSHOTS", 9, 700, TEAL_D, mono=True),
+                rect(
+                    rx_ + 20, iy + 112, 30, 30, rx=3, fill=SLATE_L, stroke=SLATE, sw=1
+                ),
+                rect(rx_ + 17, iy + 115, 30, 30, rx=3, fill=INK, stroke=SLATE, sw=1),
+                f'<ellipse cx="{rx_ + 32}" cy="{iy + 130}" rx="9" ry="11" fill="#9AA4B2"/>',
+                f'<ellipse cx="{rx_ + 32}" cy="{iy + 130}" rx="4.5" ry="6" fill="#5A6478"/>',
+                text(rx_ + 34, iy + 162, ".gif", 10, 600, MUTED, mono=True),
+            ]
+            ill.append(group("resource-snapshots", snap))
         elif name == "store":
             ill.append(cylinder(cx, iy + 20, 104, 118))
             ill.append(text(cx, iy + 108, "repository", 12, 700, INDIGO, mono=True))
@@ -727,11 +1030,11 @@ def architecture():
     # core
     y2 = y1 + 146
     p = band(X, y2, BW, 190, "Core", TEAL_L)
-    cw_, g_ = 132, 14
-    names = [s[0] for s in STAGES]
+    cw_, g_ = 120, 14
+    names = [s[0] for s in OVERVIEW_STAGES]
     sx0 = X + 210
     for i, n in enumerate(names):
-        opt = STAGES[i][2]
+        opt = OVERVIEW_STAGES[i][2]
         xx = sx0 + i * (cw_ + g_)
         p.append(
             group(
@@ -748,7 +1051,15 @@ def architecture():
                         sw=1.6,
                         dash="6 5" if opt else None,
                     ),
-                    text(xx + cw_ / 2, y2 + 54, n, 15, 700, TEAL_D, mono=True),
+                    text(
+                        xx + cw_ / 2,
+                        y2 + 54,
+                        n,
+                        15 if len(n) <= 10 else 13.5,
+                        700,
+                        TEAL_D,
+                        mono=True,
+                    ),
                 ],
             )
         )
@@ -762,10 +1073,10 @@ def architecture():
             chip(
                 X + 210,
                 y2 + 96,
-                420,
+                452,
                 66,
                 "Shared data model",
-                "sessions · series · resources",
+                "accessions · acquisitions · resources",
                 color=TEAL,
                 mono_sub=False,
             ),
@@ -775,9 +1086,9 @@ def architecture():
         group(
             "core-staging",
             chip(
-                X + 650,
+                X + 682,
                 y2 + 96,
-                420,
+                452,
                 66,
                 "Staging storage",
                 "local filesystem or S3",
@@ -798,7 +1109,7 @@ def architecture():
         text(
             X + 210,
             y3 + 34,
-            "Repository plugins — provide the store subcommands",
+            "Sources — provide collate subcommands",
             13,
             600,
             INK,
@@ -807,45 +1118,72 @@ def architecture():
     )
     p.append(
         group(
-            "plugin-xnat",
-            chip(X + 210, y3 + 50, 200, 56, "XNAT", "store xnat", color=INDIGO),
+            "source-folder",
+            chip(X + 210, y3 + 50, 140, 56, "Folder", "collate folder", color=INDIGO),
         )
     )
     p.append(
         group(
-            "plugin-other-repos",
+            "source-orthanc",
+            chip(X + 362, y3 + 50, 140, 56, "Orthanc", "collate orthanc", color=INDIGO),
+        )
+    )
+    p.append(
+        text(
+            X + 560,
+            y3 + 34,
+            "Data stores — provide label, store and check-store",
+            13,
+            600,
+            INK,
+            "start",
+        )
+    )
+    p.append(
+        group(
+            "store-xnat",
+            chip(X + 560, y3 + 50, 150, 56, "XNAT", "store xnat", color=INDIGO),
+        )
+    )
+    p.append(
+        group(
+            "store-folder",
             chip(
-                X + 426,
+                X + 722,
                 y3 + 50,
-                200,
+                180,
                 56,
-                "Other repositories",
-                "store <repo>",
-                planned=True,
+                "Folder",
+                "local · S3 · SFTP",
+                color=INDIGO,
+                mono_sub=False,
             ),
         )
     )
-    p.append(text(X + 670, y3 + 34, "Data types", 13, 600, INK, "start"))
-    p.append(
-        group("type-dicom", chip(X + 670, y3 + 50, 120, 56, "DICOM", color=INDIGO))
-    )
     p.append(
         group(
-            "type-biosignals",
-            chip(X + 802, y3 + 50, 120, 56, "Biosignals", planned=True),
-        )
-    )
-    p.append(
-        group(
-            "type-omics",
-            chip(X + 934, y3 + 50, 136, 56, "Bioinformatics", planned=True),
+            "store-others",
+            chip(
+                X + 914, y3 + 50, 156, 56, "Other stores", "store <repo>", planned=True
+            ),
         )
     )
     p.append(
         text(
             X + 210,
-            y3 + 150,
-            "Plugins are installed per deployment, so a site only carries the repositories and data types it uses.",
+            y3 + 146,
+            "Plugins are installed per deployment, so a site only carries the sources and stores it uses.",
+            13,
+            400,
+            MUTED,
+            "start",
+        )
+    )
+    p.append(
+        text(
+            X + 210,
+            y3 + 166,
+            "File-type support comes from the FileFormats package and its extensions.",
             13,
             400,
             MUTED,
@@ -931,353 +1269,446 @@ def mini_chain(x, y, names, highlight=(), w=118, h=30, gx=12, gy=12, per_row=4):
     return group("stage-chain", p)
 
 
+def chip2(x, y, label, kind="stage", h=30, size=12):
+    """Compact pill for deployment rows. Returns (svg, width)."""
+    w = len(label) * size * 0.64 + 22
+    styles = {
+        "stage": (WHITE, TEAL, TEAL_D, None),
+        "opt": (WHITE, TEAL, TEAL_D, "5 4"),
+        "push": (AMBER, AMBER, WHITE, None),
+        "repo": (INDIGO_L, INDIGO, INDIGO, None),
+    }
+    fill, stroke, ink, dash = styles[kind]
+    return group(
+        f"stage-{label.replace(' ', '-')}",
+        [
+            rect(x, y, w, h, rx=h / 2, fill=fill, stroke=stroke, sw=1.4, dash=dash),
+            text(x + w / 2, y + h / 2 + 4.3, label, size, 700, ink, mono=True),
+        ],
+    ), w
+
+
+def chip_row(x, y, names, gap=14, size=12):
+    """Lay out a row of stage pills joined by arrows. Returns (parts, end_x, {name: (x0, x1)})."""
+    parts, pos = [], {}
+    for i, n in enumerate(names):
+        kind = (
+            "push"
+            if n == "push"
+            else (
+                "opt"
+                if n in ("attach", "annotate", "deidentify", "package")
+                else "stage"
+            )
+        )
+        g, w = chip2(x, y, n, kind, size=size)
+        parts.append(g)
+        pos[n] = (x, x + w)
+        if i < len(names) - 1:
+            parts.append(
+                arrow(
+                    x + w + 2, y + 15, x + w + gap - 2, y + 15, TEAL, sw=1.4, id="arrow"
+                )
+            )
+        x += w + gap
+    return parts, x - gap, pos
+
+
+def zone(x, y, w, h, label, fill):
+    return [
+        rect(x, y, w, h, rx=14, fill=fill, stroke="none", sw=0),
+        text(x + 18, y + 26, label.upper(), 11.5, 700, MUTED, "start"),
+    ]
+
+
+def drive_node(x, y, w, h, id="network-drive"):
+    return group(
+        id,
+        [
+            rect(x, y, w, h, rx=12, fill=WHITE, stroke=AMBER, sw=1.6),
+            text(x + w / 2, y + 30, "Network drive", 15, 700, INK),
+            text(x + w / 2, y + 49, "secondary data: k-space,", 11.5, 400, MUTED),
+            text(x + w / 2, y + 65, "spectroscopy, list-mode", 11.5, 400, MUTED),
+        ],
+    )
+
+
+def badge(cx, cy, letter, color, r=10):
+    return group(
+        f"badge-{letter}",
+        [
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{color}" stroke="{WHITE}" stroke-width="2"/>',
+            text(cx, cy + 4.2, letter, 12, 700, WHITE),
+        ],
+    )
+
+
 def deployment():
-    W, H = 1440, 960
+    W, H = 1440, 110 + 410 + 30 + 340 + 70
     out = [
         title_block(
             40,
             "Reference deployment",
-            "How accessionflow sits between the scanner and the repository — today and planned",
+            "Stages can run at the edge (on site) or server side, as each site requires",
         )
     ]
 
-    def panel(y, label, badge_color, badge_fill, planned):
-        P = []
-        ph = 380
-        P.append(rect(40, y, W - 80, ph, rx=16, fill=PANEL, stroke="none", sw=0))
-        P.append(
-            tag(64, y + 18, label, badge_color, badge_fill, size=12, anchor="start")
+    # ======================= CURRENT
+    y0, ph = 110, 410
+    P = [
+        rect(40, y0, W - 80, ph, rx=16, fill=PANEL, stroke="none", sw=0),
+        tag(64, y0 + 18, "Current", SLATE, WHITE, size=12, anchor="start"),
+        text(
+            160,
+            y0 + 32,
+            "Each site uses one of two alternative routes:",
+            13,
+            600,
+            INK,
+            "start",
+        ),
+        badge(474, y0 + 28, "A", INDIGO),
+        text(490, y0 + 32, "upload directly from site", 13, 400, MUTED, "start"),
+        text(660, y0 + 32, "or", 13, 600, INK, "start"),
+        badge(694, y0 + 28, "B", AMBER),
+        text(
+            710,
+            y0 + 32,
+            "push offsite, then store server side",
+            13,
+            400,
+            MUTED,
+            "start",
+        ),
+    ]
+    zt, zh = y0 + 56, ph - 76
+    P += [
+        group("zone-edge", zone(60, zt, 940, zh, "Edge · on site (MicroK8s)", WHITE)),
+        group(
+            "zone-server",
+            zone(1020, zt, 360, zh, "Server side · data centre / cloud", INDIGO_L),
+        ),
+    ]
+    top = zt + 44
+    # scanner + inputs
+    P.append(
+        group(
+            "scanner",
+            [
+                rect(78, top + 70, 130, 140, rx=14, fill=WHITE, stroke=SLATE, sw=1.6),
+                scanner_icon(143, top + 118, 0.8),
+                text(143, top + 180, "MRI scanner", 14, 700, INK),
+                text(143, top + 197, "or other instrument", 11, 400, MUTED),
+            ],
         )
-        top = y + 70
-        # scanner
-        P.append(
-            group(
-                "scanner",
-                [
-                    rect(
-                        60, top + 70, 150, 150, rx=14, fill=WHITE, stroke=SLATE, sw=1.6
-                    ),
-                    scanner_icon(135, top + 122, 0.85),
-                    text(135, top + 188, "MRI scanner", 15, 700, INK),
-                    text(135, top + 206, "e.g. Siemens Cima X", 11.5, 400, MUTED),
-                ],
-            )
+    )
+    P.append(
+        node(
+            240,
+            top,
+            160,
+            100,
+            "Orthanc",
+            "DICOM listener",
+            sub2="C-STORE receiver",
+            id="orthanc",
         )
-        # cluster
-        cx0, cw = 262, 860
-        P.append(
-            group(
-                "cluster",
-                [
-                    rect(
-                        cx0,
-                        top,
-                        cw,
-                        290,
-                        rx=16,
-                        fill=WHITE,
-                        stroke=SLATE,
-                        sw=1.4,
-                        dash="2 5",
-                    ),
-                    text(
-                        cx0 + 20,
-                        top + 26,
-                        "Kubernetes (MicroK8s)",
-                        12.5,
-                        700,
-                        SLATE,
-                        "start",
-                    ),
-                ],
-            )
+    )
+    P.append(drive_node(240, top + 172, 160, 84))
+    P.append(
+        elbow(
+            [(208, top + 110), (224, top + 110), (224, top + 50), (238, top + 50)],
+            SLATE,
+            sw=1.6,
+            id="arrow-dicom",
         )
-        P.append(
-            node(
-                cx0 + 24,
-                top + 82,
-                168,
-                126,
-                "Orthanc",
-                "DICOM listener",
-                sub2="C-STORE receiver",
-                id="orthanc",
-            )
+    )
+    P.append(
+        elbow(
+            [(208, top + 170), (224, top + 170), (224, top + 214), (238, top + 214)],
+            AMBER,
+            sw=1.6,
+            id="arrow-raw",
         )
-        P.append(
-            arrow(210 + 4, top + 145, cx0 + 24 - 4, top + 145, SLATE, id="arrow-dicom")
+    )
+    P.append(text(222, top + 38, "DICOM", 10.5, 600, MUTED, "end"))
+    P.append(text(222, top + 236, "secondary", 10.5, 600, AMBER, "end"))
+    # accessionflow (edge)
+    ax, ay, aw, ah = 432, top, 548, 220
+    box = [
+        rect(ax, ay, aw, ah, rx=14, fill=TEAL_L, stroke=TEAL, sw=1.8),
+        text(ax + 20, ay + 28, "accessionflow", 16, 700, TEAL_D, "start", mono=True),
+        text(ax + 160, ay + 28, "command-line stages", 12.5, 500, MUTED, "start"),
+    ]
+    r1, _, _ = chip_row(ax + 20, ay + 52, ["collate", "attach", "label", "deidentify"])
+    r2, e2, _ = chip_row(ax + 20, ay + 98, ["annotate", "package"])
+    box += r1 + r2
+    ya, yb = ay + 113, ay + 159  # centre lines of the A and B rows
+    fx, sx = e2 + 14, e2 + 34
+    box.append(arrow(e2 + 2, ya, sx - 2, ya, TEAL, sw=1.4, id="arrow-a"))
+    box.append(elbow([(fx, ya), (fx, yb), (sx - 2, yb)], TEAL, sw=1.4, id="arrow-b"))
+    box.append(f'<circle cx="{fx}" cy="{ya}" r="3.5" fill="{TEAL}"/>')
+    ga, wa = chip2(sx, ya - 15, "store xnat")
+    box += [ga, badge(sx + wa - 2, ya - 15, "A", INDIGO, r=9)]
+    gb, wb = chip2(sx, yb - 15, "push", "push")
+    box += [gb, badge(sx + wb - 2, yb - 15, "B", AMBER, r=9)]
+    box.append(
+        text(sx + wb + 18, yb + 4, "to object storage", 11.5, 500, MUTED, "start")
+    )
+    box.append(
+        text(
+            ax + 20,
+            ay + 204,
+            "Secondary data (too little metadata to collate alone) is attached to its accession",
+            11,
+            400,
+            MUTED,
+            "start",
+            italic=True,
         )
-        P.append(text(236, top + 136, "DICOM", 11, 600, MUTED))
+    )
+    P.append(group("accessionflow-edge", box))
+    P.append(
+        arrow(400 + 3, top + 50, ax - 3, top + 50, SLATE, sw=1.8, id="arrow-orthanc")
+    )
+    P.append(
+        elbow(
+            [
+                (400 + 2, top + 214),
+                (416, top + 214),
+                (416, top + 130),
+                (ax - 2, top + 130),
+            ],
+            AMBER,
+            sw=1.8,
+            id="arrow-drive",
+        )
+    )
+    # server side
+    P.append(
+        node(
+            1180,
+            top,
+            180,
+            100,
+            "XNAT",
+            "imaging repository",
+            color=INDIGO,
+            fill=WHITE,
+            id="xnat",
+        )
+    )
+    P.append(cylinder(1100, top + 120, 92, 80, fill=WHITE, id="s3-bucket"))
+    P.append(text(1100, top + 184, "S3 bucket", 12.5, 700, INDIGO))
+    P.append(
+        node(
+            1200,
+            top + 129,
+            160,
+            60,
+            "accessionflow",
+            "store xnat",
+            color=TEAL,
+            fill=TEAL_L,
+            id="accessionflow-server",
+        )
+    )
+    P.append(badge(1200, top + 129, "B", AMBER, r=9))
+    P.append(
+        arrow(ax + aw + 3, top + 50, 1180 - 3, top + 50, INDIGO, sw=1.8, id="route-a")
+    )
+    P.append(badge(1036, top + 36, "A", INDIGO, r=9))
+    P.append(text(1052, top + 40, "direct upload", 11.5, 700, INDIGO, "start"))
+    P.append(arrow(ax + aw + 3, yb, 1054 - 3, yb, AMBER, sw=1.8, id="route-b-push"))
+    P.append(badge(1000, yb - 14, "B", AMBER, r=9))
+    P.append(text(1015, yb - 10, "push", 11.5, 700, AMBER, "start"))
+    P.append(arrow(1146 + 3, yb, 1200 - 3, yb, INDIGO, sw=1.6, id="route-b-read"))
+    P.append(
+        arrow(
+            1280, top + 129 - 3, 1280, top + 100 + 3, INDIGO, sw=1.8, id="route-b-store"
+        )
+    )
+    out.append(group("panel-current", P))
 
-        # accessionflow box
-        ax, aw, ay, ah = cx0 + 228, 540, top + 40, 158
-        if planned:
-            box = [
-                rect(ax, ay, aw, ah, rx=14, fill=TEAL_L, stroke=TEAL, sw=1.8),
-                text(
-                    ax + 20,
-                    ay + 28,
-                    "accessionflow",
-                    16,
-                    700,
-                    TEAL_D,
-                    "start",
-                    mono=True,
+    # ======================= PLANNED
+    y1 = y0 + ph + 30
+    ph2 = 340
+    P = [
+        rect(40, y1, W - 80, ph2, rx=16, fill=PANEL, stroke="none", sw=0),
+        tag(64, y1 + 18, "Planned", AMBER, AMBER_L, size=12, anchor="start"),
+        text(
+            160,
+            y1 + 32,
+            "Each stage runs as a Prefect flow configured by YAML. A site chooses where each stage runs;",
+            13,
+            400,
+            MUTED,
+            "start",
+        ),
+        text(
+            160,
+            y1 + 50,
+            "push moves data between locations. collate and attach always run on site, so push comes after them; any number of pushes.",
+            13,
+            400,
+            MUTED,
+            "start",
+        ),
+    ]
+    # legend
+    lx = 1010
+    P.append(
+        group(
+            "legend",
+            [
+                rect(lx, y1 + 20, 22, 14, rx=3, fill=WHITE, stroke=LINE, sw=1),
+                text(lx + 30, y1 + 32, "Edge", 12, 500, MUTED, "start"),
+                rect(
+                    lx + 78, y1 + 20, 22, 14, rx=3, fill=INDIGO_L, stroke="none", sw=0
                 ),
-                text(
-                    ax + 160,
-                    ay + 28,
-                    "Prefect flows, configured by YAML",
-                    12.5,
-                    500,
-                    AMBER,
-                    "start",
-                ),
-            ]
-            chain = [
+                text(lx + 108, y1 + 32, "Server side", 12, 500, MUTED, "start"),
+                rect(lx + 196, y1 + 20, 30, 14, rx=7, fill=AMBER, stroke="none", sw=0),
+                text(lx + 234, y1 + 32, "push", 12, 600, MUTED, "start", mono=True),
+            ],
+        )
+    )
+    rt = y1 + 84
+    rows = [
+        (
+            "All at the edge",
+            "upload directly from site",
+            [
                 "collate",
                 "attach",
                 "label",
                 "deidentify",
+                "annotate",
                 "package",
-                "transfer†",
                 "store",
-            ]
-            box.append(
-                mini_chain(
-                    ax + 20, ay + 50, chain, highlight=("transfer†",), w=116, per_row=4
-                )
-            )
-        else:
-            box = [
-                rect(ax, ay, aw, ah, rx=14, fill=TEAL_L, stroke=TEAL, sw=1.8),
-                text(
-                    ax + 20,
-                    ay + 28,
-                    "accessionflow",
-                    16,
-                    700,
-                    TEAL_D,
-                    "start",
-                    mono=True,
+            ],
+        ),
+        (
+            "De-identify on site",
+            "only de-identified data leaves",
+            [
+                "collate",
+                "attach",
+                "label",
+                "deidentify",
+                "push",
+                "annotate",
+                "package",
+                "store",
+            ],
+        ),
+        (
+            "Minimal edge footprint",
+            "process centrally",
+            [
+                "collate",
+                "attach",
+                "push",
+                "label",
+                "deidentify",
+                "annotate",
+                "package",
+                "store",
+            ],
+        ),
+    ]
+    rh, rg = 66, 16
+    # inputs column (edge)
+    ih = len(rows) * rh + (len(rows) - 1) * rg
+    P.append(
+        group(
+            "inputs",
+            [
+                rect(60, rt, 170, ih, rx=14, fill=WHITE, stroke=LINE, sw=1),
+                text(78, rt + 24, "EDGE INPUTS", 11, 700, MUTED, "start"),
+            ],
+        )
+    )
+    P.append(
+        node(
+            76,
+            rt + 38,
+            138,
+            74,
+            "Orthanc",
+            "primary data (DICOM)",
+            id="orthanc-planned",
+        )
+    )
+    P.append(
+        group(
+            "network-drive-planned",
+            [
+                rect(76, rt + 126, 138, 74, rx=12, fill=WHITE, stroke=AMBER, sw=1.6),
+                text(145, rt + 156, "Network drive", 14, 700, INK),
+                text(145, rt + 175, "secondary data", 11.5, 400, MUTED),
+            ],
+        )
+    )
+    # repositories column (server)
+    rx0 = 1226
+    P.append(
+        group(
+            "repositories",
+            [
+                rect(rx0, rt, 154, ih, rx=14, fill=INDIGO_L, stroke="none", sw=0),
+                text(rx0 + 18, rt + 24, "REPOSITORIES", 11, 700, MUTED, "start"),
+                rect(
+                    rx0 + 16, rt + 38, 122, 46, rx=10, fill=WHITE, stroke=INDIGO, sw=1.4
                 ),
-                text(
-                    ax + 160, ay + 28, "command-line stages", 12.5, 500, MUTED, "start"
+                text(rx0 + 77, rt + 66, "XNAT", 14, 700, INDIGO),
+                rect(
+                    rx0 + 16,
+                    rt + 96,
+                    122,
+                    46,
+                    rx=10,
+                    fill=WHITE,
+                    stroke=INDIGO,
+                    sw=1.2,
+                    dash="5 4",
                 ),
-            ]
-            chain = ["collate", "attach", "label", "deidentify", "package", "store"]
-            box.append(mini_chain(ax + 20, ay + 50, chain, w=116, per_row=4))
-        P.append(group("accessionflow", box))
-        P.append(
-            arrow(
-                cx0 + 192 + 4, top + 145, ax - 4, top + 145, SLATE, id="arrow-orthanc"
-            )
+                text(rx0 + 77, rt + 116, "Others", 13, 600, INK),
+                text(rx0 + 77, rt + 132, "via plugins", 11, 400, MUTED),
+            ],
         )
-
-        # staging storage
-        sy = ay + ah + 26
-        P.append(
-            node(
-                ax,
-                sy,
-                aw,
-                52,
-                "Staging storage",
-                "local volume or S3",
-                color=TEAL,
-                id="staging",
+    )
+    for i, (title, sub, names) in enumerate(rows):
+        ry = rt + i * (rh + rg)
+        R = []
+        bx0, bx1 = 250, 1206
+        cx0 = 440
+        cy = ry + rh / 2
+        chips, end_x, pos = chip_row(cx0, cy - 15, names)
+        if "push" in pos:
+            px = (pos["push"][0] + pos["push"][1]) / 2
+            R.append(rect(bx0, ry, px - bx0, rh, rx=12, fill=WHITE, stroke=LINE, sw=1))
+            R.append(
+                rect(px, ry, bx1 - px, rh, rx=12, fill=INDIGO_L, stroke="none", sw=0)
             )
-        )
-        P.append(
-            arrow(
-                ax + aw / 2,
-                ay + ah + 3,
-                ax + aw / 2,
-                sy - 3,
-                TEAL,
-                sw=1.8,
-                both=True,
-                id="arrow-staging",
-            )
-        )
-
-        # outputs
-        ox, ow = 1166, 230
-        if planned:
-            P.append(
-                group(
-                    "repositories",
-                    [
-                        rect(
-                            ox,
-                            top + 10,
-                            ow,
-                            160,
-                            rx=14,
-                            fill=INDIGO_L,
-                            stroke=INDIGO,
-                            sw=1.6,
-                        ),
-                        text(ox + ow / 2, top + 36, "Repositories", 15, 700, INK),
-                        rect(
-                            ox + 16,
-                            top + 52,
-                            ow - 32,
-                            40,
-                            rx=8,
-                            fill=WHITE,
-                            stroke=INDIGO,
-                            sw=1.2,
-                        ),
-                        text(ox + ow / 2, top + 77, "XNAT", 14, 700, INDIGO),
-                        rect(
-                            ox + 16,
-                            top + 104,
-                            ow - 32,
-                            46,
-                            rx=8,
-                            fill=AMBER_L,
-                            stroke=AMBER,
-                            sw=1.2,
-                            dash="5 4",
-                        ),
-                        text(
-                            ox + ow / 2, top + 124, "Other repositories", 13.5, 700, INK
-                        ),
-                        text(ox + ow / 2, top + 141, "via plugins", 11.5, 500, AMBER),
-                    ],
-                )
-            )
-            P.append(
-                elbow([(ax + aw, ay + 60), (ox, ay + 60)], INDIGO, id="arrow-store")
-            )
-            P.append(
-                text(
-                    (ax + aw + cx0 + cw) / 2,
-                    ay + 52,
-                    "store",
-                    11.5,
-                    700,
-                    INDIGO,
-                    mono=True,
-                )
-            )
-            P.append(
-                node(
-                    ox,
-                    top + 196,
-                    ow,
-                    80,
-                    "S3 / remote drive",
-                    "via transfer† stage",
-                    color=INDIGO,
-                    fill=INDIGO_L,
-                    id="object-storage",
-                )
-            )
-            P.append(
-                elbow(
-                    [
-                        (ax + aw, ay + 128),
-                        (ax + aw + 22, ay + 128),
-                        (ax + aw + 22, top + 236),
-                        (ox, top + 236),
-                    ],
-                    AMBER,
-                    dash="6 4",
-                    id="arrow-transfer",
-                )
-            )
+            R.append(rect(px, ry, 12, rh, rx=0, fill=INDIGO_L, stroke="none", sw=0))
+            R.append(line(px, ry - 6, px, ry + rh + 6, AMBER, 1.6, dash="4 4"))
         else:
-            P.append(
-                node(
-                    ox,
-                    top + 10,
-                    ow,
-                    110,
-                    "XNAT",
-                    "imaging repository",
-                    color=INDIGO,
-                    fill=INDIGO_L,
-                    id="xnat",
-                )
-            )
-            P.append(
-                elbow([(ax + aw, ay + 25), (ox, ay + 25)], INDIGO, id="arrow-store")
-            )
-            P.append(
-                text(
-                    (ax + aw + cx0 + cw) / 2,
-                    ay + 17,
-                    "store xnat",
-                    11.5,
-                    700,
-                    INDIGO,
-                    mono=True,
-                )
-            )
-            # rclone script
-            rx0 = ox
-            P.append(
-                node(
-                    rx0,
-                    top + 150,
-                    ow,
-                    56,
-                    "rclone sync",
-                    "separate script",
-                    color=SLATE,
-                    id="rclone",
-                )
-            )
-            P.append(
-                node(
-                    rx0,
-                    top + 232,
-                    ow,
-                    56,
-                    "S3 / remote drive",
-                    color=INDIGO,
-                    fill=INDIGO_L,
-                    id="object-storage",
-                )
-            )
-            P.append(
-                elbow(
-                    [
-                        (ax + aw, sy + 26),
-                        (ax + aw + 22, sy + 26),
-                        (ax + aw + 22, top + 178),
-                        (rx0, top + 178),
-                    ],
-                    SLATE,
-                    dash="6 4",
-                    id="arrow-rclone",
-                )
-            )
-            P.append(
-                arrow(
-                    rx0 + ow / 2,
-                    top + 206 + 3,
-                    rx0 + ow / 2,
-                    top + 232 - 3,
-                    SLATE,
-                    sw=1.8,
-                    id="arrow-sync",
-                )
-            )
-        return group("panel-planned" if planned else "panel-current", P)
-
-    out.append(panel(110, "Current", SLATE, SLATE_L, False))
-    out.append(panel(520, "Planned", AMBER, AMBER_L, True))
+            R.append(rect(bx0, ry, bx1 - bx0, rh, rx=12, fill=WHITE, stroke=LINE, sw=1))
+        R.append(text(268, cy - 3, title, 14, 700, INK, "start"))
+        R.append(text(268, cy + 15, sub, 11.5, 400, MUTED, "start"))
+        R += chips
+        R.append(arrow(230 + 3, cy, bx0 - 2, cy, SLATE, sw=1.4, id="arrow-in"))
+        R.append(arrow(end_x + 3, cy, rx0 - 3, cy, INDIGO, sw=1.4, id="arrow-out"))
+        P.append(group(f"site-{i + 1}", R))
+    out.append(group("panel-planned", P))
     out.append(
         group(
             "footnote",
             [
                 text(
                     40,
-                    H - 24,
-                    "† Stage name to be confirmed. Brings the separate rclone sync into accessionflow.",
+                    H - 26,
+                    "Example site configurations. Stage order is also configurable, and outputs can branch to several repositories.",
                     12.5,
                     400,
                     MUTED,
@@ -1290,8 +1721,15 @@ def deployment():
 
 
 if __name__ == "__main__":
-    outdir = Path("diagrams")
-    outdir.mkdir(exist_ok=True)
+    # docs/diagram-dev/generate_diagrams.py -> docs/source/_static/images/diagrams/
+    outdir = (
+        Path(__file__).resolve().parent.parent
+        / "source"
+        / "_static"
+        / "images"
+        / "diagrams"
+    )
+    outdir.mkdir(parents=True, exist_ok=True)
     for name, fn in [
         ("accessionflow-overview", overview),
         ("accessionflow-stages", stage_by_stage),

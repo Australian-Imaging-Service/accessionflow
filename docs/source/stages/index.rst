@@ -34,3 +34,8 @@ pattern relies on identifying metadata (see :doc:`attach`). ``select-fields`` ca
 any point after ``label``, since every stage carries the fields through, but after
 ``deidentify`` if a field could identify the subject, since ``deidentify`` doesn't
 de-identify the fields (see :doc:`select_fields`).
+
+.. figure:: /_static/images/diagrams/accessionflow-stages.svg
+   :alt: What each stage does to an accession, from unsorted input files to the repository
+   :width: 100%
+   :align: center

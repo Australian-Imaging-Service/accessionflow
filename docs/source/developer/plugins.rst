@@ -12,6 +12,11 @@ same mechanism:
 * each store plugin is a subpackage of the ``accessionflow.stores`` namespace package,
   e.g. ``accessionflow.stores.xnat``
 
+.. figure:: /_static/images/diagrams/accessionflow-architecture.svg
+   :alt: accessionflow architecture: interfaces, core stages and data model, and source and store plugins
+   :width: 100%
+   :align: center
+
 ``accessionflow``, ``accessionflow.sources`` and ``accessionflow.stores`` are namespace
 packages, so none of them may contain an ``__init__.py``. That lets plugins be installed
 from separate distributions, including editable installs, and still be found. A plugin
