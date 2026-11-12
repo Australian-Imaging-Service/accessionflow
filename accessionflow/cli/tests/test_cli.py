@@ -15,7 +15,7 @@ import pytest
 import xnat4tests  # type: ignore[import-untyped]
 from fileformats.application import Json
 from fileformats.core import SampleFileGenerator, extra_implementation
-from fileformats.core.exceptions import FormatRecognitionError
+from fileformats.core.exceptions import FormatMismatchError
 from fileformats.medimage import DicomSeries
 from fileformats.testing import MyFormat, MyFormatGz
 from frametree.core.cli import add_source as dataset_add_source
@@ -1034,7 +1034,7 @@ def test_collate_without_allow_unrecognised_fails_on_unrecognised_file(
         ],
     )
     assert result.exit_code != 0
-    assert isinstance(result.exception, FormatRecognitionError)
+    assert isinstance(result.exception, FormatMismatchError)
 
 
 def test_collate_allow_unrecognised_pattern_not_matching_still_fails(
@@ -1062,7 +1062,7 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_fails(
         ],
     )
     assert result.exit_code != 0
-    assert isinstance(result.exception, FormatRecognitionError)
+    assert isinstance(result.exception, FormatMismatchError)
 
 
 def test_collate_ignore_datatype_excludes_recognised_but_unwanted_files(
@@ -1118,7 +1118,7 @@ def test_collate_without_ignore_datatype_fails_on_recognised_extra_type(
         ],
     )
     assert result.exit_code != 0
-    assert isinstance(result.exception, FormatRecognitionError)
+    assert isinstance(result.exception, FormatMismatchError)
 
 
 def test_collate_ignore_datatype_contradicting_datatype_fails(

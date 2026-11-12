@@ -104,7 +104,7 @@ def collate(
         with the options passed through to ``convert()``.
     allow_unrecognised: ty.Sequence[str]
         Regexes matched against the *basename* of any input path that no datatype recognised;
-        matches are skipped instead of raising ``FormatRecognitionError``. ``[".*"]`` tolerates
+        matches are skipped instead of raising ``FormatMismatchError``. ``[".*"]`` tolerates
         all unrecognised files. Does not affect recognised filesets.
     exclude_paths: ty.Sequence[str]
         Globs matched against each input path *relative to its input directory*, applied before

@@ -769,7 +769,7 @@ class Accession:
         allow_unrecognised : Sequence[str] or None, optional
             regular expressions matched against the *basename* of any input path
             that no datatype recognised - matches are skipped instead of raising
-            ``FormatRecognitionError``. Does not affect recognised filesets.
+            ``FormatMismatchError``. Does not affect recognised filesets.
         exclude_paths : Sequence[str] or None, optional
             glob patterns matched against each input path *relative to its input
             directory*, applied before classification so a match is dropped even if
