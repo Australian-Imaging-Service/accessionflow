@@ -76,6 +76,19 @@ Each data store has its own names for these:
       - resource folder
 
 
+.. figure:: /_static/images/diagrams/accessionflow-model.svg
+   :alt: An accession containing acquisitions, each containing resources, and what XNAT and a folder store call each level
+   :width: 100%
+   :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-model-dark.svg
+   :alt: An accession containing acquisitions, each containing resources, and what XNAT and a folder store call each level
+   :width: 100%
+   :align: center
+   :figclass: only-dark
+
+
 .. _concepts-staging:
 
 Staging directories
@@ -105,6 +118,18 @@ Accessions are built in a ``__build__`` subdirectory of the output directory and
 into place once they are complete, so a later stage never sees a partly written one.
 The manifests let the stages check that files haven't changed since an earlier stage
 wrote them.
+
+.. figure:: /_static/images/diagrams/accessionflow-staging.svg
+   :alt: Accessions moving from a source through the collated, labelled and deidentified staging directories to a data store
+   :width: 100%
+   :align: center
+   :figclass: only-light
+
+.. figure:: /_static/images/diagrams/accessionflow-staging-dark.svg
+   :alt: Accessions moving from a source through the collated, labelled and deidentified staging directories to a data store
+   :width: 100%
+   :align: center
+   :figclass: only-dark
 
 See :doc:`developer/data_model` for working with this layout from your own scripts.
 

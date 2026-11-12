@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="528" viewBox="0 0 1240 528" xmlns:c2pa="http://c2pa.org/manifest">
+<title>accessionflow data model</title>
+<g id="background">
+  <rect x="0" y="0" width="1240" height="528" rx="16" fill="#181C23" stroke="#2A303A" stroke-width="1"/>
+</g>
+<g id="title">
+  <text x="40" y="54" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#E6EAF0" text-anchor="start">Accessions, acquisitions and resources</text>
+  <text x="40" y="81" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#9AA4B2" text-anchor="start">The data model every stage works with, and what each data store calls each level</text>
+</g>
+<g id="example-accession">
+  <rect x="40" y="116" width="600" height="372" rx="16" fill="#123438" stroke="#2CB5BF" stroke-width="1.8"/>
+  <g id="pill-accession">
+  <rect x="60" y="134" width="81.34" height="20" rx="10.0" fill="#2CB5BF" stroke="none" stroke-width="0"/>
+  <text x="100.67" y="147.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#0E1116" text-anchor="middle">accession</text>
+</g>
+  <text x="168" y="148" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#6AD3DA" text-anchor="start">PRJ001.SUBJ042.MR01</text>
+  <text x="60" y="176" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9AA4B2" text-anchor="start">e.g. one imaging session of a patient</text>
+  <g id="acquisition-1">
+  <rect x="60.0" y="198" width="270.0" height="268" rx="12" fill="#181C23" stroke="#8F92F7" stroke-width="1.6"/>
+  <g id="pill-acquisition">
+  <rect x="74.0" y="212" width="95.86" height="20" rx="10.0" fill="#8F92F7" stroke="none" stroke-width="0"/>
+  <text x="121.93" y="225.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#0E1116" text-anchor="middle">acquisition</text>
+</g>
+  <text x="74.0" y="256" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#8F92F7" text-anchor="start">1.T1w_MPRAGE</text>
+  <text x="74.0" y="274" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">e.g. one DICOM series</text>
+  <g id="resource-dicom">
+  <rect x="74.0" y="290" width="242.0" height="44" rx="8" fill="#181C23" stroke="#F0A04B" stroke-width="1.4"/>
+  <text x="88.0" y="317" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM</text>
+  <g id="file">
+  <path d="M290.0,299 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M299.0,299 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+  <g id="file-2">
+  <path d="M270.0,299 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M279.0,299 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+  <g id="file-3">
+  <path d="M250.0,299 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M259.0,299 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+</g>
+  <g id="resource-nifti">
+  <rect x="74.0" y="344" width="242.0" height="44" rx="8" fill="#181C23" stroke="#F0A04B" stroke-width="1.4"/>
+  <text x="88.0" y="371" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#F0A04B" text-anchor="start">NIfTI</text>
+  <g id="file-4">
+  <path d="M290.0,353 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M299.0,353 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+</g>
+  <g id="resource-snapshots">
+  <rect x="74.0" y="398" width="242.0" height="44" rx="8" fill="#181C23" stroke="#F0A04B" stroke-width="1.4"/>
+  <text x="88.0" y="425" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#F0A04B" text-anchor="start">SNAPSHOTS</text>
+  <g id="file-5">
+  <path d="M290.0,407 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M299.0,407 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+  <g id="acquisition-2">
+  <rect x="350.0" y="198" width="270.0" height="268" rx="12" fill="#181C23" stroke="#8F92F7" stroke-width="1.6"/>
+  <g id="pill-acquisition-2">
+  <rect x="364.0" y="212" width="95.86" height="20" rx="10.0" fill="#8F92F7" stroke="none" stroke-width="0"/>
+  <text x="411.93" y="225.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#0E1116" text-anchor="middle">acquisition</text>
+</g>
+  <text x="364.0" y="256" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#8F92F7" text-anchor="start">5.fMRI_rest</text>
+  <text x="364.0" y="274" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">with a secondary resource</text>
+  <g id="resource-dicom-2">
+  <rect x="364.0" y="290" width="242.0" height="44" rx="8" fill="#181C23" stroke="#F0A04B" stroke-width="1.4"/>
+  <text x="378.0" y="317" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#F0A04B" text-anchor="start">DICOM</text>
+  <g id="file-6">
+  <path d="M580.0,299 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M589.0,299 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+  <g id="file-7">
+  <path d="M560.0,299 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M569.0,299 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+  <g id="file-8">
+  <path d="M540.0,299 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M549.0,299 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+</g>
+  <g id="resource-raw">
+  <rect x="364.0" y="344" width="242.0" height="44" rx="8" fill="#181C23" stroke="#F0A04B" stroke-width="1.4"/>
+  <text x="378.0" y="371" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="700" fill="#F0A04B" text-anchor="start">RAW</text>
+  <g id="file-9">
+  <path d="M580.0,353 h9 l7,7 v13 h-16 z" fill="#181C23" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M589.0,353 v7 h7" fill="none" stroke="#F0A04B" stroke-width="1.1" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+</g>
+<g id="store-names">
+  <rect x="690" y="116" width="510" height="44" rx="10" fill="#20252E" stroke="none" stroke-width="0"/>
+  <text x="706" y="144" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">AccessionFlow</text>
+  <text x="856" y="144" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">XNAT</text>
+  <text x="1046" y="144" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#E6EAF0" text-anchor="start">Folder store</text>
+  <g id="row-accession">
+  <rect x="690" y="172" width="510" height="84" rx="10" fill="#181C23" stroke="#3A4250" stroke-width="1"/>
+  <rect x="690" y="172" width="6" height="84" rx="3" fill="#2CB5BF" stroke="none" stroke-width="0"/>
+  <g id="pill-accession-2">
+  <rect x="706" y="188" width="81.34" height="20" rx="10.0" fill="#2CB5BF" stroke="none" stroke-width="0"/>
+  <text x="746.67" y="201.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#0E1116" text-anchor="middle">accession</text>
+</g>
+  <text x="856" y="202" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#E6EAF0" text-anchor="start">session</text>
+  <text x="856" y="219" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">(an XNAT experiment,</text>
+  <text x="856" y="236" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9AA4B2" text-anchor="start">in a project &amp; subject)</text>
+  <text x="1046" y="202" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#E6EAF0" text-anchor="start">innermost label</text>
+  <text x="1046" y="219" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#E6EAF0" text-anchor="start">folder</text>
+</g>
+  <g id="row-acquisition">
+  <rect x="690" y="266" width="510" height="84" rx="10" fill="#181C23" stroke="#3A4250" stroke-width="1"/>
+  <rect x="690" y="266" width="6" height="84" rx="3" fill="#8F92F7" stroke="none" stroke-width="0"/>
+  <g id="pill-acquisition-3">
+  <rect x="706" y="282" width="95.86" height="20" rx="10.0" fill="#8F92F7" stroke="none" stroke-width="0"/>
+  <text x="753.93" y="295.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#0E1116" text-anchor="middle">acquisition</text>
+</g>
+  <text x="856" y="296" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#E6EAF0" text-anchor="start">scan</text>
+  <text x="1046" y="296" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="600" fill="#E6EAF0" text-anchor="start">&lt;id&gt;.&lt;description&gt;</text>
+  <text x="1046" y="313" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#E6EAF0" text-anchor="start">folder</text>
+</g>
+  <g id="row-resource">
+  <rect x="690" y="360" width="510" height="84" rx="10" fill="#181C23" stroke="#3A4250" stroke-width="1"/>
+  <rect x="690" y="360" width="6" height="84" rx="3" fill="#F0A04B" stroke="none" stroke-width="0"/>
+  <g id="pill-resource">
+  <rect x="706" y="376" width="74.08000000000001" height="20" rx="10.0" fill="#F0A04B" stroke="none" stroke-width="0"/>
+  <text x="743.04" y="389.5" font-family="'JetBrains Mono', Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#0E1116" text-anchor="middle">resource</text>
+</g>
+  <text x="856" y="390" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#E6EAF0" text-anchor="start">resource</text>
+  <text x="1046" y="390" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#E6EAF0" text-anchor="start">resource folder</text>
+</g>
+</g>
+<g id="note">
+  <text x="690" y="472" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9AA4B2" text-anchor="start">An accession is not a RIS accession number: DICOM's</text>
+  <text x="690" y="489" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9AA4B2" text-anchor="start">AccessionNumber is just one field that can label it.</text>
+</g>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTpjZmQ0YzM0ZC0xMjg2LTQ3OWMtYWI3ZC04ZDBmYzM5MTE5YWIAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaFjGmj3L0tcGJ5QxfPL4EO4AAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDpmZDQyODdhNS1iYzJkLTQ3MWUtOTc2Mi00YTdiNjVlNTI2NWRscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoRa/XBQ0ZQff3W+F6/xcuggAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggnIlqMwD2XPEIoTNOwRXESUgOQ3Yh43zL4uukleDKwJOkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaBT8f9YaVO5+jfRL3b6MIlEAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIEEHXJkee/1JYRYFzoAYY8CJ8LoAIhyNqEj8uFAW81W0ZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GS3CZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOmNmZDRjMzRkLTEyODYtNDc5Yy1hYjdkLThkMGZjMzkxMTlhYi9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjBlOTExNGYzLThjMGMtNDQ0OS1iZmRhLTExNzY1NGQ4MmM5ZXJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCCciWozAPZc8QihM07BFcRJSA5DdiHjfMvi66SV4MrAk6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggCJCcUA4wYesBGCvBUt0N9zz1Ll5YKeOEqEbFCKHJIduiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggPDiHSeeN/1ybkMiPBVDo/4V0T3INaJHTrIkW/eJVpOB0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQIKMjj/xcL7MhUhneaHyd+JXuMcLlsbq8cof4ce+g71gSp/fvKZ/MUI5L4TFunFZ95GxpN7BTVXi0sWK4rVX7aA=</c2pa:manifest></metadata></svg>

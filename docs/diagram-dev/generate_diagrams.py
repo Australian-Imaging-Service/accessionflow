@@ -1727,6 +1727,392 @@ def deployment():
     return svg(W, H, "accessionflow reference deployment", out)
 
 
+# ------------------------------------------------- 5. concepts: data model
+LEVEL = {  # colour per level of the data model
+    "accession": (TEAL, TEAL_L, TEAL_D),
+    "acquisition": (INDIGO, INDIGO_L, INDIGO),
+    "resource": (AMBER, AMBER_L, AMBER),
+}
+
+
+def level_pill(x, y, level, size=11):
+    stroke, fill, ink = LEVEL[level]
+    w = len(level) * size * 0.66 + 16
+    return group(
+        f"pill-{level}",
+        [
+            rect(
+                x, y, w, size + 9, rx=(size + 9) / 2, fill=stroke, stroke="none", sw=0
+            ),
+            text(x + w / 2, y + size + 2.5, level, size, 700, ON, mono=True),
+        ],
+    )
+
+
+def resource_card(x, y, w, name, files, id="resource"):
+    stroke, fill, ink = LEVEL["resource"]
+    p = [
+        rect(x, y, w, 44, rx=8, fill=WHITE, stroke=stroke, sw=1.4),
+        text(x + 14, y + 27, name, 12.5, 700, ink, "start", mono=True),
+    ]
+    for k in range(files):
+        p.append(
+            file_icon(
+                x + w - 26 - k * 20,
+                y + 9 + (files - 1 - k) * 0,
+                w=16,
+                h=20,
+                fill=WHITE,
+                stroke=stroke,
+                sw=1.1,
+                id="file",
+            )
+        )
+    return group(id, p)
+
+
+def concepts_model():
+    W, H = 1240, 528
+    out = [
+        title_block(
+            40,
+            "Accessions, acquisitions and resources",
+            "The data model every stage works with, and what each data store calls each level",
+        )
+    ]
+    # ---- nested example
+    ax, ay, aw, ah = 40, 116, 600, 372
+    stroke, fill, ink = LEVEL["accession"]
+    acc = [
+        rect(ax, ay, aw, ah, rx=16, fill=fill, stroke=stroke, sw=1.8),
+        level_pill(ax + 20, ay + 18, "accession"),
+        text(
+            ax + 128, ay + 32, "PRJ001.SUBJ042.MR01", 13, 700, ink, "start", mono=True
+        ),
+        text(
+            ax + 20,
+            ay + 60,
+            "e.g. one imaging session of a patient",
+            12.5,
+            400,
+            MUTED,
+            "start",
+        ),
+    ]
+    acqs = [
+        ("1.T1w_MPRAGE", [("DICOM", 3), ("NIfTI", 1), ("SNAPSHOTS", 1)]),
+        ("5.fMRI_rest", [("DICOM", 3), ("RAW", 1)]),
+    ]
+    cw = (aw - 60) / 2
+    for i, (name, res) in enumerate(acqs):
+        cx = ax + 20 + i * (cw + 20)
+        cy = ay + 82
+        s2, f2, i2 = LEVEL["acquisition"]
+        p = [
+            rect(cx, cy, cw, 268, rx=12, fill=WHITE, stroke=s2, sw=1.6),
+            level_pill(cx + 14, cy + 14, "acquisition"),
+            text(cx + 14, cy + 58, name, 13, 700, i2, "start", mono=True),
+            text(
+                cx + 14,
+                cy + 76,
+                "e.g. one DICOM series" if i == 0 else "with a secondary resource",
+                11.5,
+                400,
+                MUTED,
+                "start",
+            ),
+        ]
+        for k, (rn, nf) in enumerate(res):
+            p.append(
+                resource_card(
+                    cx + 14,
+                    cy + 92 + k * 54,
+                    cw - 28,
+                    rn,
+                    nf,
+                    id=f"resource-{rn.lower()}",
+                )
+            )
+        acc.append(group(f"acquisition-{i + 1}", p))
+    out.append(group("example-accession", acc))
+
+    # ---- mapping table
+    tx, tw = 690, 510
+    cols = [("AccessionFlow", 150), ("XNAT", 190), ("Folder store", 170)]
+    ty = 116
+    tbl = [rect(tx, ty, tw, 44, rx=10, fill=PANEL, stroke="none", sw=0)]
+    cx = tx
+    for name, w in cols:
+        tbl.append(text(cx + 16, ty + 28, name, 13, 700, INK, "start"))
+        cx += w
+    rows = [
+        (
+            "accession",
+            ["session", "(an XNAT experiment,", "in a project & subject)"],
+            ["innermost label", "folder"],
+        ),
+        ("acquisition", ["scan"], ["<id>.<description>", "folder"]),
+        ("resource", ["resource"], ["resource folder"]),
+    ]
+    ry = ty + 56
+    for level, xn, fo in rows:
+        s3, f3, i3 = LEVEL[level]
+        rh = 84
+        r = [
+            rect(tx, ry, tw, rh, rx=10, fill=WHITE, stroke=LINE, sw=1),
+            rect(tx, ry, 6, rh, rx=3, fill=s3, stroke="none", sw=0),
+            level_pill(tx + 16, ry + 16, level),
+        ]
+        for k, t_ in enumerate(xn):
+            r.append(
+                text(
+                    tx + 150 + 16,
+                    ry + 30 + k * 17,
+                    t_,
+                    12.5 if k == 0 else 11.5,
+                    700 if k == 0 else 400,
+                    INK if k == 0 else MUTED,
+                    "start",
+                )
+            )
+        for k, t_ in enumerate(fo):
+            r.append(
+                text(
+                    tx + 340 + 16,
+                    ry + 30 + k * 17,
+                    t_,
+                    12.5,
+                    600,
+                    INK,
+                    "start",
+                    mono=t_.startswith("<"),
+                )
+            )
+        tbl.append(group(f"row-{level}", r))
+        ry += rh + 10
+    out.append(group("store-names", tbl))
+    out.append(
+        group(
+            "note",
+            [
+                text(
+                    tx,
+                    ry + 18,
+                    "An accession is not a RIS accession number: DICOM's",
+                    12,
+                    400,
+                    MUTED,
+                    "start",
+                ),
+                text(
+                    tx,
+                    ry + 35,
+                    "AccessionNumber is just one field that can label it.",
+                    12,
+                    400,
+                    MUTED,
+                    "start",
+                ),
+            ],
+        )
+    )
+    return svg(W, H, "accessionflow data model", out)
+
+
+# ------------------------------------------------- 6. concepts: staging directories
+def tree(x, y, rows, w, dy=19):
+    """rows: (indent, label, style) where style in {'dir','file','acc','acq','res','warn','dim'}"""
+    styles = {
+        "dir": (INK, 600),
+        "file": (MUTED, 400),
+        "acc": (TEAL_D, 700),
+        "acq": (INDIGO, 700),
+        "res": (AMBER, 700),
+        "warn": (AMBER, 700),
+        "dim": ("#98A2B3", 500),
+    }
+    p = []
+    for k, (ind, label, st) in enumerate(rows):
+        col, wt = styles[st]
+        yy = y + k * dy
+        if ind:
+            p.append(line(x + ind * 14 - 8, yy - 13, x + ind * 14 - 8, yy - 4, LINE, 1))
+            p.append(line(x + ind * 14 - 8, yy - 4, x + ind * 14 - 2, yy - 4, LINE, 1))
+        p.append(text(x + ind * 14, yy, label, 11, wt, col, "start", mono=True))
+    return p
+
+
+def dir_card(x, y, w, h, title, rows, id):
+    p = [
+        rect(x, y, w, h, rx=12, fill=WHITE, stroke=SLATE, sw=1.4),
+        rect(x, y, w, 34, rx=12, fill=SLATE_L, stroke="none", sw=0),
+        rect(x, y + 22, w, 12, rx=0, fill=SLATE_L, stroke="none", sw=0),
+        line(x, y + 34, x + w, y + 34, SLATE, 1.4),
+        rect(x, y, w, h, rx=12, fill="none", stroke=SLATE, sw=1.4),
+        text(x + 14, y + 23, title, 13, 700, INK, "start", mono=True),
+    ]
+    p += tree(x + 14, y + 58, rows, w)
+    return group(id, p)
+
+
+def stage_link(x1, x2, y, name, optional=False):
+    w = len(name) * 8.2 + 24
+    cx = (x1 + x2) / 2
+    return group(
+        f"stage-{name}",
+        [
+            line(x1 + 2, y, cx - w / 2 - 2, y, TEAL, 1.6),
+            rect(
+                cx - w / 2,
+                y - 15,
+                w,
+                30,
+                rx=15,
+                fill=TEAL_L if not optional else WHITE,
+                stroke=TEAL,
+                sw=1.5,
+                dash="5 4" if optional else None,
+            ),
+            text(cx, y + 4.5, name, 12.5, 700, TEAL_D, mono=True),
+            arrow(cx + w / 2 + 2, y, x2 - 2, y, TEAL, sw=1.6, id="arrow"),
+        ],
+    )
+
+
+def concepts_staging():
+    W, H = 1560, 510
+    out = [
+        title_block(
+            40,
+            "Accessions moving through staging directories",
+            "Each stage reads the previous stage's output directory and writes its own",
+        )
+    ]
+    top, ch = 130, 250
+    cy = top + 120
+    # source
+    out.append(
+        group(
+            "source",
+            [
+                rect(40, top, 150, ch, rx=12, fill=SLATE_L, stroke=SLATE, sw=1.4),
+                text(115, top + 26, "Source", 14, 700, INK),
+                text(115, top + 44, "folder or Orthanc", 11.5, 400, MUTED),
+            ]
+            + [
+                file_icon(
+                    70 + (k % 3) * 30,
+                    top + 80 + (k // 3) * 42,
+                    fill=WHITE,
+                    stroke=SLATE,
+                )
+                for k in range(9)
+            ],
+        )
+    )
+    cw, gap = 248, 124
+    xs = [190 + gap + i * (cw + gap) for i in range(3)]
+    cards = [
+        (
+            "collated/",
+            [
+                (0, "_.1.2.840.113619…/", "acc"),
+                (1, "__METADATA__.json", "file"),
+                (1, "1/", "acq"),
+                (2, "__METADATA__.json", "file"),
+                (2, "DICOM/", "res"),
+                (3, "__MANIFEST__.json", "file"),
+                (3, "*.dcm", "file"),
+                (0, "__build__/", "dim"),
+                (1, "(accessions being written)", "dim"),
+            ],
+        ),
+        (
+            "labelled/",
+            [
+                (0, "PRJ001.SUBJ042.MR01/", "acc"),
+                (1, "1.T1w_MPRAGE/", "acq"),
+                (2, "DICOM/", "res"),
+                (3, "*.dcm", "file"),
+                (0, "__invalid__/", "warn"),
+                (1, "INVALID_MISSING_PROJECT_ab12…/", "warn"),
+            ],
+        ),
+        (
+            "deidentified/",
+            [
+                (0, "PRJ001.SUBJ042.MR01/", "acc"),
+                (1, "1.T1w_MPRAGE/", "acq"),
+                (2, "DICOM/", "res"),
+                (3, "*.dcm  (de-identified)", "file"),
+            ],
+        ),
+    ]
+    for i, (title, rows) in enumerate(cards):
+        out.append(
+            dir_card(xs[i], top, cw, ch, title, rows, id=f"dir-{title.strip('/')}")
+        )
+    links = [
+        (190, xs[0], "collate", False),
+        (xs[0] + cw, xs[1], "label", False),
+        (xs[1] + cw, xs[2], "deidentify", True),
+        (xs[2] + cw, xs[2] + cw + gap, "store", False),
+    ]
+    for x1, x2, n, opt in links:
+        out.append(stage_link(x1, x2, cy, n, opt))
+    rx = xs[2] + cw + gap
+    out.append(cylinder(rx + 60, top + 60, 120, 120))
+    out.append(text(rx + 60, top + 140, "data store", 12.5, 700, INDIGO))
+    # callouts under cards
+    notes = [
+        (
+            xs[0],
+            "Unlabelled accessions are named _.<UID>;",
+            "acquisitions have no description yet",
+        ),
+        (
+            xs[1],
+            "Labelled: named by their labels. Ones that",
+            "can't be labelled go to __invalid__/ for review",
+        ),
+        (
+            xs[2],
+            "Each stage carries the metadata, manifests",
+            "and fields through to the next",
+        ),
+    ]
+    for x, a, b in notes:
+        out.append(
+            group(
+                "note",
+                [
+                    text(x, top + ch + 26, a, 11.5, 400, MUTED, "start"),
+                    text(x, top + ch + 42, b, 11.5, 400, MUTED, "start"),
+                ],
+            )
+        )
+    by = top + ch + 76
+    out.append(
+        group(
+            "footer",
+            [
+                rect(40, by, W - 80, 44, rx=10, fill=PANEL, stroke="none", sw=0),
+                text(
+                    60,
+                    by + 27,
+                    "Accessions are built in __build__/ and moved into place once complete, so a later stage "
+                    "never sees a partial one.  --unlink-source removes a stage's input once its output is saved.",
+                    12.5,
+                    400,
+                    INK,
+                    "start",
+                ),
+            ],
+        )
+    )
+    return svg(W, H, "accessionflow staging directories", out)
+
+
 # ---------------------------------------------------------------- dark mode
 # The dark variants are made by remapping the light palette, so every diagram only has
 # to be drawn once. Keys must match the colour constants above.
@@ -1775,6 +2161,8 @@ if __name__ == "__main__":
         ("accessionflow-stages", stage_by_stage),
         ("accessionflow-architecture", architecture),
         ("accessionflow-deployment", deployment),
+        ("accessionflow-model", concepts_model),
+        ("accessionflow-staging", concepts_staging),
     ]:
         light = fn()
         (outdir / f"{name}.svg").write_text(light)
