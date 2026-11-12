@@ -832,6 +832,46 @@ def test_collate_path_metadata_regex(
     assert mdata["cohort"] == "cohort-A"
 
 
+def test_collate_path_metadata(
+    cli_runner: ty.Any,
+    tmp_path: Path,
+) -> None:
+    sorted_dir = tmp_path / "sorted"
+    sorted_dir.mkdir()
+
+    dicoms_dir = tmp_path / "dicoms" / "site-1" / "cohort-A"
+    dicoms_dir.mkdir(parents=True)
+    get_pet_image(dicoms_dir)
+
+    result = cli_runner(
+        collate_cmd,
+        [
+            str(dicoms_dir),
+            str(sorted_dir),
+            "--raise-errors",
+            "--wait-period",
+            "0",
+            "--path-metadata",
+            "{site}/{cohort}",
+            "medimage/dicom-series",
+            # Merged with the raw regexes, which are applied after the patterns
+            "--path-metadata-regex",
+            r".*/site-(?P<site_num>\d+)/[^/]+$",
+            "medimage/dicom-series",
+        ],
+    )
+    assert result.exit_code == 0, show_cli_trace(result)
+
+    session_dirs = list_session_dirs(sorted_dir)
+    assert len(session_dirs) == 1
+    scan_dir = next(d for d in session_dirs[0].iterdir() if d.is_dir())
+    resource_dir = next(d for d in scan_dir.iterdir() if d.is_dir())
+    mdata = json.loads((resource_dir / Metadata.FNAME).read_bytes())
+    assert mdata["site"] == "site-1"
+    assert mdata["cohort"] == "cohort-A"
+    assert mdata["site_num"] == "1"
+
+
 def _write_minimal_png(path: Path, *, rgb: tuple[int, int, int] = (0, 0, 0)) -> Path:
     """Write a minimal but valid 1x1 PNG so fileformats recognises it as image/png."""
 

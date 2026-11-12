@@ -301,6 +301,18 @@ class PathMetadataRegex(MultiCliTyped):
 
 
 @attrs.define
+class PathMetadataPattern(MultiCliTyped):
+    """A glob-like alternative to ``PathMetadataRegex``, where ``{name}`` placeholders
+    mark the path segments to extract as metadata fields. It is translated into a
+    ``PathMetadataRegex`` by
+    ``accessionflow.sources.folder.api.path_metadata_pattern_to_regex``.
+    """
+
+    pattern: str
+    datatype: ty.Type[FileSet] = attrs.field(converter=datatype_converter)
+
+
+@attrs.define
 class ClashSpec(MultiCliTyped):
     """A ``--on-resource-clash`` entry: a policy plus the datatype scope it applies
     to. A resource-name clash between two filesets is resolved by the first
