@@ -37,10 +37,10 @@ from moto import mock_aws
 
 from accessionflow.api.label_api import INVALID_DIRNAME
 from accessionflow.cli import (
+    annotate_cmd,
     attach_cmd,
     deidentify_cmd,
     package_cmd,
-    select_fields_cmd,
 )
 from accessionflow.helpers.arg_types import MimeType  # type: ignore[import-untyped]
 from accessionflow.helpers.metadata import Metadata
@@ -216,7 +216,7 @@ def test_xnat_login_cli_envvar(tmp_path: Path, cli_runner: ty.Any) -> None:
     ]
 
 
-def test_select_fields_cli_envvar(
+def test_annotate_cli_envvar(
     tmp_path: Path,
     cli_runner: ty.Any,
 ) -> None:
@@ -233,14 +233,14 @@ def test_select_fields_cli_envvar(
         },
     ):
         result = cli_runner(
-            select_fields_cmd,
+            annotate_cmd,
             [str(input_dir), str(output_dir)],
         )
 
     assert result.exit_code == 0, show_cli_trace(result)
 
 
-def test_select_fields_cli_accepts_multiple_mappings(
+def test_annotate_cli_accepts_multiple_mappings(
     tmp_path: Path,
     cli_runner: ty.Any,
 ) -> None:
@@ -249,7 +249,7 @@ def test_select_fields_cli_accepts_multiple_mappings(
     output_dir = tmp_path / "output"
 
     result = cli_runner(
-        select_fields_cmd,
+        annotate_cmd,
         [
             str(input_dir),
             str(output_dir),
@@ -265,7 +265,7 @@ def test_select_fields_cli_accepts_multiple_mappings(
     assert result.exit_code == 0, show_cli_trace(result)
 
 
-def test_select_fields_cli_rejects_duplicate_field_names(
+def test_annotate_cli_rejects_duplicate_field_names(
     tmp_path: Path,
     cli_runner: ty.Any,
 ) -> None:
@@ -274,7 +274,7 @@ def test_select_fields_cli_rejects_duplicate_field_names(
     output_dir = tmp_path / "output"
 
     result = cli_runner(
-        select_fields_cmd,
+        annotate_cmd,
         [
             str(input_dir),
             str(output_dir),

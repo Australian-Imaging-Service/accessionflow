@@ -21,19 +21,20 @@ own (see :ref:`concepts-accession-flows`):
 :doc:`package`
     Converts resources into the forms the data store needs, e.g. a zip archive and a
     sample file, after de-identification has worked on the unpacked files.
-:doc:`select_fields`
+:doc:`annotate`
     Copies metadata fields into the accession's fields, which the data store records
     alongside it, e.g. as XNAT custom variables.
 
 Only ``label`` is needed in every accession flow. A typical order is::
 
-    collate → [attach] → label → [deidentify] → [select-fields] → [package] → store
+    collate → [attach] → label → [deidentify] → [annotate] → [package] → store
 
 ``attach`` can run at any point after ``collate``, but before ``deidentify`` if its
-pattern relies on identifying metadata (see :doc:`attach`). ``select-fields`` can run at
+pattern relies on identifying metadata (see :doc:`attach`). ``annotate`` can run at
 any point after ``label``, since every stage carries the fields through, but after
 ``deidentify`` if a field could identify the subject, since ``deidentify`` doesn't
-de-identify the fields (see :doc:`select_fields`).
+
+de-identify the fields (see :doc:`annotate`).
 
 .. figure:: /_static/images/diagrams/accessionflow-stages.svg
    :alt: What each stage does to an accession, from unsorted input files to the repository

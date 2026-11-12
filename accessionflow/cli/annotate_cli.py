@@ -4,7 +4,7 @@ from pathlib import Path
 
 import click
 
-from accessionflow.api.select_fields_api import select_fields
+from accessionflow.api.annotate_api import annotate
 from accessionflow.helpers.arg_types import (
     FieldMapping,
     IDSpec,
@@ -16,8 +16,9 @@ from .base import cli
 
 
 @cli.command(
-    name="select-fields",
-    help="Extract session metadata into XNAT fields and write staged sessions.",
+    name="annotate",
+    help="Annotates accessions with fields extracted from their metadata, which the "
+    "data store records alongside them (e.g. as custom variables on XNAT sessions).",
 )
 @click.argument(
     "input_dir",
@@ -63,7 +64,7 @@ from .base import cli
     envvar="ACFLOW_ADDITIONAL_LOGGERS",
 )
 @click.option("--raise-errors/--dont-raise-errors", default=False)
-def select_fields_cmd(
+def annotate_cmd(
     input_dir: Path,
     output_dir: Path,
     extract: tuple[FieldMapping, ...],
@@ -87,7 +88,7 @@ def select_fields_cmd(
 
     while True:
         started = time.monotonic()
-        errors = select_fields(
+        errors = annotate(
             input_dir=input_dir,
             output_dir=output_dir,
             extract=field_specs,
