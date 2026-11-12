@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from cryptography.fernet import Fernet
+from fileformats.core import FileSet
 from fileformats.generic import Directory, File
 from fileformats.medimage import DicomSeries
 from fileformats.testing import MyFormat, MyFormatGz
@@ -513,20 +514,51 @@ def test_deidentify_multiple_sessions(tmp_path: Path):
         assert json.loads(reid_file.read_bytes())["session_uid"] == name
 
 
-def test_deidentify_missing_spec_collected(dirs, tmp_path):
-    input_dir, output_dir, _, reid_dir = dirs
-    empty_recipe_dir = tmp_path / "empty_recipes"
-    empty_recipe_dir.mkdir()
+def _stage_fileset(input_dir: Path, fileset: FileSet) -> None:
+    Accession(
+        uid=SESSION_NAME,
+        labels=dict(SESSION_LABELS),
+        acquisitions=[Acquisition(id="1", type="T", resources={"RES": fileset})],
+    ).save(input_dir)
 
-    with patch.object(Accession, "deidentify", _mock_deidentify):
-        errors = deidentify(
-            input_dir=input_dir,
-            output_dir=output_dir,
-            recipe_dir=empty_recipe_dir,
-            reid_dir=reid_dir,
-        )
+
+def test_deidentify_without_recipes_for_recipeless_format(tmp_path: Path) -> None:
+    """Formats whose deidentify implementation doesn't take a recipe (``recipe: None``)
+    are deidentified without any project or default recipe files being provided"""
+    input_dir, output_dir, recipe_dir = (tmp_path / d for d in ("in", "out", "rcp"))
+    recipe_dir.mkdir()
+    pytest.importorskip("fileformats.extras.vendor.canfield.medimage")
+    from fileformats.vendor.canfield.medimage import TomSeedLog
+
+    log_file = tmp_path / "src" / "capture.tom-seed.log"
+    log_file.parent.mkdir()
+    log_file.write_text("log")
+    _stage_fileset(input_dir, TomSeedLog(log_file))
+
+    errors = deidentify(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        recipe_dir=recipe_dir,
+        raise_errors=True,
+    )
+
+    assert errors == []
+    assert (output_dir / SESSION_NAME).exists()
+
+
+def test_deidentify_missing_recipe_collected(tmp_path: Path) -> None:
+    """Formats whose deidentify implementation takes a recipe still error if no
+    project or default recipe file is provided for them"""
+    input_dir, output_dir, recipe_dir = (tmp_path / d for d in ("in", "out", "rcp"))
+    recipe_dir.mkdir()
+    _stage_fileset(input_dir, DicomSeries.sample(dest_dir=tmp_path / "src"))
+
+    errors = deidentify(
+        input_dir=input_dir, output_dir=output_dir, recipe_dir=recipe_dir
+    )
 
     assert len(errors) == 1
+    assert "No deidentification recipe file found" in errors[0]
 
 
 # ── load_recipe_files unit tests ────────────────────────────────────────────────────

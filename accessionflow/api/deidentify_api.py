@@ -130,13 +130,12 @@ def deidentify(
                     )
                 top_label = next(iter(session.labels.values()))
                 loaded = load_recipe_files(recipe_dir / top_label)
-                if loaded is None or not any(loaded):
-                    if default_loaded is None or not any(default_loaded):
-                        raise ValueError(
-                            "No deidentification recipe files found for "
-                            f"'{top_label}' and no default recipe files provided."
-                        )
-                    loaded = default_loaded
+                if not loaded:
+                    # Falls back to no recipes at all, as formats whose deidentify
+                    # implementation doesn't accept a recipe (i.e. ``recipe: None``)
+                    # don't need one. Accession.deidentify raises for any resource
+                    # whose implementation does accept a recipe but has none.
+                    loaded = default_loaded or {}
 
                 # New sessions appear by rename. Existing sessions retain their
                 # earlier scans; save() publishes each changed resource only
