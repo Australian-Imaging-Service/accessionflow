@@ -20,6 +20,7 @@ from accessionflow.helpers.arg_types import (
     LoggerConfig,
     MetadataTable,
     MimeType,
+    PathMetadataPattern,
     PathMetadataRegex,
 )
 from accessionflow.helpers.logging import logger, set_logger_handling
@@ -152,6 +153,23 @@ ready to be labelled
         "using Python regular expression syntax. The named groups are used as metadata fields for "
         "the resource files, and the extracted values will be used to populate the corresponding "
         "metadata fields to complement the metadata read from the file headers."
+    ),
+)
+@click.option(
+    "--path-metadata",
+    type=PathMetadataPattern.cli_type,
+    multiple=True,
+    nargs=2,
+    metavar="<pattern> <datatype>",
+    envvar="ACFLOW_PATH_METADATA",
+    default=(),
+    help=(
+        "A simpler, glob-like alternative to --path-metadata-regex. '{name}' placeholders mark "
+        "the parts of the resource's path to extract into the metadata field 'name', e.g. "
+        "'{subject}/{session}'. '*' matches within a path segment, '**' across segments "
+        "and '?' a single character; '{{' and '}}' match literal braces. Unless the pattern "
+        "starts with '/', it only needs to match the trailing segments of the path. Applied "
+        "before any --path-metadata-regex (ACFLOW_PATH_METADATA env. var)"
     ),
 )
 @click.option(
@@ -289,6 +307,7 @@ def collate_cmd(
     resource: ty.Sequence[IDSpec],
     datatype: list[MimeType] | None,
     path_metadata_regex: list[PathMetadataRegex],
+    path_metadata: list[PathMetadataPattern],
     unlink_source: str | None,
     loggers: list[LoggerConfig],
     additional_loggers: list[str],
@@ -344,6 +363,7 @@ def collate_cmd(
             on_resource_clash=list(on_resource_clash),
             wait_period=wait_period,
             path_metadata_regex=path_metadata_regex,
+            path_metadata=path_metadata,
             recursive=recursive,
             collation_map={cs.datatype: cs.collation_level for cs in collate_resources},
             conversion_map={c.source: (c.target, c.options) for c in conversions},

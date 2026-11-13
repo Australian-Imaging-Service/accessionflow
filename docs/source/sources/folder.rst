@@ -85,6 +85,69 @@ when labelling.
   the pattern narrow enough that it only applies to data you know follows the
   convention.
 
+If you don't need the full power of a regular expression, ``--path-metadata`` takes a
+simpler, glob-like pattern instead, with a ``{name}`` placeholder for each part of the
+path to extract into the metadata field ``name``. The example above becomes:
+
+.. code-block:: console
+
+    $ accessionflow collate folder /data/incoming/cohort-A /data/staging/collated \
+        --path-metadata '{cohort}' medimage/dicom-series
+
+* ``{name}`` matches all or part of a single path segment (it doesn't match ``/``).
+  ``name`` must be a valid Python identifier, and a name repeated in the pattern must
+  have the same value each time.
+* ``*`` matches anything within a segment, ``**`` anything across segments (``**/``
+  zero or more whole segments), ``?`` a single character and ``[...]``/``[!...]`` a
+  (negated) set of characters, as in a shell glob. ``{{`` and ``}}`` match literal
+  braces, and every other character matches itself.
+* Unless it starts with ``/``, a pattern only needs to match the trailing segments of
+  the path, so ``{cohort}`` matches the last segment of ``/data/incoming/cohort-A``.
+  It always has to match up to the end of the path.
+
+Each pattern is translated into the equivalent regular expression, so the same rules
+about the datatype, repeating the option and a path that doesn't match apply. For
+example, ``{subject}_{session}/resource/*.dcm`` becomes::
+
+    (?:.*/)?(?P<subject>[^/]+)_(?P<session>[^/]+)/resource/[^/]*\.dcm$
+
+The two options can be used together: the ``--path-metadata`` patterns are applied
+first, so a ``--path-metadata-regex`` wins where both set the same field.
+
+What the pattern is matched against
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The pattern (or regex) is matched against the path of the resource, not of each of its
+files. A single-file datatype like ``medimage/dicom-image`` or ``generic/file`` is
+matched by the file's own path, but a multi-file one like ``medimage/dicom-series`` is
+matched by the directory that holds its files. So for files in
+``/data/sub01_ses02/resource/``:
+
+.. code-block:: console
+
+    # a DICOM series is matched by its directory, so the pattern ends there
+    --path-metadata '{subject}_{session}/resource' medimage/dicom-series
+
+    # a single file is matched by its own path, so the pattern includes the file name
+    --path-metadata '{subject}_{session}/resource/*.dcm' medimage/dicom-image
+
+Both set ``subject`` to ``sub01`` and ``session`` to ``ses02``. A pattern ending in
+``*.dcm`` used with ``medimage/dicom-series`` never matches, so the run fails.
+
+Placeholders sharing a segment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Where two placeholders share a segment, the first takes as much of it as it can, so
+``{subject}_{session}`` splits a directory named ``sub01_ses_02`` into ``subject``
+``sub01_ses`` and ``session`` ``02``. That's fine as long as the values themselves
+never contain ``_``. If they can, use ``--path-metadata-regex`` with a group that
+excludes it instead, e.g. to stop ``subject`` at the first ``_``:
+
+.. code-block:: console
+
+    --path-metadata-regex '.*/(?P<subject>[^_/]+)_(?P<session>[^/]+)/resource$' \
+        medimage/dicom-series
+
 
 .. _source-folder-metadata-tables:
 

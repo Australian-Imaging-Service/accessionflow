@@ -1,5 +1,6 @@
 """Collates files found in local or mounted folders into accessions"""
 
+import re
 import typing as ty
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from accessionflow.helpers.arg_types import (
     IDSpec,
     MetadataTable,
     OnResourceClash,
+    PathMetadataPattern,
     PathMetadataRegex,
 )
 from accessionflow.helpers.logging import logger
@@ -28,6 +30,119 @@ DEFAULT_ACQUISITION_ID_FIELD: tuple[IDSpec, ...] = (
 DEFAULT_RESOURCE_FIELD: tuple[IDSpec, ...] = ()
 _DEFAULT_DATATYPES: tuple[type[FileSet], ...] = (DicomSeries,)
 
+# Tokens of a path-metadata pattern, tried in order: escaped braces, a '{name}'
+# placeholder, '**', '*', '?' and a '[...]' character class
+_PATTERN_TOKEN_RE = re.compile(
+    r"(?P<lbrace>\{\{)|(?P<rbrace>\}\})|\{(?P<field>[^{}]*)\}|(?P<globstar>\*\*/?)"
+    r"|(?P<star>\*)|(?P<qmark>\?)|(?P<charclass>\[!?\]?[^\]]*\])"
+)
+
+
+def path_metadata_pattern_to_regex(pattern: str) -> str:
+    """Translates a glob-like path-metadata pattern into the equivalent regular
+    expression, as taken by ``--path-metadata-regex``/``PathMetadataRegex``.
+
+    * ``{name}`` matches one path segment (or part of one), i.e. ``[^/]+``, and stores
+      it in the metadata field ``name``. ``name`` must be a valid Python identifier. A
+      field repeated in the same pattern must have the same value each time
+    * ``*`` matches any characters within a segment, ``**`` any characters across
+      segments (``**/`` zero or more whole segments), ``?`` a single character within
+      a segment, and ``[...]``/``[!...]`` a (negated) character class, as in a shell
+      glob
+    * ``{{`` and ``}}`` match literal braces, every other character matches itself
+    * a pattern starting with ``/`` must match the whole path; otherwise it only needs
+      to match its trailing segments, e.g. ``{cohort}/*.dcm`` matches
+      ``/data/incoming/cohort-A/1.dcm``
+
+    Parameters
+    ----------
+    pattern : str
+        the glob-like pattern, e.g. ``'{subject}/{session}/*'``
+
+    Returns
+    -------
+    str
+        the regular expression, with a named group for each field in ``pattern``
+
+    Raises
+    ------
+    ValueError
+        if a placeholder's name isn't a valid identifier, or a brace is unmatched
+    """
+    parts: list[str] = []
+    fields: set[str] = set()
+    pos = 0
+    for match in _PATTERN_TOKEN_RE.finditer(pattern):
+        literal = pattern[pos : match.start()]
+        if "{" in literal or "}" in literal:
+            raise ValueError(
+                f"Unmatched brace in path-metadata pattern '{pattern}' (use '{{{{' or "
+                "'}}' for a literal brace)"
+            )
+        parts.append(re.escape(literal))
+        pos = match.end()
+        kind = match.lastgroup
+        if kind == "lbrace":
+            parts.append(re.escape("{"))
+        elif kind == "rbrace":
+            parts.append(re.escape("}"))
+        elif kind == "field":
+            name = match.group("field")
+            if not name.isidentifier():
+                raise ValueError(
+                    f"'{{{name}}}' in path-metadata pattern '{pattern}' isn't a valid "
+                    "field name: it must be a valid Python identifier (letters, digits "
+                    "and underscores, not starting with a digit)"
+                )
+            if name in fields:
+                parts.append(f"(?P={name})")
+            else:
+                fields.add(name)
+                parts.append(f"(?P<{name}>[^/]+)")
+        elif kind == "globstar":
+            # '**/' matches zero or more whole segments, a bare '**' anything at all
+            parts.append("(?:.*/)?" if match.group().endswith("/") else ".*")
+        elif kind == "star":
+            parts.append("[^/]*")
+        elif kind == "qmark":
+            parts.append("[^/]")
+        else:
+            charclass = match.group("charclass")[1:-1]
+            negate = charclass.startswith("!")
+            if negate:
+                charclass = charclass[1:]
+            charclass = (
+                charclass.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
+            )
+            if charclass.startswith("^"):
+                charclass = "\\" + charclass
+            parts.append(f"[^/{charclass}]" if negate else f"[{charclass}]")
+    literal = pattern[pos:]
+    if "{" in literal or "}" in literal:
+        raise ValueError(
+            f"Unmatched brace in path-metadata pattern '{pattern}' (use '{{{{' or '}}}}' "
+            "for a literal brace)"
+        )
+    parts.append(re.escape(literal))
+    body = "".join(parts)
+    if not pattern.startswith("/"):
+        body = "(?:.*/)?" + body
+    return body + "$"
+
+
+def merge_path_metadata(
+    path_metadata: ty.Sequence[PathMetadataPattern] = (),
+    path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
+) -> list[PathMetadataRegex]:
+    """Translates the glob-like path-metadata patterns into regexes and merges them
+    with the raw regexes into a single list, patterns first. Where both set the same
+    field for a resource, the later one in the list wins.
+    """
+    return [
+        PathMetadataRegex(path_metadata_pattern_to_regex(p.pattern), p.datatype)
+        for p in path_metadata
+    ] + list(path_metadata_regex)
+
 
 def collate(
     input_paths: list[str],
@@ -37,6 +152,7 @@ def collate(
     acquisition_id: ty.Sequence[IDSpec] = DEFAULT_ACQUISITION_ID_FIELD,
     resource: ty.Sequence[IDSpec] = DEFAULT_RESOURCE_FIELD,
     path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
+    path_metadata: ty.Sequence[PathMetadataPattern] = (),
     unlink_source: str | None = None,
     raise_errors: bool = False,
     copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
@@ -85,6 +201,11 @@ def collate(
         Regular expressions to extract "metadata" values from resource file paths as named groups. The named
         groups are used as metadata fields for the resource files, and the extracted values will be used to populate
         the corresponding metadata fields to complement the metadata read from the file headers.
+    path_metadata: ty.Sequence[PathMetadataPattern]
+        A simpler, glob-like alternative to ``path_metadata_regex``, where ``{name}`` placeholders
+        mark the parts of the path to extract as metadata fields, e.g. ``'{subject}/{session}'``.
+        Each pattern is translated into a regex (see ``path_metadata_pattern_to_regex``) and applied
+        before the ``path_metadata_regex`` ones, so a regex wins where both set the same field.
     unlink_source: str | None
         If "all" or "keep-metadata", the input files will be unlinked one by one after staging (both behave the same
         here, since the source isn't a directory tree that accessionflow owns). If None, the input files will be left
@@ -181,7 +302,7 @@ def collate(
         allow_unrecognised=allow_unrecognised,
         exclude_paths=exclude_paths,
         ignore_datatypes=ignore_datatypes,
-        path_metadata_regex=path_metadata_regex,
+        path_metadata_regex=merge_path_metadata(path_metadata, path_metadata_regex),
         metadata_tables=metadata_tables,
     )
 
