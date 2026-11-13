@@ -589,14 +589,14 @@ def test_from_paths_recursive_allow_unrecognised_wildcard_pulls_only_wanted_dirs
 
 def test_from_paths_recursive_raises_on_unlisted_type(tmp_path: Path) -> None:
     from fileformats.application import Json
-    from fileformats.core.exceptions import FormatRecognitionError
+    from fileformats.core.exceptions import FormatMismatchError
     from fileformats.generic import DirectoryOf
     from fileformats.text import Csv
 
     root = _tree(tmp_path / "export")
     (root / "mystery.unknownext").write_text("not a recognised type")
 
-    with pytest.raises(FormatRecognitionError, match="mystery"):
+    with pytest.raises(FormatMismatchError, match="mystery"):
         Accession.from_paths(
             root,
             datatypes=[DirectoryOf[Json]],

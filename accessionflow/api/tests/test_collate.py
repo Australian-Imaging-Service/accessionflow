@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from fileformats.application import Json, Zip
-from fileformats.core.exceptions import FormatRecognitionError
+from fileformats.core.exceptions import FormatMismatchError
 from fileformats.medimage import DicomDir, DicomSeries
 from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
     get_image as get_pet_image,  # type: ignore[import-untyped]
@@ -112,7 +112,7 @@ def test_collate_unrecognised_file_raises_without_allow_unrecognised(
     shutil.copytree(dicom_dir, input_dir)
     (input_dir / "notes.txt").write_text("not a recognised format")
 
-    with pytest.raises(FormatRecognitionError, match="notes.txt"):
+    with pytest.raises(FormatMismatchError, match="notes.txt"):
         collate(
             input_paths=[str(input_dir)],
             output_dir=output_dir,
@@ -158,7 +158,7 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_raises(
     shutil.copytree(dicom_dir, input_dir)
     (input_dir / "notes.txt").write_text("not a recognised format")
 
-    with pytest.raises(FormatRecognitionError, match="notes.txt"):
+    with pytest.raises(FormatMismatchError, match="notes.txt"):
         collate(
             input_paths=[str(input_dir)],
             output_dir=output_dir,
@@ -208,7 +208,7 @@ def test_collate_without_ignore_datatypes_raises_on_recognised_extra_type(
     shutil.copytree(dicom_dir, input_dir)
     (input_dir / "notes.json").write_text("{}")
 
-    with pytest.raises(FormatRecognitionError, match="notes.json"):
+    with pytest.raises(FormatMismatchError, match="notes.json"):
         collate(
             input_paths=[str(input_dir)],
             output_dir=output_dir,
