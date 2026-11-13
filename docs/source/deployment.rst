@@ -45,8 +45,9 @@ the CLI as its entrypoint, so each stage becomes a single long-running container
 
 Repeat with ``label``, optionally ``deidentify``, and ``store`` as separate
 containers, each mounting the previous stage's output as its input, chained through a
-shared staging area on disk (or an S3 bucket, which ``store``/``check-store`` can
-read from directly). For an Orthanc server, run ``collate orthanc`` in place of
+shared staging area on disk. To deposit from a different machine, ``push`` the staging
+directory to an S3 bucket or another remote file system, which ``store`` can read from
+directly (see :doc:`push`). For an Orthanc server, run ``collate orthanc`` in place of
 ``collate folder``, with Orthanc's storage directory mounted on the same file system as
 the staging area (see :doc:`sources/orthanc`).
 
