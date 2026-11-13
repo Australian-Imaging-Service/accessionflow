@@ -872,6 +872,51 @@ def test_collate_path_metadata(
     assert mdata["site_num"] == "1"
 
 
+@pytest.mark.parametrize("read_metadata", [True, False])
+def test_collate_dont_read_metadata(
+    cli_runner: ty.Any,
+    tmp_path: Path,
+    read_metadata: bool,
+) -> None:
+    sorted_dir = tmp_path / "sorted"
+    sorted_dir.mkdir()
+
+    dicoms_dir = tmp_path / "dicoms" / "subj-01"
+    dicoms_dir.mkdir(parents=True)
+    get_pet_image(dicoms_dir)
+
+    result = cli_runner(
+        collate_cmd,
+        [
+            str(dicoms_dir),
+            str(sorted_dir),
+            "--raise-errors",
+            "--wait-period",
+            "0",
+            "--path-metadata",
+            "{subject}",
+            "medimage/dicom-series",
+            "--accession",
+            "subject",
+            "all",
+            "--acquisition",
+            "subject",
+            "all",
+        ]
+        + ([] if read_metadata else ["--dont-read-metadata", "medimage/dicom-series"]),
+    )
+    assert result.exit_code == 0, show_cli_trace(result)
+
+    session_dirs = list_session_dirs(sorted_dir)
+    assert len(session_dirs) == 1
+    scan_dir = next(d for d in session_dirs[0].iterdir() if d.is_dir())
+    resource_dir = next(d for d in scan_dir.iterdir() if d.is_dir())
+    mdata = json.loads((resource_dir / Metadata.FNAME).read_bytes())
+    assert mdata["subject"] == "subj-01"
+    # the DICOM headers are only read for their fields without --dont-read-metadata
+    assert ("StudyInstanceUID" in mdata) == read_metadata
+
+
 def _write_minimal_png(path: Path, *, rgb: tuple[int, int, int] = (0, 0, 0)) -> Path:
     """Write a minimal but valid 1x1 PNG so fileformats recognises it as image/png."""
 

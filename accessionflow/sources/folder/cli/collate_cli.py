@@ -232,6 +232,22 @@ ready to be labelled
     ),
 )
 @click.option(
+    "--dont-read-metadata",
+    "dont_read_metadata",
+    type=MimeType.cli_type,
+    default=(),
+    multiple=True,
+    metavar="<datatype>",
+    envvar="ACFLOW_DONT_READ_METADATA",
+    help=(
+        "Datatypes whose files aren't read for metadata, so their only metadata fields are "
+        "those from --path-metadata/--path-metadata-regex and --metadata-table. Saves reading "
+        "the header of every file when none of its fields are used, e.g. when the IDs all come "
+        "from the path. Matched with isinstance, so 'medimage/nifti' also covers "
+        "'medimage/nifti-gz'. Repeatable. (ACFLOW_DONT_READ_METADATA env. var)"
+    ),
+)
+@click.option(
     "--recursive/--not-recursive",
     type=bool,
     default=False,
@@ -316,6 +332,7 @@ def collate_cmd(
     allow_unrecognised: tuple[str, ...],
     exclude_paths: tuple[str, ...],
     ignore_datatypes: tuple[MimeType, ...],
+    dont_read_metadata: tuple[MimeType, ...],
     loop: int,
     wait_period: int,
     recursive: bool,
@@ -360,6 +377,7 @@ def collate_cmd(
             allow_unrecognised=allow_unrecognised,
             exclude_paths=exclude_paths,
             ignore_datatypes=[dt.datatype for dt in ignore_datatypes],
+            dont_read_metadata=[dt.datatype for dt in dont_read_metadata],
             on_resource_clash=list(on_resource_clash),
             wait_period=wait_period,
             path_metadata_regex=path_metadata_regex,
