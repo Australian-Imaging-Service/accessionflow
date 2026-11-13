@@ -955,7 +955,7 @@ class Accession:
 
         for fileset in tqdm(
             filesets,
-            "Sorting resources into XNAT tree structure...",
+            "Collating files into accessions...",
         ):
             session_uid = IDSpec.get_value_from_matching_spec(
                 fileset, accession_uid_field
