@@ -141,7 +141,7 @@ class Metadata(ty.Mapping[str, ty.Any]):
             values = [m[key] if key in m else None for m in metadata_list]
             distinct: list[ty.Any] = []
             for val in values:
-                if val is not None and val not in distinct:
+                if val is not None and not any(_values_equal(val, d) for d in distinct):
                     distinct.append(val)
             if len(distinct) == 0:
                 collated[key] = None
@@ -165,3 +165,21 @@ class Fields(Metadata):
 
     def _ensure_read(self) -> None:
         self._read = True
+
+
+def _values_equal(a: ty.Any, b: ty.Any) -> bool:
+    """Whether two metadata values are equal, including array-like values (e.g. numpy
+    arrays) whose ``==`` is element-wise, so its result can't be used as a bool"""
+    if a is b:
+        return True
+    try:
+        return bool(a == b)
+    except (ValueError, TypeError):
+        pass
+    # Element-wise comparison: equal if the shapes match and so does every element
+    if getattr(a, "shape", None) != getattr(b, "shape", None):
+        return False
+    try:
+        return bool((a == b).all())
+    except (AttributeError, ValueError, TypeError):
+        return False

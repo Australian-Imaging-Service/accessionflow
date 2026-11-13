@@ -209,6 +209,26 @@ def test_collate_metadata_only_diverges_after_common_prefix():
     assert collated["SeriesNumber"] == [1, 1, 2]
 
 
+def test_collate_metadata_array_values():
+    np = pytest.importorskip("numpy")
+    obj = MockObj({})
+    orientation = np.array([1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+    metadata_dicts = [
+        Metadata({"Orientation": orientation, "Spacing": np.array([1, 1])}, obj, True),
+        Metadata(
+            {"Orientation": orientation.copy(), "Spacing": np.array([2, 2])}, obj, True
+        ),
+        # a different shape that would broadcast against the others element-wise
+        Metadata({"Spacing": np.array([1])}, obj, True),
+    ]
+
+    collated = Metadata.collate(metadata_dicts)
+
+    # equal arrays collapse to a singleton, unequal ones become a list
+    np.testing.assert_array_equal(collated["Orientation"], orientation)
+    assert [list(v) for v in collated["Spacing"]] == [[1, 1], [2, 2], [1]]
+
+
 def test_collate_metadata_spans_union_of_keys():
     obj = MockObj({})
     metadata_dicts = [
