@@ -31,6 +31,16 @@ Stages
 .. autofunction:: accessionflow.api.annotate_api.annotate
 
 
+Pushing
+~~~~~~~
+
+.. autofunction:: accessionflow.api.push
+
+.. autofunction:: accessionflow.api.check_push
+
+.. autoclass:: accessionflow.api.push_api.Compatibility
+
+
 Data stores
 ~~~~~~~~~~~
 

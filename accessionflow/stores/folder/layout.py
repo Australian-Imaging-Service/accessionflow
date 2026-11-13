@@ -15,18 +15,23 @@ every kind of file system. The accession's fields are kept too, but not its
 metadata.
 """
 
-import hashlib
 import json
-import tempfile
 import typing as ty
 from pathlib import Path
 
 import attrs
 import fsspec
-from fsspec.implementations.local import LocalFileSystem
 
 from accessionflow.helpers.arg_types import StoreCredentials
 from accessionflow.helpers.logging import logger
+from accessionflow.helpers.remote_fs import (
+    is_side_car,
+    md5,
+    open_fs,
+    read_remote_manifest,
+    remote_md5,
+    write_atomically,
+)
 from accessionflow.helpers.remotes import (
     LocalSessionListing,
     SessionListing,
@@ -46,8 +51,7 @@ def open_store(
 ) -> tuple[fsspec.AbstractFileSystem, str]:
     """The file system of the store at `dest` (a path or an fsspec URL, e.g.
     's3://bucket/archive'), and the store's root path within it"""
-    fs, root = fsspec.core.url_to_fs(str(dest), **dict(storage_options or {}))
-    return fs, root.rstrip("/")
+    return open_fs(dest, storage_options)
 
 
 def staged_sessions(
@@ -138,7 +142,7 @@ def staged_resources(
             checksums = {
                 str(p.relative_to(resource_dir).as_posix()): md5(p)
                 for p in sorted(resource_dir.rglob("*"))
-                if p.is_file() and not _is_side_car(p.name)
+                if p.is_file() and not is_side_car(p.name)
             }
             datatype = None
         yield StagedResource(
@@ -154,57 +158,20 @@ def accession_dir(accession: Accession, root: str) -> str:
     return "/".join([root, *accession.labels.values()])
 
 
-def md5(path: Path) -> str:
-    digest = hashlib.md5()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(2**20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+# The names the folder store's modules use
+read_store_manifest = read_remote_manifest
 
-
-def remote_md5(fs: fsspec.AbstractFileSystem, path: str) -> str:
-    digest = hashlib.md5()
-    with fs.open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(2**20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def read_store_manifest(
-    fs: fsspec.AbstractFileSystem, store_dir: str
-) -> dict[str, ty.Any] | None:
-    """The manifest of a resource in the store, or None if it has none (it hasn't
-    been deposited, or depositing it didn't finish) or it can't be read"""
-    try:
-        manifest = json.loads(fs.cat_file(f"{store_dir}/{Resource.MANIFEST_FNAME}"))
-    except FileNotFoundError:
-        return None
-    except (ValueError, UnicodeDecodeError):
-        logger.warning("The manifest of '%s' can't be read", store_dir)
-        return None
-    return manifest if isinstance(manifest, dict) else None
-
-
-def write_atomically(fs: fsspec.AbstractFileSystem, path: str, data: bytes) -> None:
-    """Write a small file in one call, so that it is either absent or complete"""
-    if isinstance(fs, LocalFileSystem):
-        # A local write can be a rename, which is atomic
-        target = Path(path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            dir=target.parent, prefix=f".{target.name}.", delete=False
-        ) as tmp:
-            tmp.write(data)
-        Path(tmp.name).replace(target)
-    else:
-        # Object stores publish an object only once it has been written in full
-        fs.pipe_file(path, data)
-
-
-def _is_side_car(fname: str) -> bool:
-    return fname in (
-        Resource.MANIFEST_FNAME,
-        Resource.OLD_MANIFEST_FNAME,
-        Resource.MANIFEST_TMP_FNAME,
-        "__METADATA__.json",
-    ) or fname.endswith(".tmp")
+__all__ = [
+    "STORE_TYPE",
+    "FIELDS_FNAME",
+    "StagedResource",
+    "accession_dir",
+    "load_labelled",
+    "md5",
+    "open_store",
+    "read_store_manifest",
+    "remote_md5",
+    "staged_resources",
+    "staged_sessions",
+    "write_atomically",
+]

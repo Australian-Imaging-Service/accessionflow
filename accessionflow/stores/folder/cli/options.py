@@ -1,24 +1,15 @@
 """Options shared by 'store folder' and 'check-store folder'"""
 
-import json
 import typing as ty
 from pathlib import Path
 
 import click
 
 from accessionflow.helpers.arg_types import LoggerConfig, StoreCredentials
+from accessionflow.helpers.remote_fs import parse_storage_options
 
-
-def storage_options(pairs: ty.Iterable[tuple[str, str]]) -> dict[str, ty.Any]:
-    """The fsspec options given by '--storage-option KEY VALUE' pairs, with values
-    that are JSON (e.g. 'true', '10', '{"a": 1}') decoded, and others left as strings"""
-    options: dict[str, ty.Any] = {}
-    for key, value in pairs:
-        try:
-            options[key] = json.loads(value)
-        except ValueError:
-            options[key] = value
-    return options
+# The name the folder store's commands use
+storage_options = parse_storage_options
 
 
 def common_options(func: ty.Callable[..., None]) -> ty.Callable[..., None]:
