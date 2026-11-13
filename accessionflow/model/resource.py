@@ -26,6 +26,14 @@ if ty.TYPE_CHECKING:
     from .acquisition import Acquisition  # noqa
 
 
+class _Unset:
+    """Marks checksums that weren't given, so are calculated when first needed, as
+    opposed to None, which marks them as unknown"""
+
+
+_UNSET = _Unset()
+
+
 @attrs.define
 class Resource:
     """Representation of a resource to be uploaded to XNAT, which is a set of files
@@ -39,19 +47,34 @@ class Resource:
         The name of the resource
     fileset: FileSet
         The set of files associated with the resource
-    checksums: dict[str, str]
-        The checksums of the files in the resource
+    checksums: dict[str, str], optional
+        The checksums of the files in the resource. If not given they are calculated
+        the first time they are needed, so that resources that are saved straight away
+        (e.g. by 'collate') don't hash their files before the copy is hashed
     acquisition: Acquisition
         The acquisition that the resource is associated with
     """
 
     name: str
     fileset: FileSet
-    checksums: dict[str, str] = attrs.field(eq=False, repr=False)
+    _checksums: dict[str, str] | None | _Unset = attrs.field(
+        default=_UNSET, alias="checksums", eq=False, repr=False
+    )
     acquisition: "Acquisition" = attrs.field(default=None, eq=False, repr=False)
     metadata: Metadata = attrs.field(eq=False, repr=False, init=False)
 
-    @checksums.default
+    @property
+    def checksums(self) -> dict[str, str] | None:
+        """The checksums of the files, calculated the first time they are needed if they
+        weren't given. None if they are unknown, i.e. loaded without a manifest"""
+        if isinstance(self._checksums, _Unset):
+            self._checksums = self.calculate_checksums()
+        return self._checksums
+
+    @checksums.setter
+    def checksums(self, checksums: dict[str, str] | None) -> None:
+        self._checksums = checksums
+
     def calculate_checksums(self) -> dict[str, str]:
         return self.fileset.hash_files(
             crypto=hashlib.md5, relative_to=self.fileset.parent
@@ -162,9 +185,6 @@ class Resource:
         """
         fileset = self.fileset
         resource_dir = dest_dir / self.name
-        checksums = (
-            self.calculate_checksums() if calculate_checksums else self.checksums
-        )
         if resource_dir.exists() and not self.manifest_fpath(resource_dir).exists():
             # A producer stopped after it wrote data files and before it published
             # the manifest. It can leave the temporary manifest. This save cannot
@@ -184,6 +204,11 @@ class Resource:
             )
             shutil.rmtree(resource_dir)
         if resource_dir.exists():
+            # The files to be saved are only hashed when there is a saved resource to
+            # compare them with, the copy is hashed for the manifest below anyway
+            checksums = (
+                self.calculate_checksums() if calculate_checksums else self.checksums
+            )
             try:
                 loaded = self.load(resource_dir, require_manifest=False)
                 if loaded.checksums == checksums:
@@ -369,9 +394,15 @@ class Resource:
         return self.fileset.metadata
 
     def check_checksums(self) -> None:
+        saved_checksums = self.checksums
+        if saved_checksums is None:
+            raise DifferingCheckumsException(
+                f"No saved checksums to check the files of '{self.name}' against "
+                "(it was loaded without a manifest)"
+            )
         calc_checksums = self.calculate_checksums()
-        if calc_checksums != self.checksums:
-            saved_keys = set(self.checksums)
+        if calc_checksums != saved_checksums:
+            saved_keys = set(saved_checksums)
             calc_keys = set(calc_checksums)
             if saved_keys != calc_keys:
                 additional = calc_keys - saved_keys
@@ -382,7 +413,9 @@ class Resource:
                 )
             else:
                 differing = [
-                    k for k in self.checksums if calc_checksums[k] != self.checksums[k]
+                    k
+                    for k in saved_checksums
+                    if calc_checksums[k] != saved_checksums[k]
                 ]
                 raise DifferingCheckumsException(
                     f"Checksums don't match those saved with '{self.name}' "

@@ -167,6 +167,7 @@ def collate(
     on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
     metadata_tables: list[MetadataTable] | None = None,
     recursive: bool = False,
+    dont_read_metadata: ty.Sequence[type[FileSet]] = (),
 ) -> list[str]:
     """Collates the input files into accessions/acquisitions/resources and stages them into the
     staging directory. Project/subject/visit IDs and scan descriptions are not
@@ -236,6 +237,10 @@ def collate(
         dropped rather than raising, and (with ``recursive``) matching directories are skipped
         without descending. A path matching neither ``datatypes`` nor ``ignore_datatypes`` (nor
         ``allow_unrecognised`` / ``exclude_paths``) still raises.
+    dont_read_metadata: ty.Sequence[type[FileSet]]
+        Datatypes whose files aren't read for metadata, so their only metadata fields are those
+        from ``path_metadata``/``path_metadata_regex`` and ``metadata_tables``. Saves reading the
+        header of every file when none of its fields are used.
     wait_period: int
         If provided, this is the number of seconds that must have passed since the last modification time of the session before
         it will be staged. This can be used to avoid staging sessions that are still being modified or created.
@@ -304,6 +309,7 @@ def collate(
         ignore_datatypes=ignore_datatypes,
         path_metadata_regex=merge_path_metadata(path_metadata, path_metadata_regex),
         metadata_tables=metadata_tables,
+        dont_read_metadata=dont_read_metadata,
     )
 
     errors = save_accessions_to_dir(

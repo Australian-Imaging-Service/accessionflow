@@ -4,6 +4,7 @@ import typing as ty
 from pathlib import Path
 
 from fileformats.core import FileSet
+from fileformats.core.fs_mount_identifier import FsMountIdentifier
 from tqdm import tqdm
 
 from accessionflow.helpers.logging import logger
@@ -64,6 +65,7 @@ def save_accessions_to_dir(
     list[str]
         the errors, one per accession that couldn't be saved
     """
+    warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map)
     errors = []
     for session in tqdm(accessions, msg):
         if wait_period:
@@ -115,3 +117,56 @@ def save_accessions_to_dir(
                 raise
 
     return errors
+
+
+def warn_if_hardlinks_unavailable(
+    accessions: ty.Iterable[Accession],
+    build_dir: Path,
+    copy_mode: FileSet.CopyMode,
+    conversion_map: ty.Container[type[FileSet]] | None = None,
+) -> None:
+    """Logs a single warning if ``copy_mode`` would hard-link the accessions' files but
+    some of them are on a different file system from ``build_dir``, so they will be
+    copied in full instead, which can be much slower for large files.
+
+    Only the case where a full copy is the fallback is warned about, i.e. where the
+    copy mode allows hard-linking and copying but not symlinking (which is preferred
+    over hard-linking). Resources that are converted as they are saved are skipped,
+    as they are written anew rather than linked.
+    """
+    if not (
+        copy_mode & FileSet.CopyMode.hardlink
+        and copy_mode & FileSet.CopyMode.copy
+        and not copy_mode & FileSet.CopyMode.symlink
+    ):
+        return
+    conversion_map = conversion_map or ()
+    # Mounts are looked up once per directory rather than once per file
+    same_mount: dict[Path, bool] = {}
+    n_resources = 0
+    unlinkable: list[Path] = []
+    for accession in accessions:
+        for resource in accession.resources:
+            if type(resource.fileset) in conversion_map:
+                continue
+            n_resources += 1
+            for fspath in resource.fileset.fspaths:
+                parent = fspath.parent
+                if parent not in same_mount:
+                    same_mount[parent] = FsMountIdentifier.on_same_mount(
+                        parent, build_dir
+                    )
+                if not same_mount[parent]:
+                    unlinkable.append(fspath)
+                    break
+    if unlinkable:
+        logger.warning(
+            "%s of %s resources (e.g. '%s') are on a different file system from the "
+            "output directory '%s', so they can't be hard-linked and will be copied in "
+            "full instead, which can be slow for large files. To hard-link them, put "
+            "the output directory on the same file system as the input.",
+            len(unlinkable),
+            n_resources,
+            unlinkable[0],
+            build_dir.parent,
+        )

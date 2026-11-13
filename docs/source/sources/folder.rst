@@ -149,6 +149,27 @@ excludes it instead, e.g. to stop ``subject`` at the first ``_``:
         medimage/dicom-series
 
 
+Skipping the file headers
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When every field you need comes from the path (or a metadata table), reading each
+file's header is wasted work, which can add up over many files on a network file
+system. ``--dont-read-metadata <datatype>`` stops the files of that datatype being read
+for metadata, so the only fields they have are the ones set from the path or a table:
+
+.. code-block:: console
+
+    $ accessionflow collate folder /data/incoming /data/staging/collated --recursive \
+        --datatype medimage/nifti-gz \
+        --path-metadata '{subject}/{subject}_*.nii.gz' medimage/nifti-gz \
+        --accession subject all \
+        --dont-read-metadata medimage/nifti-gz
+
+The datatype is matched with ``isinstance``, like ``--path-metadata``'s, and the option
+can be repeated. A field that would only have come from the header, e.g. one used in a
+later ``--project`` specifier or by ``store xnat --date``, is then missing.
+
+
 .. _source-folder-metadata-tables:
 
 Joining metadata from a table

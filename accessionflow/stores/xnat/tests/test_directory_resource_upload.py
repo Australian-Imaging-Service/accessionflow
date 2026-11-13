@@ -140,8 +140,10 @@ def test_directory_checksums_match_manifest_walk(tmp_path):
 def test_broken_link_checksum_raises(tmp_path):
     fileset = _directory(tmp_path)
     (fileset.fspath / "broken.bin").symlink_to("missing.bin")
+    # checksums are calculated when first used, not when the resource is created
+    resource = Resource("DATA", fileset)
     with pytest.raises(FileNotFoundError, match="broken.bin"):
-        Resource("DATA", fileset)
+        resource.checksums
     with pytest.raises(FileNotFoundError, match="broken.bin"):
         calculate_checksums(fileset)
 

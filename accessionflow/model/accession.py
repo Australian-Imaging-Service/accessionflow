@@ -728,6 +728,7 @@ class Accession:
         ignore_datatypes: ty.Sequence[type[FileSet]] | None = None,
         path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
         metadata_tables: list[MetadataTable] | None = None,
+        dont_read_metadata: ty.Sequence[type[FileSet]] = (),
     ) -> list[Self]:
         """Loads all imaging sessions from a list of DICOM files
 
@@ -789,6 +790,12 @@ class Accession:
         metadata_tables : list[MetadataTable] or None, optional
             a list of MetadataTable objects that define how to extract metadata from input files (e.g. CSV files and spreadsheets)
             and join them with the sessions. If None, no metadata tables will be used.
+        dont_read_metadata : ty.Sequence[type[FileSet]], optional
+            datatypes whose files aren't read for metadata (matched with
+            ``isinstance``), so their only metadata fields are those from
+            ``path_metadata_regex`` and ``metadata_tables``. Reading the headers of
+            many files can be slow, e.g. on a network file system, and is wasted when
+            none of their fields are used.
 
 
         Returns
@@ -915,6 +922,15 @@ class Accession:
             ignore="|".join(allow_unrecognised) if allow_unrecognised else None,
             **from_paths_kwargs,  # type: ignore[arg-type]
         )
+        if dont_read_metadata:
+            for fileset in filesets:
+                if isinstance(fileset, tuple(dont_read_metadata)):
+                    # Only the metadata set on the fileset (e.g. from the path or a
+                    # metadata table) is used, its file(s) are never read for more.
+                    # TODO: set the public ``fileset.metadata.read_disabled`` instead
+                    # once the fileformats release that adds it is the minimum version
+                    fileset.metadata._read_disabled = True
+
         if ignore_datatypes:
             # drop filesets of an ignored datatype, but never one that also matches
             # an explicitly-requested datatype (a specific Directory subclass in

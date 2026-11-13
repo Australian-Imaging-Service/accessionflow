@@ -1,8 +1,10 @@
 import shutil
+import typing as ty
 from pathlib import Path
 
 import pytest
 from fileformats.application import Json, Zip
+from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 from fileformats.medimage import DicomDir, DicomSeries
 from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
@@ -359,3 +361,67 @@ def test_collate_converts_directory_to_zip(dicom_dir: Path, tmp_path: Path):
     manifest = Json(resource_dir / Resource.MANIFEST_FNAME).load()
     assert manifest["datatype"] == Zip.mime_like
     assert (resource_dir / f"{dicom0_dir.name}.zip").exists()
+
+
+@pytest.mark.parametrize("same_mount", [True, False])
+def test_collate_warns_when_hardlinks_unavailable(
+    dicom_dir: Path,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    same_mount: bool,
+) -> None:
+    from fileformats.core.fs_mount_identifier import FsMountIdentifier
+
+    monkeypatch.setattr(
+        FsMountIdentifier, "on_same_mount", classmethod(lambda cls, a, b: same_mount)
+    )
+    output_dir = tmp_path / "collated"
+    output_dir.mkdir()
+
+    with caplog.at_level("WARNING"):
+        errors = collate(
+            input_paths=[str(dicom_dir)],
+            output_dir=output_dir,
+            datatypes=[DicomSeries],
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
+            resource=RESOURCE_FIELD,
+            copy_mode=FileSet.CopyMode.hardlink_or_copy,
+        )
+
+    assert errors == []
+    warnings = [
+        r.getMessage() for r in caplog.records if "hard-linked" in r.getMessage()
+    ]
+    assert len(warnings) == (0 if same_mount else 1)
+
+
+def test_collate_hashes_each_resource_once(
+    dicom_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the staged copy is hashed (for its manifest), not the source files as well,
+    as nothing has been saved yet to compare them with"""
+    hashed: list[FileSet] = []
+    hash_files = FileSet.hash_files
+
+    def counting_hash_files(self: FileSet, *args: ty.Any, **kwargs: ty.Any) -> ty.Any:
+        hashed.append(self)
+        return hash_files(self, *args, **kwargs)
+
+    monkeypatch.setattr(FileSet, "hash_files", counting_hash_files)
+    output_dir = tmp_path / "collated"
+    output_dir.mkdir()
+
+    errors = collate(
+        input_paths=[str(dicom_dir)],
+        output_dir=output_dir,
+        datatypes=[DicomSeries],
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
+        copy_mode=FileSet.CopyMode.hardlink_or_copy,
+    )
+
+    assert errors == []
+    assert len(hashed) == 1
+    assert not any(str(dicom_dir) in str(p) for p in hashed[0].fspaths)
