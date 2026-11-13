@@ -70,12 +70,12 @@ def collate(
         Field specifications to extract the accession UIDs from the input files, to
         collate them into separate accessions. Defaults to ``DEFAULT_ACCESSION_UID_FIELD``
         (``StudyInstanceUID`` scoped to DICOM collections; the same object backs the
-        CLI's ``--accession-uid``); other fileset types need an explicit spec.
+        CLI's ``--accession``); other fileset types need an explicit spec.
     acquisition_id: ty.Sequence[IDSpec]
         Field specifications to extract the acquisition IDs from the input files, to
         collate them into acquisitions. Defaults to ``DEFAULT_ACQUISITION_ID_FIELD``
         (``SeriesNumber`` scoped to DICOM collections; shared with the CLI's
-        ``--acquisition-id``); for a fileset whose type is not matched by any spec here the
+        ``--acquisition``); for a fileset whose type is not matched by any spec here the
         acquisition is named after that fileset's resource.
     resource: ty.Sequence[IDSpec]
         List of field specifications to use for extracting the resource IDs from the input files to collate them into
