@@ -5,6 +5,7 @@ from .collate_cli import collate_group, collate_options
 from .deidentify_cli import deidentify_cmd
 from .label_cli import label_group, make_label_command
 from .package_cli import package_cmd
+from .push_cli import check_push_cmd, push_cmd
 from .store_cli import check_store_group, store_group
 
 __all__ = [
@@ -18,6 +19,8 @@ __all__ = [
     "label_group",
     "make_label_command",
     "package_cmd",
+    "push_cmd",
+    "check_push_cmd",
     "data_store_group",
     "source_group",
     "PluginGroup",

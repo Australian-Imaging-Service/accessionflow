@@ -40,6 +40,16 @@ Stages
    :prog: accessionflow annotate
 
 
+Pushing
+-------
+
+.. click:: accessionflow.cli.push_cli:push_cmd
+   :prog: accessionflow push
+
+.. click:: accessionflow.cli.push_cli:check_push_cmd
+   :prog: accessionflow check-push
+
+
 Folder store
 ------------
 
