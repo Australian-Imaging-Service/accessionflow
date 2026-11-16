@@ -46,13 +46,13 @@ provide the ``collate`` subcommands, and :ref:`data stores <stores>` provide the
 way whatever the source and store.
 
 .. figure:: /_static/images/diagrams/accessionflow-overview.svg
-   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
+   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, annotate, deidentify, package and store stages into XNAT, a folder store or other repositories
    :width: 100%
    :align: center
    :figclass: only-light
 
 .. figure:: /_static/images/diagrams/accessionflow-overview-dark.svg
-   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, deidentify, annotate, package and store stages into XNAT, a folder store or other repositories
+   :alt: accessionflow overview: an instrument's data passes through collate, attach, label, annotate, deidentify, package and store stages into XNAT, a folder store or other repositories
    :width: 100%
    :align: center
    :figclass: only-dark

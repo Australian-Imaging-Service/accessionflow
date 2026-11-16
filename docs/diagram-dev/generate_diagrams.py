@@ -266,15 +266,17 @@ def flex_panel(x, y, w, h, title, sub):
 
 
 def flex_reordered(x, y, w, h):
-    P = flex_panel(x, y, w, h, "Reorder stages", "e.g. deidentify before labelling")
+    P = flex_panel(
+        x, y, w, h, "Reorder stages", "e.g. attach secondary data after labelling"
+    )
     P.append(tag(x + w - 20 - 80, y + 14, "reordered", AMBER, AMBER_L, anchor="start"))
     cy = y + h / 2 - 2
     cx = x + 24
     seq = [
         ("collate", "stage"),
-        ("deidentify", "moved"),
         ("label", "stage"),
-        ("annotate", "opt"),
+        ("attach", "moved"),
+        ("deidentify", "opt"),
         ("store", "stage"),
     ]
     for i, (n, k) in enumerate(seq):
@@ -329,8 +331,8 @@ OVERVIEW_STAGES = [
     ("collate", ["Group files into", "accessions"], False),
     ("attach", ["Link secondary data", "to its accession"], True),
     ("label", ["Assign project,", "subject, session IDs"], False),
-    ("deidentify", ["Remove identifying", "header metadata"], True),
     ("annotate", ["Record metadata to", "upload with the data"], True),
+    ("deidentify", ["Remove identifying", "header metadata"], True),
     ("package", ["Package acquisitions", "into resources"], True),
     ("store", ["Upload to the", "repository"], False),
 ]
@@ -1447,8 +1449,8 @@ def deployment():
         text(ax + 20, ay + 28, "accessionflow", 16, 700, TEAL_D, "start", mono=True),
         text(ax + 160, ay + 28, "command-line stages", 12.5, 500, MUTED, "start"),
     ]
-    r1, _, _ = chip_row(ax + 20, ay + 52, ["collate", "attach", "label", "deidentify"])
-    r2, e2, _ = chip_row(ax + 20, ay + 98, ["annotate", "package"])
+    r1, _, _ = chip_row(ax + 20, ay + 52, ["collate", "attach", "label", "annotate"])
+    r2, e2, _ = chip_row(ax + 20, ay + 98, ["deidentify", "package"])
     box += r1 + r2
     ya, yb = ay + 113, ay + 159  # centre lines of the A and B rows
     fx, sx = e2 + 14, e2 + 34
@@ -1588,8 +1590,8 @@ def deployment():
                 "collate",
                 "attach",
                 "label",
-                "deidentify",
                 "annotate",
+                "deidentify",
                 "package",
                 "store",
             ],
@@ -1601,9 +1603,9 @@ def deployment():
                 "collate",
                 "attach",
                 "label",
+                "annotate",
                 "deidentify",
                 "push",
-                "annotate",
                 "package",
                 "store",
             ],
@@ -1616,8 +1618,8 @@ def deployment():
                 "attach",
                 "push",
                 "label",
-                "deidentify",
                 "annotate",
+                "deidentify",
                 "package",
                 "store",
             ],
@@ -2117,10 +2119,30 @@ def concepts_staging():
         )
     )
 
-    # ---- row 2: deidentified/ -> annotated/ -> store
+    # ---- row 2: annotated/ -> deidentified/ -> store
     out.append(
         dir_card(
             c1,
+            r2,
+            cw,
+            ch,
+            "annotated/",
+            [
+                (0, "PRJ001.SUBJ042.MR01/", "acc"),
+                (1, "__METADATA__.json", "file"),
+                (1, "__FIELDS__.json", "new"),
+                (1, "1.T1w_MPRAGE/", "acq"),
+                (2, "__METADATA__.json", "file"),
+                (2, "DICOM/", "res"),
+                (3, "__MANIFEST__.json", "file"),
+                (3, "*.dcm", "file"),
+            ],
+            id="dir-annotated",
+        )
+    )
+    out.append(
+        dir_card(
+            c2,
             r2,
             cw,
             ch,
@@ -2128,6 +2150,7 @@ def concepts_staging():
             [
                 (0, "PRJ001.SUBJ042.MR01/", "acc"),
                 (1, "__METADATA__.json", "redacted"),
+                (1, "__FIELDS__.json", "file"),
                 (1, "1.T1w_MPRAGE/", "acq"),
                 (2, "__METADATA__.json", "redacted"),
                 (2, "DICOM/", "res"),
@@ -2137,28 +2160,8 @@ def concepts_staging():
             id="dir-deidentified",
         )
     )
-    out.append(
-        dir_card(
-            c2,
-            r2,
-            cw,
-            ch,
-            "annotated/",
-            [
-                (0, "PRJ001.SUBJ042.MR01/", "acc"),
-                (1, "__METADATA__.json", "redacted"),
-                (1, "__FIELDS__.json", "new"),
-                (1, "1.T1w_MPRAGE/", "acq"),
-                (2, "__METADATA__.json", "redacted"),
-                (2, "DICOM/", "res"),
-                (3, "__MANIFEST__.json", "file"),
-                (3, "*.dcm", "file"),
-            ],
-            id="dir-annotated",
-        )
-    )
-    out.append(stage_link(110, c1, y2, "deidentify", optional=True))
-    out.append(stage_link(c1 + cw, c2, y2, "annotate", optional=True))
+    out.append(stage_link(110, c1, y2, "annotate", optional=True))
+    out.append(stage_link(c1 + cw, c2, y2, "deidentify", optional=True))
     sx = c2 + cw + 124
     out.append(stage_link(c2 + cw, sx, y2, "store"))
     out.append(cylinder(sx + 60, r2 + 60, 120, 120))
@@ -2167,16 +2170,16 @@ def concepts_staging():
         notes(
             c1,
             r2 + ch,
-            "Files de-identified, and identifying entries",
-            "in __METADATA__.json redacted",
+            "__FIELDS__.json holds the fields the store",
+            "records, read from the full metadata",
         )
     )
     out.append(
         notes(
             c2,
             r2 + ch,
-            "__FIELDS__.json holds the fields the store",
-            "records with the accession",
+            "Files de-identified and identifying entries",
+            "in __METADATA__.json redacted",
         )
     )
 
