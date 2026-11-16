@@ -33,8 +33,8 @@ the fields that identify its labels and store; every other metadata field is dro
 while the input's metadata is unchanged. To keep other fields, e.g. for
 :doc:`annotate` to read, list them with ``--metadata-allowlist``. The accession's
 fields (``__FIELDS__.json``) are carried through to the output unchanged: they are *not*
-de-identified, so select any field that could identify the subject after ``deidentify``
-(see :doc:`annotate`). The UID is kept so that the data store can recognise an accession
+de-identified, so ``annotate`` should only extract fields that can't identify the
+subject (see :doc:`annotate`). The UID is kept so that the data store can recognise an accession
 that is deposited again; to replace it with a keyed hash, see
 :ref:`store-xnat-identity`.
 

@@ -120,13 +120,13 @@ The manifests let the stages check that files haven't changed since an earlier s
 wrote them.
 
 .. figure:: /_static/images/diagrams/accessionflow-staging.svg
-   :alt: Accessions moving from a source through the collated, labelled, deidentified and annotated staging directories to a data store
+   :alt: Accessions moving from a source through the collated, labelled, annotated and deidentified staging directories to a data store
    :width: 100%
    :align: center
    :figclass: only-light
 
 .. figure:: /_static/images/diagrams/accessionflow-staging-dark.svg
-   :alt: Accessions moving from a source through the collated, labelled, deidentified and annotated staging directories to a data store
+   :alt: Accessions moving from a source through the collated, labelled, annotated and deidentified staging directories to a data store
    :width: 100%
    :align: center
    :figclass: only-dark

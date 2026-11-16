@@ -10,7 +10,7 @@ variables on the XNAT session, and ``store folder`` deposits them as a
 
 .. code-block:: console
 
-    $ accessionflow annotate /data/staging/deidentified /data/staging/fields \
+    $ accessionflow annotate /data/staging/labelled /data/staging/annotated \
         --extract scanner_site InstitutionName \
         --extract study_year '{StudyDate:%Y}'
 
@@ -25,13 +25,16 @@ Fields the accession already has are kept, and a field whose specifier can't be
 resolved is skipped.
 
 Every later stage carries the fields through to its output unchanged, so
-``annotate`` can run at any point after ``label``. But ``deidentify`` doesn't
-de-identify the fields: a field added before it is deposited exactly as it was
-extracted. So add any field that could identify the subject *after* ``deidentify``.
+``annotate`` can run at any point after ``label``. In practice it runs before
+``deidentify``, which drops every metadata field from its output except the accession's
+UID and the fields that identify its labels. But ``deidentify`` doesn't de-identify the
+fields either: a field added before it is deposited exactly as it was extracted. So only
+extract fields that can't identify the subject, or coarser values derived from them,
+e.g. ``'{StudyDate:%Y}'`` for the year of the study rather than its date.
 
-``deidentify`` drops every metadata field from its output except the accession's UID,
-so to annotate de-identified data, keep the ones you need with its
-``--metadata-allowlist`` option:
+To annotate de-identified data instead, e.g. so that a field holds a value the recipe
+has shifted, run ``annotate`` after ``deidentify`` and keep the metadata fields it needs
+with ``deidentify``'s ``--metadata-allowlist`` option:
 
 .. code-block:: console
 
