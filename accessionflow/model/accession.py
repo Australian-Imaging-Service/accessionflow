@@ -348,16 +348,34 @@ def recipe_formats_for(datatype: type[FileSet]) -> list[type[FileSet]] | None:
         the implementation doesn't accept a recipe (i.e. its ``recipe`` argument is
         annotated with ``None``)
 
+    Formats whose ``contains_phi`` is "nested" and don't have their own implementation
+    are deidentified by passing the recipe on to the formats nested within them (see
+    `MedicalImagingData.deidentify_nested`), so their recipe formats are the ones
+    common to the nested formats that may contain PHI, as given by the return
+    annotations of their validated properties.
+
     Raises
     ------
     NotImplementedError
-        if there is no deidentify implementation registered for the fileset type
+        if there is no deidentify implementation registered for the fileset type (or
+        for one of the formats nested within it if its ``contains_phi`` is "nested")
     TypeError
         if the implementation doesn't have a ``recipe`` argument annotated with either
-        ``Loaded[<recipe format>]`` (or a union of them) or ``None``
+        ``Loaded[<recipe format>]`` (or a union of them) or ``None``, or the formats
+        nested within a "nested" format don't accept a common recipe format
     """
+    return _recipe_formats_for(datatype, frozenset())
+
+
+def _recipe_formats_for(
+    datatype: type[FileSet], seen: frozenset[type[FileSet]]
+) -> list[type[FileSet]] | None:
+    """Implementation of `recipe_formats_for`, with the "nested" formats already being
+    resolved further up the chain in `seen` to guard against cycles"""
     implementation = find_extra_implementation(MedicalImagingData.deidentify, datatype)
     if implementation is None:
+        if getattr(datatype, "contains_phi", False) == "nested":
+            return _nested_recipe_formats(datatype, seen | {datatype})
         raise NotImplementedError(
             f"No deidentify implementation is registered for {datatype} filesets"
         )
@@ -384,6 +402,63 @@ def recipe_formats_for(datatype: type[FileSet]) -> list[type[FileSet]] | None:
             f"{recipe_hint!r}"
         )
     return [m.format for m in markers]
+
+
+def _nested_recipe_formats(
+    datatype: type[FileSet], seen: frozenset[type[FileSet]]
+) -> list[type[FileSet]] | None:
+    """The recipe formats that can be passed on to all the formats nested within a
+    "nested" format that may contain PHI, in the order of preference of the first of
+    them that accepts a recipe, or None if none of them accept one"""
+    per_nested: list[tuple[type[FileSet], list[type[FileSet]]]] = []
+    for nested_type in _nested_fileset_types(datatype):
+        if nested_type in seen or not getattr(nested_type, "contains_phi", False):
+            continue
+        formats = _recipe_formats_for(nested_type, seen)
+        if formats is not None:
+            per_nested.append((nested_type, formats))
+    if not per_nested:
+        return None
+    common = [
+        f for f in per_nested[0][1] if all(f in fmts for _, fmts in per_nested[1:])
+    ]
+    if not common:
+        raise TypeError(
+            f"The formats nested within {datatype} filesets, which are deidentified "
+            "with the same recipe, don't accept a common recipe format: "
+            + ", ".join(f"{t.__name__} accepts {fmts}" for t, fmts in per_nested)
+        )
+    return common
+
+
+def _nested_fileset_types(datatype: type[FileSet]) -> list[type[FileSet]]:
+    """The fileset types nested within a format, as given by the return annotations of
+    its validated properties, including those within containers (e.g. the values of
+    ``dict[str, Sfcm]``) and unions"""
+
+    def collect(hint: ty.Any) -> ty.Iterator[type[FileSet]]:
+        if inspect.isclass(hint) and issubclass(hint, FileSet):
+            yield hint
+        else:
+            for arg in ty.get_args(hint):
+                yield from collect(arg)
+
+    types: list[type[FileSet]] = []
+    for prop_name in datatype.validated_properties():
+        fget = getattr(datatype, prop_name).fget
+        # Read the return annotation directly, as `ty.get_type_hints` would also try to
+        # evaluate the flag `validated_property` adds to the annotations
+        hint = fget.__annotations__.get("return")
+        if isinstance(hint, str):
+            try:
+                hint = eval(hint, fget.__globals__)
+            except NameError:
+                # References an optional dependency that isn't installed
+                continue
+        for tp in collect(hint):
+            if tp not in types:
+                types.append(tp)
+    return types
 
 
 def _load_recipe(fileset: FileSet, recipe_file: Path | None) -> ty.Any:
