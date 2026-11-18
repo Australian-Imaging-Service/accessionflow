@@ -18,7 +18,11 @@ import attrs
 import click.types
 from dateutil import parser as dateutil_parser
 from fileformats.core import DataType, FileSet, from_mime, from_paths
-from fileformats.core.exceptions import FormatMismatchError, FormatRecognitionError
+from fileformats.core.exceptions import (
+    FormatConversionError,
+    FormatMismatchError,
+    FormatRecognitionError,
+)
 from fileformats.field import Field
 from fileformats.text import Csv, Tsv
 from fileformats.vendor.openxmlformats_officedocument.application import (
@@ -183,20 +187,56 @@ def target_converter(
     return parse_target_spec(value, instance.source)
 
 
+def _union_members(datatype: ty.Any) -> tuple[type, ...]:
+    """The members of a union datatype (or the datatype itself if it isn't a union),
+    with None removed"""
+    if ty.get_origin(datatype) in (ty.Union, types.UnionType):
+        return tuple(a for a in ty.get_args(datatype) if a is not type(None))
+    return (datatype,)
+
+
 def parse_target_spec(
     value: str | tuple[ty.Type[FileSet], dict[str, ty.Any]],
-    source: ty.Type[FileSet],
+    source: ty.Type[FileSet] | types.UnionType,
 ) -> tuple[ty.Type[FileSet], dict[str, ty.Any]]:
     """Parses 'mime-like' or 'mime-like:key=val,key2=val2' (e.g. 'application/zip:compression=stored')
-    into (datatype, options)."""
+    into (datatype, options).
+
+    The source datatype can be a union (e.g. 'medimage/dicom-series|medimage/nifti-gz'),
+    in which case each member must be convertible to the target, and the options must
+    be valid for the converter of every member that requires conversion, since
+    whichever of them matches the source fileset will be the one that is run. The
+    target can't be a union, as the format to convert into must be unambiguous."""
     if isinstance(value, tuple):
         return value
     target_str, _, opts_str = value.partition(":")
     datatype = datatype_converter(target_str)
-    converter = datatype.get_converter(source)
-    inputs = get_fields(converter.task) if converter is not None else {}
-    options: dict[str, ty.Any] = {}
+    if len(_union_members(datatype)) != 1:
+        raise ValueError(
+            f"Target in spec '{value}' must be a single datatype, not a union"
+        )
+    converters = []
     errors: list[str] = []
+    for src in _union_members(source):
+        try:
+            converter = datatype.get_converter(src)
+        except FormatConversionError as e:
+            errors.append(str(e))
+        else:
+            if converter is not None:
+                converters.append(converter)
+    if errors:
+        raise ValueError(
+            f"Cannot convert from all of {source} to target spec '{value}':\n"
+            + "\n".join(errors)
+        )
+    # Only options accepted by the converters of every source member are valid
+    input_names = (
+        set.intersection(*({f.name for f in get_fields(c.task)} for c in converters))
+        if converters
+        else set()
+    )
+    options: dict[str, ty.Any] = {}
     for pair in filter(None, opts_str.split(",")):
         key, _, val = pair.partition("=")
         if not key or not val:
@@ -205,15 +245,16 @@ def parse_target_spec(
             )
             break
         key, val = key.strip(), val.strip()
-        try:
-            input = inputs[key]  # type: ignore[index]
-        except KeyError:
+        if key not in input_names:
             errors.append(
-                f"Invalid option '{key}' for target spec '{value}', expected one of {list(inputs)}"
+                f"Invalid option '{key}' for target spec '{value}', expected one of "
+                f"{sorted(input_names)}"
             )
             break
         # Roundtrip to/from FileFormats Field type to convert from string
-        # representations of the value.
+        # representations of the value. The type is taken from the first converter,
+        # and checked against the others when they are instantiated below
+        input = get_fields(converters[0].task)[key]
         try:
             val = Field.from_primitive(input.type)(val).to_primitive()
         except FormatMismatchError:
@@ -221,24 +262,27 @@ def parse_target_spec(
         options[key] = val
     if errors:
         raise ValueError("\n".join(errors))
-    if converter is not None and options:
-        # Actually instantiate the converter task with the parsed options so any
+    if options:
+        # Actually instantiate the converter tasks with the parsed options so any
         # value that isn't valid for its field (including ones that weren't coerced
         # above because their type isn't a bare Field primitive, e.g. 'int | str')
         # is caught now, with Pydra's own type-checking, rather than failing deep
         # inside the ingest pipeline much later.
-        try:
-            attrs.evolve(converter.task, **options)
-        except TypeError as e:
-            raise ValueError(
-                f"Invalid option value(s) {options!r} for target spec {value!r}: {e}"
-            ) from e
+        for converter in converters:
+            try:
+                attrs.evolve(converter.task, **options)
+            except TypeError as e:
+                raise ValueError(
+                    f"Invalid option value(s) {options!r} for target spec {value!r}: {e}"
+                ) from e
     return datatype, options
 
 
 @attrs.define
 class Convert(MultiCliTyped):
-    source: ty.Type[FileSet] = attrs.field(converter=datatype_converter)
+    source: ty.Type[FileSet] | types.UnionType = attrs.field(
+        converter=datatype_converter
+    )
     _target_spec: tuple[ty.Type[FileSet], dict[str, ty.Any]] = attrs.field(
         converter=attrs.Converter(target_converter, takes_self=True)
     )
@@ -289,7 +333,7 @@ class OutputResource(MultiCliTyped):
     target_spec: str
 
     def resolve(
-        self, source: ty.Type[FileSet]
+        self, source: ty.Type[FileSet] | types.UnionType
     ) -> tuple[ty.Type[FileSet], dict[str, ty.Any]]:
         return parse_target_spec(self.target_spec, source)
 

@@ -906,6 +906,30 @@ def test_convert_reconverts_already_resolved_target_spec() -> None:
     assert resolved.options == convert.options
 
 
+def test_convert_union_source() -> None:
+    """Each member of a union source must be convertible to the target, and the
+    options are validated against the converter of each member"""
+    convert = Convert("text/plain|application/json", "application/zip:allowZip64=false")
+    assert convert.target is Zip
+    assert convert.options == {"allowZip64": False}
+
+
+def test_convert_union_source_member_needs_no_conversion() -> None:
+    """Options only need to be valid for the members that require conversion"""
+    convert = Convert("text/plain|application/zip", "application/zip:allowZip64=false")
+    assert convert.options == {"allowZip64": False}
+
+
+def test_convert_union_source_member_not_convertible_raises() -> None:
+    with pytest.raises(ValueError, match="medimage/nifti-gz"):
+        Convert("text/plain|medimage/nifti-gz", "image/png")
+
+
+def test_convert_union_target_raises() -> None:
+    with pytest.raises(ValueError, match="must be a single datatype"):
+        Convert("text/plain", "application/zip|application/x-tar")
+
+
 # ── --convert CLI wiring ────────────────────────────────────────────────────
 
 
