@@ -19,6 +19,7 @@ def annotate(
     output_dir: Path,
     extract: ty.Mapping[str, IDSpec],
     raise_errors: bool = False,
+    unlink_source: str | None = None,
 ) -> list[str]:
     """Annotates the accessions with fields extracted from their metadata, which the
     data store records alongside them (e.g. as custom variables on XNAT sessions)."""
@@ -68,6 +69,11 @@ def annotate(
             logger.error(message)
             logger.debug(traceback.format_exc())
             errors.append(message)
+        else:
+            if unlink_source == "all":
+                shutil.rmtree(listing.cache_path)
+            elif unlink_source == "keep-metadata":
+                session.unlink(keep_metadata=True)
 
     if errors:
         logger.error("Field extraction completed with %d errors", len(errors))

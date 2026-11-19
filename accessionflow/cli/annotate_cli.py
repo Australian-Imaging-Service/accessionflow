@@ -64,6 +64,20 @@ from .base import cli
     envvar="ACFLOW_ADDITIONAL_LOGGERS",
 )
 @click.option("--raise-errors/--dont-raise-errors", default=False)
+@click.option(
+    "--unlink-source",
+    type=click.Choice(["all", "keep-metadata"]),
+    default=None,
+    envvar="ACFLOW_UNLINK_SOURCE",
+    help=(
+        "Whether to unlink the labelled session directories after they have been "
+        "annotated. 'all' removes the whole labelled session directory; "
+        "'keep-metadata' removes the resource data but leaves the session/scan-"
+        "level metadata behind, so a lightweight skeleton of the session survives "
+        "(e.g. for 'attach' to use later). If not set, the source "
+        "files are left in place (ACFLOW_UNLINK_SOURCE env. var)"
+    ),
+)
 def annotate_cmd(
     input_dir: Path,
     output_dir: Path,
@@ -72,6 +86,7 @@ def annotate_cmd(
     loggers: ty.Sequence[LoggerConfig],
     additional_loggers: ty.Sequence[str],
     raise_errors: bool,
+    unlink_source: str | None,
 ) -> None:
     if raise_errors and loop >= 0:
         raise ValueError("Cannot use --raise-errors and --loop together")
@@ -93,6 +108,7 @@ def annotate_cmd(
             output_dir=output_dir,
             extract=field_specs,
             raise_errors=raise_errors,
+            unlink_source=unlink_source,
         )
         if errors:
             logger.error(
