@@ -1194,6 +1194,27 @@ class XnatSessionListing(SessionListing):
                 self.name,
             )
             return False
+
+        # Session-only uploads don't currently load or upload accession fields.
+        if not self.is_session_only:
+            fields = self.staged_fields
+            if fields:
+                experiment_id = session_uri.rsplit("/", 1)[-1]
+                response = connection.get(
+                    f"/xapi/custom-fields/experiments/{experiment_id}/fields",
+                    headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+                )
+                remote_fields = response.json()
+                if not isinstance(remote_fields, dict):
+                    raise ValueError(
+                        f"Unexpected XNAT custom-fields response for '{self.name}'"
+                    )
+                if any(
+                    name not in remote_fields or remote_fields[name] != value
+                    for name, value in fields.items()
+                ):
+                    return False
+
         return True
 
 
