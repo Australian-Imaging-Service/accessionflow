@@ -391,6 +391,7 @@ def store(
                     date_field=date_field,
                     skip_uid_check=skip_uid_check,
                 )
+                _upload_session_fields(session, xsession, xnat_repo.connection)
 
                 # Anonymise DICOMs and save to directory prior to upload
                 if always_include:

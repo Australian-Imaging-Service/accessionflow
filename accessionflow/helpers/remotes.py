@@ -89,6 +89,18 @@ class SessionListing(metaclass=abc.ABCMeta):
         return manifests
 
     @property
+    def staged_fields(self) -> dict[str, ty.Any]:
+        try:
+            contents = (self.cache_path / "__FIELDS__.json").read_text()
+        except FileNotFoundError:
+            return {}
+
+        fields = json.loads(contents)
+        if not isinstance(fields, dict):
+            raise ValueError(f"Invalid __FIELDS__.json in '{self.name}'")
+        return fields
+
+    @property
     def expected_uid(self) -> str | None:
         """The UID that a session on XNAT must hold, or None if it isn't to be checked.
 
@@ -314,6 +326,22 @@ class S3SessionListing(SessionListing):
                 self.bucket.download_fileobj(obj.key, f)
             manifests[relpath] = Json(manifest_path).contents
         return manifests
+
+    @property
+    def staged_fields(self) -> dict[str, ty.Any]:
+        objects = [obj for parts, obj in self.objects if parts == ["__FIELDS__.json"]]
+        if not objects:
+            return {}
+        if len(objects) != 1:
+            raise ValueError(f"Duplicate __FIELDS__.json in '{self.name}'")
+
+        with io.BytesIO() as stream:
+            self.bucket.download_fileobj(objects[0].key, stream)
+            fields = json.loads(stream.getvalue())
+
+        if not isinstance(fields, dict):
+            raise ValueError(f"Invalid __FIELDS__.json in '{self.name}'")
+        return fields
 
 
 @attrs.define
