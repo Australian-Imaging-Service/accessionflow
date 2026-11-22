@@ -39,22 +39,22 @@ reopening the archive.
 @click.argument(
     "output_dir", type=click.Path(path_type=Path), envvar="ACFLOW_OUTPUT_DIR"
 )
-@click.argument(
-    "source_datatype", type=MimeType.cli_type, envvar="ACFLOW_SOURCE_DATATYPE"
-)
 @click.option(
     "--output-resource",
+    "-o",
     "output_resources",
     type=OutputResource.cli_type,
     multiple=True,
     required=True,
     nargs=2,
-    metavar="<label> <target-spec>",
+    metavar="<source-spec> <target-spec> <label>",
     envvar="ACFLOW_OUTPUT_RESOURCES",
     help=(
         "Resource label and target datatype to produce from each matching source. "
-        "May be repeated. Target specs accept converter options after ':', e.g. "
-        "'application/zip:allowZip64=false'."
+        "May be repeated. Source specs accept path regular expression patterns after a ':',"
+        "e.g. 'medimage/dicom-series:mprage_.*'. Target specs accept converter options after ':', e.g. "
+        "'application/zip:allowZip64=false'. Target spec can also be 'copy' to copy the source"
+        "files to the output location directly."
     ),
 )
 @click.option(
