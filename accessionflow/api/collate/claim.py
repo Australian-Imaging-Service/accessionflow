@@ -16,6 +16,7 @@ from accessionflow.api.staging import check_run_uid
 from accessionflow.helpers.logging import logger
 
 __all__ = [
+    "CLAIMED_FILES_DIRNAME",
     "CLAIMED_MANIFEST",
     "PROCESSING_NAME_DEFAULT",
     "ClaimedFiles",
@@ -30,6 +31,10 @@ PROCESSING_NAME_DEFAULT = "__processing__"
 
 # The plan of a claim, written to the run's directory before any file is moved
 CLAIMED_MANIFEST = "claimed.json"
+
+# The subdirectory of the run directory the files are claimed into, kept apart from
+# the plan so that no input file can clash with it
+CLAIMED_FILES_DIRNAME = "files"
 
 # Appended to the hidden name a file is copied to across file systems, before it is
 # renamed into place
@@ -98,19 +103,26 @@ class ClaimedFiles:
     files: dict[Path, Path] = attrs.field(factory=dict)
 
     @property
+    def files_dir(self) -> Path:
+        """The directory in the run directory that holds the claimed files, laid out
+        as they were relative to ``base``"""
+        return self.run_dir / CLAIMED_FILES_DIRNAME
+
+    @property
     def claimed_roots(self) -> list[Path]:
         """The source roots' equivalents in the run directory"""
-        return [self.run_dir / root.relative_to(self.base) for root in self.roots]
+        return [self.files_dir / root.relative_to(self.base) for root in self.roots]
 
     def original_of(self, claimed_path: Path) -> Path:
-        """The original path of a claimed file
+        """The original path of a claimed file, or of a directory that holds claimed
+        files (e.g. a directory datatype)
 
         Raises
         ------
-        KeyError
-            if ``claimed_path`` isn't one of the claimed files
+        ValueError
+            if ``claimed_path`` isn't in ``files_dir``
         """
-        return self.files[Path(claimed_path)]
+        return self.base / Path(claimed_path).relative_to(self.files_dir)
 
     @classmethod
     def load(cls, run_dir: Path) -> "ClaimedFiles":
@@ -131,10 +143,11 @@ class ClaimedFiles:
 
     @classmethod
     def _from_plan(cls, run_dir: Path, plan: dict[str, ty.Any]) -> "ClaimedFiles":
+        files_dir = run_dir / CLAIMED_FILES_DIRNAME
         files = {
-            run_dir / entry["claimed"]: Path(entry["original"])
+            files_dir / entry["claimed"]: Path(entry["original"])
             for entry in plan["files"]
-            if (run_dir / entry["claimed"]).exists()
+            if (files_dir / entry["claimed"]).exists()
         }
         return cls(
             run_dir=run_dir,
@@ -151,7 +164,7 @@ def claim_input_files(
     source_roots: ty.Sequence[Path] | None = None,
 ) -> ClaimedFiles:
     """Moves the files to collate into the run's own directory in the processing area,
-    ``processing_dir / run_uid``, so that the rest of the run works on a fixed set of
+    ``processing_dir / run_uid / files``, so that the rest of the run works on a fixed set of
     files while the input directory keeps changing. A file that arrives after the files
     were listed stays where it is, for the next run.
 
@@ -218,7 +231,9 @@ def claim_input_files(
         _write_plan(run_dir, plan)
 
     for entry in plan["files"]:
-        _claim_one(Path(entry["original"]), run_dir / entry["claimed"])
+        _claim_one(
+            Path(entry["original"]), run_dir / CLAIMED_FILES_DIRNAME / entry["claimed"]
+        )
     claimed = ClaimedFiles._from_plan(run_dir, plan)
     logger.info(
         "Claimed %s of %s files into '%s'",

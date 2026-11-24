@@ -2,11 +2,19 @@
 Phase 1)"""
 
 import typing as ty
+from pathlib import Path
 
 from fileformats.core import FileSet, to_mime
 from fileformats.generic import Directory
 
-__all__ = ["RecursionPlan", "check_datatypes", "plan_recursion"]
+from .claim import ClaimedFiles
+
+__all__ = [
+    "RecursionPlan",
+    "check_datatypes",
+    "expand_claimed_paths",
+    "plan_recursion",
+]
 
 
 def check_datatypes(
@@ -101,3 +109,101 @@ def plan_recursion(
         # No directory format is wanted or ignored, so Directory isn't in the list yet
         ignore.append(Directory)
     return RecursionPlan(recurse_into_dirs, ignore)
+
+
+def expand_claimed_paths(
+    claimed: ClaimedFiles,
+    datatypes: ty.Sequence[type[FileSet]],
+    recursion: RecursionPlan,
+    recursive: bool = False,
+) -> list[Path]:
+    """Expands the claimed source roots into the paths to classify, with the same rules
+    as the input directories had before the claim, so ``--recursive`` and directory
+    datatypes behave as they did
+
+    - Without ``recursive``: each root's top-level entries, so a subdirectory (e.g. a
+      DICOM directory) is classified whole.
+    - With ``recursive`` and only file datatypes: every claimed file under each root.
+    - With ``recursive`` and a directory format among the wanted or ignored datatypes
+      (``recursion.recurse_into_dirs``): a walk that keeps a directory matching a
+      wanted datatype whole, skips one matching an ignored directory format, and
+      descends into any other.
+
+    Only claimed files, and the directories that hold them, are ever returned. Roots
+    inside another root are dropped, so nothing is listed twice. To get the same
+    top-level entries as listing the input directories, claim the files with those
+    directories as the ``source_roots``.
+
+    Parameters
+    ----------
+    claimed : ClaimedFiles
+        the run's claimed files, from `claim_input_files`
+    datatypes : Sequence[type[FileSet]]
+        the datatypes to collate
+    recursion : RecursionPlan
+        from `plan_recursion`, given the same ``datatypes`` and ``recursive``
+    recursive : bool, optional
+        whether directories are searched recursively
+
+    Returns
+    -------
+    list[Path]
+        the paths in the run directory to classify, sorted, without duplicates
+    """
+    keep = set(claimed.files)
+    for fspath in claimed.files:
+        keep.update(p for p in fspath.parents if p.is_relative_to(claimed.files_dir))
+    roots = sorted(set(claimed.claimed_roots))
+    outermost = [
+        r for r in roots if not any(r != o and r.is_relative_to(o) for o in roots)
+    ]
+    expanded: set[Path] = set()
+    for root in outermost:
+        if root not in keep:
+            continue  # nothing was claimed from this root
+        if not recursive:
+            expanded.update(p for p in root.iterdir() if p in keep)
+        elif not recursion.recurse_into_dirs:
+            expanded.update(p for p in claimed.files if p.is_relative_to(root))
+        else:
+            expanded.update(
+                _walk_pruning(root, datatypes, recursion.ignore_datatypes, keep)
+            )
+    return sorted(expanded)
+
+
+def _walk_pruning(
+    root: Path,
+    datatypes: ty.Sequence[type[FileSet]],
+    ignore_datatypes: ty.Sequence[type[FileSet]],
+    keep: ty.Collection[Path],
+) -> ty.Iterator[Path]:
+    """Walks ``root``, yielding the entries in ``keep`` to classify
+
+    A directory that validates as one of ``datatypes`` is yielded whole and not
+    descended into. A directory that validates only as an ``ignore_datatypes``
+    directory format is skipped whole. Any other directory is descended into. Every
+    file is yielded, so an unlisted file type still raises when it is classified.
+    Copied from ``accessionflow.model.accession._recursive_collect``, which
+    ``Accession.from_paths`` uses until it is removed, with the filter on ``keep``
+    added.
+    """
+    want = tuple(d for d in datatypes if issubclass(d, Directory))
+    skip = tuple(d for d in ignore_datatypes if issubclass(d, Directory))
+    stack: list[Path] = [root]
+    seen: set[Path] = set()
+    while stack:
+        current = stack.pop()
+        resolved = current.resolve()
+        if resolved in seen:  # guard against symlink loops
+            continue
+        seen.add(resolved)
+        for child in sorted(current.iterdir()):
+            if child not in keep:
+                continue
+            if not child.is_dir() or any(dt.matches(child) for dt in want):
+                yield child
+            elif any(dt.matches(child) for dt in skip):
+                continue
+            else:
+                stack.append(child)

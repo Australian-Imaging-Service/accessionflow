@@ -95,8 +95,22 @@ contract, so each entry says "CLI unchanged".
   Nothing calls them yet: the folder `collate()` switches to the claim once the
   expand and path-metadata steps exist. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 6, `accessionflow/api/collate/classify.py`:
+  `expand_claimed_paths`, which turns the claimed source roots into the paths to
+  classify, with the same rules the input directories had (top-level entries, flat
+  recursion, or the prune-on-match walk for directory datatypes), and only ever returns
+  claimed entries. Tests in `accessionflow/api/tests/collate/test_classify.py`. Nothing
+  calls it yet. CLI unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 6 (a revision of step 5): `claim_input_files` claims the
+  files into `<run_dir>/files/` (`CLAIMED_FILES_DIRNAME`, `ClaimedFiles.files_dir`)
+  instead of directly into the run directory, so that an input file named
+  `claimed.json` can't clash with the plan. `ClaimedFiles.original_of` now also maps a
+  directory that holds claimed files, and raises `ValueError`, not `KeyError`, for a
+  path outside `files_dir`. Nothing used the claim yet, so nothing needs migrating. CLI
+  unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 5: the run UID check in `prepare_build_dir` moved to
   `accessionflow.api.staging.check_run_uid(run_uid, purpose)`, which the claim uses
   too. Same rule and message. CLI unchanged. PR: pending.
@@ -164,6 +178,12 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 6:
+  - added in `accessionflow.api.collate`:
+    `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]`,
+    `CLAIMED_FILES_DIRNAME` and `ClaimedFiles.files_dir`
+  - changed: `ClaimedFiles.original_of` covers directories, and raises `ValueError`
+    for a path outside `files_dir`
 - 2026-11-24, Phase 1, step 5:
   - added in `accessionflow.api.collate`:
     `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles`,

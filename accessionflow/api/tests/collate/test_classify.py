@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from fileformats.application import Json, Zip
 from fileformats.core import FileSet
@@ -5,7 +7,14 @@ from fileformats.generic import Directory, DirectoryOf
 from fileformats.medimage import DicomSeries
 from fileformats.text import Csv
 
-from accessionflow.api.collate import RecursionPlan, check_datatypes, plan_recursion
+from accessionflow.api.collate import (
+    ClaimedFiles,
+    RecursionPlan,
+    check_datatypes,
+    claim_input_files,
+    expand_claimed_paths,
+    plan_recursion,
+)
 
 
 def test_check_datatypes_distinct_passes() -> None:
@@ -74,3 +83,92 @@ def test_recursion_plan_fields() -> None:
     recurse_into_dirs, ignore_datatypes = plan
     assert plan.recurse_into_dirs is recurse_into_dirs is True
     assert plan.ignore_datatypes == ignore_datatypes == []
+
+
+# expand_claimed_paths -------------------------------------------------------------
+
+RUN_UID = "abc12320261124010203"
+
+
+def _claim_tree(
+    tmp_path: Path, relpaths: list[str], source_roots: list[str] | None = None
+) -> ClaimedFiles:
+    inbox = tmp_path / "inbox"
+    files = []
+    for relpath in relpaths:
+        path = inbox / relpath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}" if path.suffix == ".json" else "a,b\n1,2\n")
+        files.append(path)
+    roots = [inbox / r for r in source_roots] if source_roots is not None else [inbox]
+    return claim_input_files(files, tmp_path / "proc", RUN_UID, roots)
+
+
+def _expand(
+    claimed: ClaimedFiles,
+    datatypes: list[type[FileSet]],
+    ignore_datatypes: list[type[FileSet]] = [],
+    recursive: bool = False,
+) -> list[str]:
+    plan = plan_recursion(datatypes, ignore_datatypes, recursive)
+    expanded = expand_claimed_paths(claimed, datatypes, plan, recursive)
+    return [p.relative_to(claimed.files_dir).as_posix() for p in expanded]
+
+
+def test_expand_without_recursion_gives_top_level_entries(tmp_path: Path) -> None:
+    claimed = _claim_tree(
+        tmp_path, ["a.txt", "series/1.dcm", "series/2.dcm", "x/y/z.txt"]
+    )
+    assert _expand(claimed, [DicomSeries]) == ["a.txt", "series", "x"]
+
+
+def test_expand_flat_recursion_gives_every_file(tmp_path: Path) -> None:
+    claimed = _claim_tree(tmp_path, ["a.json", "x/b.json", "x/y/c.json"])
+    assert _expand(claimed, [Json], recursive=True) == [
+        "a.json",
+        "x/b.json",
+        "x/y/c.json",
+    ]
+
+
+def test_expand_recursion_prunes_on_directory_datatypes(tmp_path: Path) -> None:
+    """Ported from model/tests/test_accession.py::test_recursive_collect_prunes_on_match"""
+    claimed = _claim_tree(
+        tmp_path,
+        [
+            "analysis/result.json",  # the wanted directory, yielded whole
+            "analysis/notes.txt",
+            "lesion/data.csv",  # an ignored directory, skipped whole
+            "plain/deep/result.json",  # found by descending 'plain'
+            "scan.txt",  # a loose file
+        ],
+    )
+    assert _expand(
+        claimed, [DirectoryOf[Json]], [DirectoryOf[Csv]], recursive=True
+    ) == ["analysis", "plain/deep", "scan.txt"]
+
+
+def test_expand_returns_only_claimed_entries(tmp_path: Path) -> None:
+    claimed = _claim_tree(tmp_path, ["a.txt", "sub/b.txt"])
+    (claimed.files_dir / ".c.txt.claiming").write_text("left by a crash")
+    (claimed.files_dir / "sub" / "stray.txt").write_text("not claimed")
+    (claimed.files_dir / "stray_dir").mkdir()
+    assert _expand(claimed, [Json]) == ["a.txt", "sub"]
+    assert _expand(claimed, [Json], recursive=True) == ["a.txt", "sub/b.txt"]
+
+
+def test_expand_overlapping_roots_lists_once(tmp_path: Path) -> None:
+    claimed = _claim_tree(tmp_path, ["a.txt", "sub/b.txt"], source_roots=["", "sub"])
+    assert _expand(claimed, [Json]) == ["a.txt", "sub"]
+
+
+def test_expand_two_source_roots(tmp_path: Path) -> None:
+    claimed = _claim_tree(
+        tmp_path, ["site1/a.txt", "site2/s.dcm/1"], source_roots=["site1", "site2"]
+    )
+    assert _expand(claimed, [Json]) == ["site1/a.txt", "site2/s.dcm"]
+
+
+def test_expand_empty_claim(tmp_path: Path) -> None:
+    claimed = claim_input_files([], tmp_path / "proc", RUN_UID)
+    assert _expand(claimed, [Json]) == []

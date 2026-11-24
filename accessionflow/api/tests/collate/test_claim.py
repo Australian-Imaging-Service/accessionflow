@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from accessionflow.api.collate import (
+    CLAIMED_FILES_DIRNAME,
     CLAIMED_MANIFEST,
     PROCESSING_NAME_DEFAULT,
     ClaimedFiles,
@@ -111,9 +112,11 @@ def test_claim_moves_files_keeping_layout(tmp_path: Path) -> None:
     run_dir = processing / RUN_UID
     assert claimed.run_dir == run_dir
     assert claimed.base == inbox
-    assert claimed.claimed_roots == [run_dir]
-    assert claimed.files == {run_dir / p.relative_to(inbox): p for p in files}
-    assert all(p.read_text() == str(p.relative_to(run_dir)) for p in claimed.files)
+    files_dir = run_dir / CLAIMED_FILES_DIRNAME
+    assert claimed.files_dir == files_dir
+    assert claimed.claimed_roots == [files_dir]
+    assert claimed.files == {files_dir / p.relative_to(inbox): p for p in files}
+    assert all(p.read_text() == str(p.relative_to(files_dir)) for p in claimed.files)
     assert not any(p.exists() for p in files)
     assert (inbox / "sub" / "deeper").is_dir()  # emptied source dirs are left
     assert (run_dir / CLAIMED_MANIFEST).exists()
@@ -123,14 +126,14 @@ def test_claim_keeps_repeated_names_and_directories_apart(tmp_path: Path) -> Non
     inbox = tmp_path / "inbox"
     files = _tree(inbox, "a/1.dcm", "b/1.dcm", "series.dcm/1", "series.dcm/2")
     claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
-    run_dir = claimed.run_dir
-    assert sorted(p.relative_to(run_dir).as_posix() for p in claimed.files) == [
+    files_dir = claimed.files_dir
+    assert sorted(p.relative_to(files_dir).as_posix() for p in claimed.files) == [
         "a/1.dcm",
         "b/1.dcm",
         "series.dcm/1",
         "series.dcm/2",
     ]
-    assert (run_dir / "a" / "1.dcm").read_text() == "a/1.dcm"
+    assert (files_dir / "a" / "1.dcm").read_text() == "a/1.dcm"
 
 
 def test_claim_roots_default_to_file_directories(tmp_path: Path) -> None:
@@ -138,7 +141,7 @@ def test_claim_roots_default_to_file_directories(tmp_path: Path) -> None:
     claimed = claim_input_files(files, tmp_path / "proc", RUN_UID)
     assert claimed.base == tmp_path / "in"
     assert claimed.roots == (tmp_path / "in" / "x", tmp_path / "in" / "y")
-    assert claimed.claimed_roots == [claimed.run_dir / "x", claimed.run_dir / "y"]
+    assert claimed.claimed_roots == [claimed.files_dir / "x", claimed.files_dir / "y"]
 
 
 def test_claim_two_source_roots(tmp_path: Path) -> None:
@@ -148,8 +151,8 @@ def test_claim_two_source_roots(tmp_path: Path) -> None:
     claimed = claim_input_files(first + second, tmp_path / "proc", RUN_UID, roots)
     assert claimed.base == tmp_path
     assert claimed.claimed_roots == [
-        claimed.run_dir / "site1" / "inbox",
-        claimed.run_dir / "site2" / "inbox",
+        claimed.files_dir / "site1" / "inbox",
+        claimed.files_dir / "site2" / "inbox",
     ]
     assert len(claimed.files) == 2
 
@@ -307,7 +310,20 @@ def test_claimed_files_load_and_pickle(tmp_path: Path) -> None:
     claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
     assert ClaimedFiles.load(claimed.run_dir) == claimed
     assert pickle.loads(pickle.dumps(claimed)) == claimed
-    claimed_path = claimed.run_dir / "sub" / "b.txt"
+    claimed_path = claimed.files_dir / "sub" / "b.txt"
     assert claimed.original_of(claimed_path) == inbox / "sub" / "b.txt"
-    with pytest.raises(KeyError):
+    # A directory that holds claimed files, e.g. a directory datatype
+    assert claimed.original_of(claimed.files_dir / "sub") == inbox / "sub"
+    with pytest.raises(ValueError):
         claimed.original_of(inbox / "sub" / "b.txt")
+
+
+def test_claim_input_file_named_like_the_manifest(tmp_path: Path) -> None:
+    """A file named claimed.json goes with the other files, not over the plan"""
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, CLAIMED_MANIFEST, "a.txt")
+    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    assert len(claimed.files) == 2
+    assert (claimed.files_dir / CLAIMED_MANIFEST).read_text() == CLAIMED_MANIFEST
+    assert ClaimedFiles.load(claimed.run_dir) == claimed  # the plan is intact
+    assert not any(p.exists() for p in files)

@@ -2,22 +2,30 @@
 ``prefect-migration-docs/ROADMAP.md``, Phase 1)"""
 
 from .claim import (
+    CLAIMED_FILES_DIRNAME,
     CLAIMED_MANIFEST,
     PROCESSING_NAME_DEFAULT,
     ClaimedFiles,
     claim_input_files,
     make_run_uid,
 )
-from .classify import RecursionPlan, check_datatypes, plan_recursion
+from .classify import (
+    RecursionPlan,
+    check_datatypes,
+    expand_claimed_paths,
+    plan_recursion,
+)
 from .discover import list_input_files
 
 __all__ = [
+    "CLAIMED_FILES_DIRNAME",
     "CLAIMED_MANIFEST",
     "PROCESSING_NAME_DEFAULT",
     "ClaimedFiles",
     "claim_input_files",
     "RecursionPlan",
     "check_datatypes",
+    "expand_claimed_paths",
     "list_input_files",
     "make_run_uid",
     "plan_recursion",

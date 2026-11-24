@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–5 are done.
+Status: In progress. Steps 0–6 are done.
 
 The current call chain is:
 
@@ -187,7 +187,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 3 | `make_run_uid` | L980-988 | batch. **Done** |
 | 4 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. Builds in `__build__/<run_uid>/`. **Done** |
 | 5 | `claim_input_files` | new | batch, the first step that changes the input. **Done** |
-| 6 | `expand_claimed_paths` | L920-968 | batch |
+| 6 | `expand_claimed_paths` | L920-968 | batch. **Done** |
 | 7 | `classify_paths` | L990-999 | batch |
 | 8 | `disable_metadata_reading` | L1000-1007 | batch |
 | 9 | `drop_ignored_filesets` | L1009-1019 | batch |
@@ -224,7 +224,7 @@ Taking ownership of the files. New.
 | --- | --- |
 | `make_run_uid(input_files, now=None) -> str` | **Done.** L939-947. The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions. |
 | `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | **Done.** Moves each file into `processing_dir / run_uid`, keeping its path relative to the common directory of the source roots, so that directory datatypes and file names that repeat across directories survive. The roots default to each file's directory; the CLI will pass its input directories. On the same file system a claim is an atomic `os.rename`. Across file systems (`EXDEV`) the file is copied to a hidden temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. Checks the run UID and the roots before anything is moved (principle 12). With no files, nothing is created. Known limits: on one file system, a file still being written is moved and goes on growing in the processing area (completeness is checked by a later step); across file systems, two runs claiming the same file at once can both copy it. |
-| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. `claimed_roots` gives the roots' equivalents in the run directory, for step 7, and `original_of` a claimed file's original path, for step 11. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. The plan, `claimed.json`, is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already in the run directory is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
+| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 6, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 10. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
 | `finish_claim(claimed) -> list[Path]` | After staging: removes the run directory if it's empty. Otherwise it leaves it in place and returns, and logs, what is left: files that weren't recognised or were ignored, and the files of accessions that failed to stage. |
 
 `PROCESSING_NAME_DEFAULT = "__processing__"` and `CLAIMED_MANIFEST = "claimed.json"` are
@@ -242,7 +242,7 @@ Turning the claimed files into file-sets.
 | --- | --- | --- |
 | `check_datatypes(datatypes, ignore_datatypes=()) -> None` | L888-897 | **Done.** Raises if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API. |
 | `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | L899-918 | **Done.** Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 6 uses it; `from_paths` keeps its own copy until it is removed. |
-| `expand_claimed_paths(claimed, datatypes, ignore_datatypes, recursive, recurse_into_dirs) -> list[Path]` | L920-968 | Applies today's expansion rules to the claimed roots, including the prune-on-match walk for directory datatypes (`_recursive_collect`, L296), so `--recursive` and directory datatypes behave as they do now. Only claimed files can be found. |
+| `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]` | L920-968 | **Done.** Takes the `RecursionPlan` from step 2. Applies today's expansion rules to the outermost claimed roots: without `recursive`, each root's top-level entries (so a subdirectory such as a DICOM directory is classified whole); with `recursive` and only file datatypes, every claimed file (the directories that today's glob also lists, only for `Directory` to drop them, are left out); with `recursive` and a directory format among the wanted or ignored datatypes, the prune-on-match walk, copied from `_recursive_collect` (L265) as `_walk_pruning`, so `--recursive` and directory datatypes behave as they do now. Only claimed files and the directories that hold them are returned, so a leftover temporary file or anything else in the run directory is never classified. A root inside another root is dropped, so nothing is listed twice; the caller claims with its input directories as the source roots to get today's top-level entries. `from_paths` keeps `_recursive_collect` until it is removed. |
 | `classify_paths(fspaths, datatypes, ignore_datatypes, allow_unrecognised) -> list[FileSet]` | L990-999 | |
 | `disable_metadata_reading(filesets, dont_read_metadata) -> list[FileSet]` | L1000-1007 | |
 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes) -> list[FileSet]` | L1009-1019 | |
@@ -371,8 +371,9 @@ Each run builds in its own `__build__/<run_uid>/`, instead of directly in the sh
 collide. `remove_build_dir` removes it at the end of the run, or leaves it and reports
 what a failed save left in it. **Done.**
 
-`__processing__/<run_uid>/` is new in the output directory, with `claimed.json` in each
-run directory. A run directory that is left behind holds the files `finish_claim`
+`__processing__/<run_uid>/` is new in the output directory. Each run directory holds the
+plan, `claimed.json`, and the claimed files under `files/`, laid out as they were
+relative to the source roots' common directory. A run directory that is left behind holds the files `finish_claim`
 reported. Record this under **Staging layout** in `CHANGELOG.md`. Data already staged
 doesn't need draining, since the accession directories don't change.
 
@@ -395,7 +396,7 @@ doesn't need draining, since the accession directories don't change.
   - `ClaimedFiles` pickling and loading
 
   Still to come: path metadata matching the original paths, including patterns
-  anchored with `/` (step 11), and `finish_claim` with and without files left over
+  anchored with `/` (step 10), and `finish_claim` with and without files left over
   (step 17).
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
