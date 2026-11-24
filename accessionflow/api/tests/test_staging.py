@@ -46,11 +46,24 @@ def test_remove_build_dir_keeps_leftovers(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     build_dir = prepare_build_dir(tmp_path / "staged", "run1")
-    (build_dir / "partial").mkdir()
+    (build_dir / "partial" / "scan").mkdir(parents=True)
+    (build_dir / "partial" / "scan" / "file.dcm").write_text("left by a failed save")
+    (build_dir / "empty").mkdir()
     with caplog.at_level("WARNING"):
         assert remove_build_dir(build_dir) == [build_dir / "partial"]
     assert build_dir.is_dir()
+    assert not (build_dir / "empty").exists()  # empty directories are still pruned
     assert any("Leaving build directory" in r.getMessage() for r in caplog.records)
+
+
+def test_remove_build_dir_prunes_empty_subdirectories(tmp_path: Path) -> None:
+    """Accession.save leaves an empty __build__ in the directory it saves into"""
+    output_dir = tmp_path / "staged"
+    build_dir = prepare_build_dir(output_dir, "run1")
+    (build_dir / BUILD_NAME_DEFAULT / "deeper").mkdir(parents=True)
+    assert remove_build_dir(build_dir) == []
+    assert not build_dir.exists()
+    assert (output_dir / BUILD_NAME_DEFAULT).is_dir()
 
 
 def _built_accession(parent: Path, acquisitions: list[str]) -> Path:

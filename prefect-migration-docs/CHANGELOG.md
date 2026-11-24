@@ -159,8 +159,22 @@ contract, so each entry says "CLI unchanged".
   in `accessionflow/api/tests/collate/test_save.py`. CLI unchanged: the folder
   `collate()` logs the same warning. PR: pending.
 
+- 2026-11-24, Phase 1, step 17, `accessionflow/api/collate/save.py`:
+  `stage_accession`, the per-accession unit, which saves an accession into the build
+  directory (`save_to_build_dir`), moves it into place, and deletes its claimed files
+  (`remove_claimed_files`), with a marker that makes a retry after a failed delete
+  skip the save and the move. Tests in `accessionflow/api/tests/collate/test_save.py`.
+  Nothing calls them yet. CLI unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 17 (a fix to step 5's `remove_build_dir`): it removes
+  empty subdirectories before deciding whether the run's build directory is empty.
+  `Accession.save` leaves an empty `__build__` in the directory it saves into, so
+  since step 5 every collate run that staged an accession kept its
+  `__build__/<run_uid>/` directory and logged "Leaving build directory". Now guarded by
+  `api/tests/test_collate.py::test_collate_creates_pre_label_session_dir`. CLI
+  unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 16: `warn_if_hardlinks_unavailable` returns one file of
   each resource that can't be hard-linked, and works out the output directory it names
   from the build directory instead of assuming its layout. `claim_input_files` logs one
@@ -267,6 +281,11 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 17, added in `accessionflow.api.collate`:
+  - `save_to_build_dir(accession, build_dir, copy_mode=..., collation_map=None, conversion_map=None) -> Path`
+  - `remove_claimed_files(accession, claimed) -> list[Path]`
+  - `stage_accession(accession, build_dir, output_dir, claimed, copy_mode=..., collation_map=None, conversion_map=None) -> Path`
+  - `STAGED_MARKER_SUFFIX`
 - 2026-11-24, Phase 1, step 16, moved to `accessionflow.api.collate`:
   - `warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map=None) -> list[Path]`,
     which returned `None` before
@@ -328,6 +347,10 @@ contract, so each entry says "CLI unchanged".
 
 ### Staging layout
 
+- 2026-11-24, Phase 1, step 17: `stage_accession` writes a transient
+  `<accession dir>.staged` marker in the run's build directory between moving an
+  accession into place and deleting its claimed files. It is removed straight after,
+  with the build directory, so nothing needs draining. PR: pending.
 - 2026-11-24, Phase 1, step 4: collate builds each run in its own
   `<output_dir>/__build__/<run_uid>/` instead of directly in `__build__/`, and removes
   it at the end of the run. A directory left there holds what a failed save left

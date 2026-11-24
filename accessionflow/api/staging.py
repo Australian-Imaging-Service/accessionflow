@@ -7,6 +7,7 @@ roadmap (``prefect-migration-docs/ROADMAP.md``): small, with explicit inputs and
 outputs, and no dependency on Prefect.
 """
 
+import os
 import traceback
 import typing as ty
 from pathlib import Path
@@ -83,8 +84,9 @@ def prepare_build_dir(output_dir: Path, run_uid: str) -> Path:
 
 
 def remove_build_dir(build_dir: Path) -> list[Path]:
-    """Removes a run's build directory once the run has finished, if it is empty.
-    ``BUILD_NAME_DEFAULT`` itself is left, since other runs share it.
+    """Removes a run's build directory once the run has finished, if it holds no files.
+    Empty subdirectories are removed with it. ``BUILD_NAME_DEFAULT`` itself is left,
+    since other runs share it.
 
     Parameters
     ----------
@@ -99,6 +101,11 @@ def remove_build_dir(build_dir: Path) -> list[Path]:
     """
     if not build_dir.exists():
         return []
+    # Empty subdirectories, e.g. the one Accession.save makes for its resources'
+    # temporary files, are removed first, deepest first
+    for dirpath, _, _ in sorted(os.walk(build_dir), key=lambda w: -len(w[0])):
+        if Path(dirpath) != build_dir and not any(Path(dirpath).iterdir()):
+            Path(dirpath).rmdir()
     leftovers = sorted(build_dir.iterdir())
     if leftovers:
         logger.warning(

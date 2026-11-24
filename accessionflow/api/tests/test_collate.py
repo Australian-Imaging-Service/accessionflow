@@ -44,6 +44,9 @@ def test_collate_creates_pre_label_session_dir(dicom_dir: Path, tmp_path: Path) 
     )
 
     assert errors == []
+    # The run's build directory, with the empty __build__ that saving leaves in it, is
+    # removed
+    assert list((output_dir / BUILD_NAME_DEFAULT).iterdir()) == []
     session_dirs = [
         d for d in output_dir.iterdir() if d.is_dir() and d.name != BUILD_NAME_DEFAULT
     ]

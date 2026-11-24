@@ -141,9 +141,9 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–16 are done. Every step up to the
+Status: In progress. Steps 0–17 and 19 are done. Every step up to the
 accessions now exists, tested on its own and chained against today's `from_paths`
-results; what is left is the staging steps (17–18), the composites, and moving the folder
+results; what is left is `finish_claim` (step 18), the composites, and moving the folder
 `collate()` and the CLI onto them.
 
 The current call chain is:
@@ -201,9 +201,9 @@ The table lists the steps in the order they run. Line numbers are in
 | 14 | `group_into_accessions` | L1045-1118 | batch. **Done** |
 | 15 | `inject_accession_tables` | L1119-1128 | batch. **Done** |
 | 16 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch. **Done** |
-| 17 | `stage_accession` | `api/collate_api.py:83-106` | **per accession** |
+| 17 | `stage_accession` | `api/collate_api.py:83-106` | **per accession**. **Done** |
 | 18 | `finish_claim` | new | batch |
-| 19 | `remove_build_dir` | new | shared, `api/staging.py`. **Done** |
+| 19 | `remove_build_dir` | new | shared, `api/staging.py`. Prunes empty subdirectories first. **Done** |
 
 Steps 1–16, 18 and 19 run once per collation. Step 17 runs once per accession, and is the
 unit that a flow maps over. Steps 1–3 only read and check the arguments, so they run
@@ -288,9 +288,9 @@ Saving accessions into the staging directory. From `accessionflow/api/collate_ap
 | Step | From | Notes |
 | --- | --- | --- |
 | `warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map=None) -> list[Path]` | L118-169 | **Done.** Moved here from `api/collate_api.py`, which imports it. Same checks and warning, now also returning one file of each resource that can't be hard-linked. The output directory it names is worked out from the build directory (`<output_dir>/__build__/<run_uid>`), or is the build directory itself if it isn't in a `__build__` directory. Once collate claims its input, it compares the processing area, not the source, with the build directory, so it only warns if the processing area is put elsewhere. |
-| `save_to_build_dir(accession, build_dir, copy_mode, collation_map, conversion_map) -> Path` | L87-97 | Clears the accession's scratch directory first (principle 9). |
-| `remove_claimed_files(accession)` | L100-106 | Deletes the accession's files from the processing area. Always run, replacing the optional `unlink_source`. |
-| `stage_accession(accession, build_dir, output_dir, copy_mode, collation_map, conversion_map) -> Path` | L83-106 | **The per-accession unit**: `save_to_build_dir`, then `move_into_place`, then `remove_claimed_files`. Raises on failure, which leaves the accession's files in the processing area. |
+| `save_to_build_dir(accession, build_dir, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None) -> Path` | L87-97 | **Done.** Removes the accession's scratch directory (`build_dir/<staging_dirname>`) left by an earlier attempt, then `Accession.save`s it there (principle 9). Doesn't touch the run's shared `build_dir/__build__`. |
+| `remove_claimed_files(accession, claimed) -> list[Path]` | L100-106 | **Done.** Deletes the accession's files from the processing area (a directory datatype's directory with `rmtree`), skipping any already gone, so it can be retried. Refuses, before deleting anything, if any file isn't in `claimed.files_dir`, so it never deletes from a live input. Always run, replacing the optional `unlink_source`. Empty directories are left for `finish_claim`. |
+| `stage_accession(accession, build_dir, output_dir, claimed, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None) -> Path` | L83-106 | **Done. The per-accession unit**: `save_to_build_dir`, then `move_into_place`, then `remove_claimed_files`. Raises on failure; a failure before the move leaves the output untouched and the files in the processing area. Once the move succeeds it writes a marker, `build_dir/<staging_dirname>.staged` (`STAGED_MARKER_SUFFIX`), so a retry after a failed delete skips the save and the move (which would clash with the acquisitions already in place) and only deletes; a crash in the instant between the move and the marker still makes the retry fail on the move, without losing data. |
 
 The wait-period check (L71-81) is removed, with `Accession.last_modified`
 (`model/accession.py:2026`), which nothing else uses.

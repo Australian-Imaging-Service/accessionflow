@@ -5,17 +5,24 @@ import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
 from fileformats.core.fs_mount_identifier import FsMountIdentifier
+from fileformats.generic import DirectoryOf
 
 from accessionflow.api.collate import (
+    ClaimedFiles,
     apply_path_metadata,
     claim_input_files,
     classify_paths,
     expand_claimed_paths,
     group_into_accessions,
     plan_recursion,
+    remove_claimed_files,
+    save_to_build_dir,
+    stage_accession,
+    tag_fileset_types,
     warn_if_hardlinks_unavailable,
 )
-from accessionflow.api.staging import prepare_build_dir
+from accessionflow.api.collate import save as save_module
+from accessionflow.api.staging import prepare_build_dir, remove_build_dir
 from accessionflow.helpers.arg_types import IDSpec, PathMetadataRegex
 from accessionflow.model.accession import Accession
 
@@ -24,6 +31,10 @@ RUN_UID = "abc12320261124010203"
 
 def _accessions(tmp_path: Path) -> list[Accession]:
     """One accession of three JSON resources, all in one claimed directory"""
+    return _claim_and_group(tmp_path)[1]
+
+
+def _claim_and_group(tmp_path: Path) -> tuple[ClaimedFiles, list[Accession]]:
     inbox = tmp_path / "inbox"
     files = []
     for name in ("a", "b", "c"):
@@ -39,7 +50,7 @@ def _accessions(tmp_path: Path) -> list[Accession]:
         [PathMetadataRegex(r".*/(?P<sess>[^/]+)/(?P<name>[^/]+)\.json$", Json)],
         claimed,
     )
-    return group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
+    return claimed, group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
 
 
 @pytest.fixture
@@ -143,3 +154,137 @@ def test_build_dir_outside_the_build_area(
         )
     (warning,) = _warnings(caplog)
     assert f"'{build_dir}'" in warning
+
+
+# save_to_build_dir ----------------------------------------------------------------
+
+
+def test_save_to_build_dir(tmp_path: Path) -> None:
+    _, (accession,) = _claim_and_group(tmp_path)
+    build_dir = prepare_build_dir(tmp_path / "out", RUN_UID)
+    saved_dir = save_to_build_dir(accession, build_dir)
+    assert saved_dir == build_dir / accession.staging_dirname()
+    assert sorted(Accession.load(saved_dir).acquisitions) == ["a", "b", "c"]
+
+
+def test_save_to_build_dir_clears_earlier_attempt(tmp_path: Path) -> None:
+    _, (accession,) = _claim_and_group(tmp_path)
+    build_dir = prepare_build_dir(tmp_path / "out", RUN_UID)
+    scratch = build_dir / accession.staging_dirname()
+    scratch.mkdir()
+    (scratch / "junk.txt").write_text("left by a failed save")
+    saved_dir = save_to_build_dir(accession, build_dir)
+    assert not (saved_dir / "junk.txt").exists()
+    assert sorted(Accession.load(saved_dir).acquisitions) == ["a", "b", "c"]
+
+
+# remove_claimed_files -------------------------------------------------------------
+
+
+def test_remove_claimed_files(tmp_path: Path) -> None:
+    claimed, (accession,) = _claim_and_group(tmp_path)
+    removed = remove_claimed_files(accession, claimed)
+    assert sorted(p.name for p in removed) == ["a.json", "b.json", "c.json"]
+    assert not any(p.exists() for p in removed)
+    # Again, now they are gone
+    assert remove_claimed_files(accession, claimed) == []
+
+
+def test_remove_claimed_files_removes_directory_datatypes(tmp_path: Path) -> None:
+    inbox = tmp_path / "inbox"
+    files = []
+    for name in ("x", "y"):
+        path = inbox / "s1" / "dir" / f"{name}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}")
+        files.append(path)
+    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox / "s1"])
+    datatypes: list[type[FileSet]] = [DirectoryOf[Json]]
+    plan = plan_recursion(datatypes)
+    filesets = classify_paths(
+        expand_claimed_paths(claimed, datatypes, plan), datatypes, plan.ignore_datatypes
+    )
+    (accession,) = group_into_accessions(
+        tag_fileset_types(filesets), [IDSpec("__datatype__")]
+    )
+    (removed,) = remove_claimed_files(accession, claimed)
+    assert removed == claimed.files_dir / "dir"
+    assert not removed.exists()
+
+
+def test_remove_claimed_files_refuses_unclaimed_files(tmp_path: Path) -> None:
+    claimed, _ = _claim_and_group(tmp_path)
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "a.json").write_text("{}")
+    (fileset,) = classify_paths([live / "a.json"], [Json])
+    fileset.metadata["sess"] = "s9"
+    (accession,) = group_into_accessions([fileset], [IDSpec("sess")])
+    with pytest.raises(ValueError, match="aren't in the processing area"):
+        remove_claimed_files(accession, claimed)
+    assert (live / "a.json").exists()
+
+
+# stage_accession ------------------------------------------------------------------
+
+
+def test_stage_accession(tmp_path: Path) -> None:
+    claimed, (accession,) = _claim_and_group(tmp_path)
+    output_dir = tmp_path / "out"
+    build_dir = prepare_build_dir(output_dir, RUN_UID)
+    staged_dir = stage_accession(accession, build_dir, output_dir, claimed)
+    assert staged_dir == output_dir / f"{Accession.PRE_LABEL_PREFIX}s1"
+    assert sorted(Accession.load(staged_dir).acquisitions) == ["a", "b", "c"]
+    assert not any(p.exists() for p in claimed.files)
+    assert not list(build_dir.glob(f"*{save_module.STAGED_MARKER_SUFFIX}"))
+    assert remove_build_dir(build_dir) == []
+    assert not build_dir.exists()
+
+
+def test_stage_accession_retry_after_failed_delete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    claimed, (accession,) = _claim_and_group(tmp_path)
+    output_dir = tmp_path / "out"
+    build_dir = prepare_build_dir(output_dir, RUN_UID)
+    real_remove = save_module.remove_claimed_files
+    calls = []
+
+    def fail_once(*args: ty.Any) -> list[Path]:
+        calls.append(args)
+        if len(calls) == 1:
+            raise RuntimeError("crash while deleting")
+        return real_remove(*args)
+
+    monkeypatch.setattr(save_module, "remove_claimed_files", fail_once)
+    with pytest.raises(RuntimeError, match="crash while deleting"):
+        stage_accession(accession, build_dir, output_dir, claimed)
+    staged_dir = output_dir / f"{Accession.PRE_LABEL_PREFIX}s1"
+    assert staged_dir.is_dir()
+    marker = (
+        build_dir / f"{accession.staging_dirname()}{save_module.STAGED_MARKER_SUFFIX}"
+    )
+    assert marker.exists()
+
+    # The retry skips the save and the move, which would clash with the staged scans
+    assert stage_accession(accession, build_dir, output_dir, claimed) == staged_dir
+    assert not any(p.exists() for p in claimed.files)
+    assert not marker.exists()
+    assert sorted(Accession.load(staged_dir).acquisitions) == ["a", "b", "c"]
+
+
+def test_stage_accession_failed_move_keeps_claimed_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    claimed, (accession,) = _claim_and_group(tmp_path)
+    output_dir = tmp_path / "out"
+    build_dir = prepare_build_dir(output_dir, RUN_UID)
+
+    def failing_move(*args: ty.Any) -> ty.NoReturn:
+        raise RuntimeError("move failed")
+
+    monkeypatch.setattr(save_module, "move_into_place", failing_move)
+    with pytest.raises(RuntimeError, match="move failed"):
+        stage_accession(accession, build_dir, output_dir, claimed)
+    assert all(p.exists() for p in claimed.files)
+    assert not list(build_dir.glob(f"*{save_module.STAGED_MARKER_SUFFIX}"))

@@ -32,9 +32,16 @@ from .metadata import (
     load_metadata_tables,
     tag_fileset_types,
 )
-from .save import warn_if_hardlinks_unavailable
+from .save import (
+    STAGED_MARKER_SUFFIX,
+    remove_claimed_files,
+    save_to_build_dir,
+    stage_accession,
+    warn_if_hardlinks_unavailable,
+)
 
 __all__ = [
+    "STAGED_MARKER_SUFFIX",
     "CLAIMED_FILES_DIRNAME",
     "CLAIMED_MANIFEST",
     "PROCESSING_NAME_DEFAULT",
@@ -56,7 +63,10 @@ __all__ = [
     "load_metadata_tables",
     "make_run_uid",
     "plan_recursion",
+    "remove_claimed_files",
     "resource_label_for",
+    "save_to_build_dir",
+    "stage_accession",
     "tag_fileset_types",
     "warn_if_hardlinks_unavailable",
 ]
