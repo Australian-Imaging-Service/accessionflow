@@ -222,14 +222,17 @@ def test_collate_without_ignore_datatypes_raises_on_recognised_extra_type(
 
 
 def test_collate_ignore_datatypes_contradicting_datatype_raises(
-    dicom_dir: Path, tmp_path: Path
+    tmp_path: Path,
 ) -> None:
+    """The check runs before anything is created (principle 12), so the input is never
+    read and the output directory is never made"""
     output_dir = tmp_path / "collated"
-    output_dir.mkdir()
+    empty_input = tmp_path / "empty"
+    empty_input.mkdir()
 
-    with pytest.raises(ValueError, match="listed for both"):
+    with pytest.raises(ValueError, match="listed for both") as excinfo:
         collate(
-            input_paths=[str(dicom_dir)],
+            input_paths=[str(empty_input)],
             output_dir=output_dir,
             datatypes=[DicomSeries],
             accession_uid=ACCESSION_UID_FIELD,
@@ -237,6 +240,8 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
             resource=RESOURCE_FIELD,
             ignore_datatypes=[DicomSeries],
         )
+    assert "medimage/dicom-series" in str(excinfo.value)
+    assert not output_dir.exists()
 
 
 def test_collate_creates_build_dir(tmp_path: Path) -> None:

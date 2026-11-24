@@ -7,6 +7,7 @@ from pathlib import Path
 from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
+from accessionflow.api.collate import check_datatypes
 from accessionflow.api.collate_api import save_accessions_to_dir
 from accessionflow.api.staging import prepare_build_dir
 from accessionflow.helpers.arg_types import (
@@ -288,6 +289,8 @@ def collate(
                 ],
             )
     """
+
+    check_datatypes(datatypes, ignore_datatypes)
 
     errors = []
 

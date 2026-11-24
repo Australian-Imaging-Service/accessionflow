@@ -86,6 +86,12 @@ These apply to every stage.
       **Staging layout** in [`CHANGELOG.md`](CHANGELOG.md), saying whether data staged
       by an earlier version must be drained before upgrading.
 
+12. **Checks before side effects.** A step that only checks its arguments runs before
+    any step that changes the file system, so that a run with invalid arguments fails
+    without creating, moving or deleting anything. This matters most once collation
+    moves its input files: a run that fails after the claim leaves them in the
+    processing area.
+
 ## Target layout
 
 ```text
@@ -135,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–1 are done.
+Status: In progress. Steps 0, 1 and 3 are done.
 
 The current call chain is:
 
@@ -176,11 +182,11 @@ The table lists the steps in the order they run. Line numbers are in
 | # | Step | From | Kind |
 | --- | --- | --- | --- |
 | 0 | `list_input_files` | L920-971, `_drop_excluded_paths` L231 | before collate, used by the CLI. **Done** |
-| 1 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. **Done** |
-| 2 | `check_datatypes` | L888-897 | batch |
-| 3 | `make_run_uid` | L980-988 | batch |
-| 4 | `claim_input_files` | new | batch, **the first step of the API** |
-| 5 | `plan_recursion` | L899-918 | batch |
+| 1 | `check_datatypes` | L888-897 | batch, checks the arguments, **the first step of the API**. **Done** |
+| 2 | `plan_recursion` | L899-918 | batch, checks the arguments |
+| 3 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. **Done** |
+| 4 | `make_run_uid` | L980-988 | batch |
+| 5 | `claim_input_files` | new | batch, the first step that changes the input |
 | 6 | `expand_claimed_paths` | L920-968 | batch |
 | 7 | `classify_paths` | L990-999 | batch |
 | 8 | `disable_metadata_reading` | L1000-1007 | batch |
@@ -195,7 +201,10 @@ The table lists the steps in the order they run. Line numbers are in
 | 17 | `finish_claim` | new | batch |
 
 Steps 1–15 and 17 run once per collation. Step 16 runs once per accession, and is the
-unit that a flow maps over. Compared with the current code, the existence check
+unit that a flow maps over. Steps 1 and 2 only check the arguments, so they run before
+any step that changes the file system (principle 12): a bad combination of options,
+such as `--recursive` with `generic/directory`, fails before any input file has been
+moved into the processing area. Compared with the current code, the existence check
 (L973-978) is no longer needed, because the claim step handles missing files.
 
 ### `accessionflow/api/collate/discover.py`
@@ -228,7 +237,7 @@ Turning the claimed files into file-sets.
 
 | Step | From | Notes |
 | --- | --- | --- |
-| `check_datatypes(datatypes, ignore_datatypes)` | L888-897 | Raises if a datatype is both wanted and ignored. |
+| `check_datatypes(datatypes, ignore_datatypes=()) -> None` | L888-897 | **Done.** Raises if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API. |
 | `plan_recursion(datatypes, ignore_datatypes, recursive) -> (recurse_into_dirs, ignore_datatypes)` | L899-918 | Pure. Rejects the generic directory and file-set types with `recursive`. |
 | `expand_claimed_paths(claimed, datatypes, ignore_datatypes, recursive, recurse_into_dirs) -> list[Path]` | L920-968 | Applies today's expansion rules to the claimed roots, including the prune-on-match walk for directory datatypes (`_recursive_collect`, L296), so `--recursive` and directory datatypes behave as they do now. Only claimed files can be found. |
 | `classify_paths(fspaths, datatypes, ignore_datatypes, allow_unrecognised) -> list[FileSet]` | L990-999 | |

@@ -66,9 +66,26 @@ contract, so each entry says "CLI unchanged".
   Nothing calls it yet: the folder `collate` command starts using it once the claim
   steps exist. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 1, `accessionflow/api/collate/classify.py`: with
+  `check_datatypes`, which raises if a datatype is both wanted and ignored. Tests in
+  `accessionflow/api/tests/collate/test_classify.py`. PR: pending.
+
 ### Changed
 
-- 2026-11-24, Phase 1, step 1: the folder source's `collate()` creates its build
+- 2026-11-24, Phase 1, step 1: the folder source's `collate()` calls
+  `check_datatypes` first, so a datatype given to both `--datatype` and
+  `--ignore-datatype` fails before the build directory is created. The error names
+  the datatypes by MIME-like name (e.g. `['medimage/dicom-series']`) instead of by
+  class. `api/tests/test_collate.py::test_collate_ignore_datatypes_contradicting_datatype_raises`
+  no longer needs DICOM data, and checks that nothing is created. CLI options
+  unchanged; the error text changes. PR: pending.
+- 2026-11-24, Phase 1 design, `ROADMAP.md` only: the collate steps are reordered so
+  that the argument checks, `check_datatypes` and `plan_recursion`, run first (steps 1
+  and 2), before `prepare_build_dir` (now step 3) and the claim (now step 5). A run with
+  invalid options now fails before any input file is moved. New design principle 12,
+  checks before side effects. No code changes. PR: pending.
+- 2026-11-24, Phase 1, `prepare_build_dir` (step 1 when done, now step 3): the folder
+  source's `collate()` creates its build
   directory with `accessionflow.api.staging.prepare_build_dir`, instead of inline code
   that did the same. `api/tests/test_collate.py::test_collate_creates_build_dir` now
   also checks that collate creates an output directory that doesn't exist yet. CLI
@@ -102,6 +119,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 1, added in `accessionflow.api.collate`:
+  - `check_datatypes(datatypes, ignore_datatypes=()) -> None`
 - 2026-11-24, Phase 1, step 0, added in `accessionflow.api.collate`:
   - `list_input_files(input_paths, exclude_paths=()) -> list[Path]`
 
