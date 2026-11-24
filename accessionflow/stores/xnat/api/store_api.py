@@ -1,5 +1,4 @@
 import errno
-import json
 import math
 import shutil
 import tempfile
@@ -60,20 +59,22 @@ def has_scan_dicom(resources: ty.Iterable[Resource]) -> bool:
 
 
 def _upload_session_fields(
-    session: Accession, xsession: ty.Any, connection: ty.Any
+    fields: ty.Mapping[str, ty.Any],
+    session_name: str | None,
+    xsession: ty.Any,
 ) -> None:
-    if not session.fields:
+    if not fields:
         return
 
-    connection.put(
-        f"/xapi/custom-fields/experiments/{xsession.id}/fields",
-        data=json.dumps(dict(session.fields)),
-        headers={"Content-Type": "application/json"},
-    )
+    for name, value in fields.items():
+        if not isinstance(value, str):
+            raise ValueError(f"XNAT field '{name}' must be a string")
+        xsession.fields[name] = value
+
     logger.info(
         "Uploaded XNAT fields %s for '%s'",
-        sorted(session.fields),
-        session.name,
+        sorted(fields),
+        session_name,
     )
 
 
@@ -287,6 +288,13 @@ def store(
                             f"No XNAT session found with label '{session_listing.session_id}'. "
                             "Ensure the session exists on XNAT before uploading session-only resources."
                         )
+
+                    _upload_session_fields(
+                        session_listing.staged_fields,
+                        session_listing.session_id,
+                        xsession,
+                    )
+
                     for resource_name in session_listing.resource_paths:
                         resource = Resource.load(
                             session_listing.cache_path / resource_name,
@@ -391,7 +399,11 @@ def store(
                     date_field=date_field,
                     skip_uid_check=skip_uid_check,
                 )
-                _upload_session_fields(session, xsession, xnat_repo.connection)
+                _upload_session_fields(
+                    session.fields,
+                    session.name,
+                    xsession,
+                )
 
                 # Anonymise DICOMs and save to directory prior to upload
                 if always_include:

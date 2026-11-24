@@ -31,6 +31,7 @@ from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
 
 from .arg_types import StoreCredentials
+from .fields import Fields
 from .logging import logger
 from .metadata import Metadata
 
@@ -91,13 +92,11 @@ class SessionListing(metaclass=abc.ABCMeta):
     @property
     def staged_fields(self) -> dict[str, ty.Any]:
         try:
-            contents = (self.cache_path / "__FIELDS__.json").read_text()
+            fields = json.loads((self.cache_path / Fields.FNAME).read_text())
         except FileNotFoundError:
             return {}
-
-        fields = json.loads(contents)
         if not isinstance(fields, dict):
-            raise ValueError(f"Invalid __FIELDS__.json in '{self.name}'")
+            raise ValueError(f"Malformed {Fields.FNAME} in '{self.name}'")
         return fields
 
     @property
@@ -329,18 +328,18 @@ class S3SessionListing(SessionListing):
 
     @property
     def staged_fields(self) -> dict[str, ty.Any]:
-        objects = [obj for parts, obj in self.objects if parts == ["__FIELDS__.json"]]
-        if not objects:
+        fields_objects = [obj for parts, obj in self.objects if parts == [Fields.FNAME]]
+        if not fields_objects:
             return {}
-        if len(objects) != 1:
-            raise ValueError(f"Duplicate __FIELDS__.json in '{self.name}'")
+        if len(fields_objects) != 1:
+            raise ValueError(f"Duplicate {Fields.FNAME} in '{self.name}'")
 
         with io.BytesIO() as stream:
-            self.bucket.download_fileobj(objects[0].key, stream)
+            self.bucket.download_fileobj(fields_objects[0].key, stream)
             fields = json.loads(stream.getvalue())
 
         if not isinstance(fields, dict):
-            raise ValueError(f"Invalid __FIELDS__.json in '{self.name}'")
+            raise ValueError(f"Malformed {Fields.FNAME} in '{self.name}'")
         return fields
 
 

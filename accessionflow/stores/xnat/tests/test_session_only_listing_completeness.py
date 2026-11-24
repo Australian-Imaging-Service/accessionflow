@@ -12,6 +12,9 @@ staging directory name contains a dot.
 
 import json
 import typing as ty
+from types import SimpleNamespace
+
+import pytest
 
 from accessionflow.stores.xnat.remotes import (
     XnatSessionListing,
@@ -34,9 +37,15 @@ class FakeConnection:
     """Answers the REST reads of all_uploaded(): session 'SESSLABEL' (ID
     'XNAT_E1') holds one session-level resource, 'DICOM'."""
 
-    def __init__(self, on_xnat: ty.Dict[str, str], found: bool = True) -> None:
+    def __init__(
+        self,
+        on_xnat: ty.Dict[str, str],
+        found: bool = True,
+        fields: ty.Optional[ty.Dict[str, ty.Any]] = None,
+    ) -> None:
         self.on_xnat = on_xnat
         self.found = found
+        self.fields = fields or {}
 
     def get_json(
         self, uri: str, query: ty.Optional[ty.Dict[str, str]] = None, headers=None
@@ -64,6 +73,25 @@ class FakeConnection:
         return {"ResultSet": {"Result": rows}}
 
     def get(self, uri: str) -> FakeResponse:
+        if uri == "/data/experiments/XNAT_E1":
+            return FakeResponse(
+                {
+                    "items": [
+                        {
+                            "children": [
+                                {
+                                    "field": "fields/field",
+                                    "items": [
+                                        {"data_fields": {"name": name, "field": value}}
+                                        for name, value in self.fields.items()
+                                    ],
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+
         assert uri == "/data/experiments/XNAT_E1/resources/7/files", uri
         return FakeResponse(
             {
@@ -75,6 +103,13 @@ class FakeConnection:
                 }
             }
         )
+
+    def clearcache(self) -> None:
+        pass
+
+    def create_object(self, uri: str) -> SimpleNamespace:
+        assert uri == "/data/experiments/XNAT_E1"
+        return SimpleNamespace(fields=self.fields)
 
 
 def _staging(tmp_path: ty.Any, checksums: dict[str, str]) -> XnatSessionOnlyListing:
@@ -135,3 +170,26 @@ def test_empty_digests_do_not_make_a_complete_session_look_short(
     listing = _staging(tmp_path, LOCAL)
     xnat = FakeConnection({k: "" for k in LOCAL})
     assert listing.all_uploaded(xnat) is True  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "remote_fields,expected",
+    [
+        ({"scanner_site": "Sydney"}, True),
+        ({"scanner_site": "Sydney", "other": "preserved"}, True),
+        ({}, False),
+        ({"scanner_site": "Melbourne"}, False),
+    ],
+)
+def test_staged_fields_must_match_before_skipping_session_only_upload(
+    tmp_path: ty.Any,
+    remote_fields: dict[str, ty.Any],
+    expected: bool,
+) -> None:
+    listing = _staging(tmp_path, LOCAL)
+    (listing.cache_path / "__FIELDS__.json").write_text(
+        json.dumps({"scanner_site": "Sydney"})
+    )
+
+    xnat = FakeConnection(dict(LOCAL), fields=remote_fields)
+    assert listing.all_uploaded(xnat) is expected  # type: ignore[arg-type]

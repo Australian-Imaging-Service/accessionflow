@@ -113,6 +113,7 @@ class _XnatResource:
 class _Connection:
     def __init__(self, labels: tuple[str, ...] = ("000077",)) -> None:
         self.session = MagicMock(label="000077", uri="/data/experiments/XNAT_E1")
+        self.session.fields = {"existing": "keep"}
         self.experiments = MagicMock()
         self.experiments.values.return_value = [
             self.session if label == "000077" else MagicMock(label=label)
@@ -157,6 +158,11 @@ def test_uploads_s3_pdf_to_existing_session_resource(
             ),
             Body=b"%PDF-1.4\n%%EOF\n",
         )
+        s3.put_object(
+            Bucket=BUCKET,
+            Key="desired_structure/000077/__FIELDS__.json",
+            Body=b'{"scanner_site": "Sydney"}',
+        )
         repo = _Repo()
         with patch.object(XnatS3SessionOnlyListing, "all_uploaded", return_value=False):
             errors = store(
@@ -176,6 +182,10 @@ def test_uploads_s3_pdf_to_existing_session_resource(
     assert len(repo.connection.created_resource.uploads) == 1
     assert repo.connection.created_resource.uploads[0][1] == {
         "radiology-doc-report.pdf"
+    }
+    assert repo.connection.session.fields == {
+        "existing": "keep",
+        "scanner_site": "Sydney",
     }
 
 
