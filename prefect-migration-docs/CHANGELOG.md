@@ -114,6 +114,13 @@ contract, so each entry says "CLI unchanged".
   `accessionflow/api/tests/collate/test_classify.py`. Nothing calls it yet. CLI
   unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 9, `accessionflow/api/collate/classify.py`:
+  `drop_ignored_filesets`, which drops the file-sets of the ignored datatypes, keeping
+  any that is also a wanted datatype. Tests in
+  `accessionflow/api/tests/collate/test_classify.py`, and the steps-so-far test now
+  ends with the same file-sets `from_paths` collates. Nothing calls it yet. CLI
+  unchanged. PR: pending.
+
 ### Changed
 
 - 2026-11-24, Phase 1, step 8: `Accession.from_paths` disables reading metadata with
@@ -198,6 +205,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 9, added in `accessionflow.api.collate`:
+  - `drop_ignored_filesets(filesets, datatypes, ignore_datatypes=()) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 8, added in `accessionflow.api.collate`:
   - `disable_metadata_reading(filesets, dont_read_metadata=()) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 7:

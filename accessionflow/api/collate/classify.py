@@ -7,6 +7,8 @@ from pathlib import Path
 from fileformats.core import FileSet, from_paths, to_mime
 from fileformats.generic import Directory
 
+from accessionflow.helpers.logging import logger
+
 from .claim import ClaimedFiles
 
 __all__ = [
@@ -14,6 +16,7 @@ __all__ = [
     "check_datatypes",
     "classify_paths",
     "disable_metadata_reading",
+    "drop_ignored_filesets",
     "expand_claimed_paths",
     "plan_recursion",
 ]
@@ -63,7 +66,7 @@ def classify_paths(
     The datatypes are tried in order, wanted before ignored, and the first that matches
     a path wins, so a path that matches both is classified as the wanted datatype.
     File-sets of the ignored datatypes are returned too: `drop_ignored_filesets` drops
-    them after their metadata is read.
+    them, after `disable_metadata_reading`.
 
     Parameters
     ----------
@@ -130,6 +133,43 @@ def disable_metadata_reading(
             if isinstance(fileset, skip):
                 fileset.metadata.read_disabled = True
     return list(filesets)
+
+
+def drop_ignored_filesets(
+    filesets: ty.Sequence[FileSet],
+    datatypes: ty.Sequence[type[FileSet]],
+    ignore_datatypes: ty.Sequence[type[FileSet]] = (),
+) -> list[FileSet]:
+    """Drops the file-sets of the ignored datatypes, keeping any that is also one of
+    the wanted datatypes
+
+    Datatypes are matched with ``isinstance``, so subclasses match too. A wanted
+    datatype wins, so that, for example, a wanted ``DirectoryOf[Json]`` isn't dropped
+    because ``Directory`` is ignored. The files of a dropped file-set aren't touched:
+    they stay in the run's processing directory, where `finish_claim` reports them.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets, from `classify_paths`
+    datatypes : Sequence[type[FileSet]]
+        the datatypes to collate
+    ignore_datatypes : Sequence[type[FileSet]], optional
+        the datatypes to drop. Pass ``RecursionPlan.ignore_datatypes`` from
+        `plan_recursion`
+
+    Returns
+    -------
+    list[FileSet]
+        a new list of the file-sets that are kept
+    """
+    if not ignore_datatypes:
+        return list(filesets)
+    wanted = tuple(datatypes)
+    ignored = tuple(ignore_datatypes)
+    kept = [f for f in filesets if isinstance(f, wanted) or not isinstance(f, ignored)]
+    logger.debug("Dropped %s file-sets of ignored datatypes", len(filesets) - len(kept))
+    return kept
 
 
 class RecursionPlan(ty.NamedTuple):

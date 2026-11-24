@@ -15,6 +15,7 @@ from accessionflow.api.collate import (
     claim_input_files,
     classify_paths,
     disable_metadata_reading,
+    drop_ignored_filesets,
     expand_claimed_paths,
     plan_recursion,
 )
@@ -266,6 +267,9 @@ def test_classify_after_recursive_expansion(tmp_path: Path) -> None:
         ("DirectoryOf[Json]", "plain/deep"),
         ("Plain", "scan.txt"),
     ]
+    # Dropping the ignored leaves the acquisitions that from_paths collates
+    kept = drop_ignored_filesets(filesets, datatypes, plan.ignore_datatypes)
+    assert sorted(f.fspath.name for f in kept) == ["analysis", "deep"]
 
 
 def test_check_datatypes_rejects_none() -> None:
@@ -305,3 +309,26 @@ def test_disable_metadata_reading_with_no_datatypes(tmp_path: Path) -> None:
     filesets = _classify(tmp_path, ["a.json"], [Json])
     assert disable_metadata_reading(filesets) == filesets
     assert not filesets[0].metadata.read_disabled
+
+
+# drop_ignored_filesets ------------------------------------------------------------
+
+
+def test_drop_ignored_filesets(tmp_path: Path) -> None:
+    filesets = _classify(tmp_path, ["a.json", "b.csv"], [Json], [Csv])
+    kept = drop_ignored_filesets(filesets, [Json], [Csv])
+    assert _names(kept) == [("Json", "a.json")]
+    assert len(filesets) == 2  # the input isn't changed
+
+
+def test_drop_ignored_filesets_keeps_wanted_subclass(tmp_path: Path) -> None:
+    filesets = _classify(tmp_path, ["d/x.json"], [DirectoryOf[Json]], [Directory])
+    assert isinstance(filesets[0], Directory)
+    assert drop_ignored_filesets(filesets, [DirectoryOf[Json]], [Directory]) == filesets
+
+
+def test_drop_ignored_filesets_with_none_ignored(tmp_path: Path) -> None:
+    filesets = _classify(tmp_path, ["a.json"], [Json])
+    kept = drop_ignored_filesets(filesets, [Json])
+    assert kept == filesets
+    assert kept is not filesets

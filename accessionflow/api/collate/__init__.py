@@ -14,6 +14,7 @@ from .classify import (
     check_datatypes,
     classify_paths,
     disable_metadata_reading,
+    drop_ignored_filesets,
     expand_claimed_paths,
     plan_recursion,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "check_datatypes",
     "classify_paths",
     "disable_metadata_reading",
+    "drop_ignored_filesets",
     "expand_claimed_paths",
     "list_input_files",
     "make_run_uid",
