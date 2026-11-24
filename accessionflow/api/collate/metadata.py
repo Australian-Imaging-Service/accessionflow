@@ -8,10 +8,11 @@ from pathlib import Path
 from fileformats.core import FileSet
 
 from accessionflow.helpers.arg_types import PathMetadataRegex
+from accessionflow.model.accession import Accession
 
 from .claim import ClaimedFiles
 
-__all__ = ["apply_path_metadata"]
+__all__ = ["apply_path_metadata", "tag_fileset_types"]
 
 
 def apply_path_metadata(
@@ -68,4 +69,33 @@ def apply_path_metadata(
                     f"'{path_mdata.regex}'"
                 )
             fileset.metadata.update(match.groupdict())
+    return list(filesets)
+
+
+def tag_fileset_types(filesets: ty.Sequence[FileSet]) -> list[FileSet]:
+    """Sets each file-set's ``__datatype__`` metadata field
+    (``Accession.TYPE_METADATA_KEY``) to the name of its type, e.g. ``DicomSeries`` or
+    ``DirectoryOf[Json]``, so that ``--accession``, ``--acquisition`` and ``--resource``
+    specs can use it (e.g. ``'res_{__datatype__}'``)
+
+    A value that is already set is kept, e.g. from a path-metadata group of the same
+    name (`apply_path_metadata`), which is why this step runs after that one. The
+    check includes the metadata read from the files, so a header field of that name
+    is kept too. The metadata tables are injected after this step, so a table column
+    of that name overrides it.
+
+    The file-sets' metadata is changed in place, and the same file-sets are returned.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets, after `apply_path_metadata`
+
+    Returns
+    -------
+    list[FileSet]
+        the same file-sets
+    """
+    for fileset in filesets:
+        fileset.metadata.setdefault(Accession.TYPE_METADATA_KEY, fileset.type_name)
     return list(filesets)

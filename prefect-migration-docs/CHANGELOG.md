@@ -127,6 +127,12 @@ contract, so each entry says "CLI unchanged".
   was claimed. Tests in `accessionflow/api/tests/collate/test_metadata.py`. Nothing
   calls it yet. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 11, `accessionflow/api/collate/metadata.py`:
+  `tag_fileset_types`, which sets each file-set's `__datatype__` metadata field to the
+  name of its type, unless it is already set. Tests in
+  `accessionflow/api/tests/collate/test_metadata.py`. Nothing calls it yet. CLI
+  unchanged. PR: pending.
+
 ### Changed
 
 - 2026-11-24, Phase 1, step 10 (a revision of step 5): `claim_input_files` makes the
@@ -215,6 +221,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 11, added in `accessionflow.api.collate`:
+  - `tag_fileset_types(filesets) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 10, added in `accessionflow.api.collate`:
   - `apply_path_metadata(filesets, path_metadata_regex=(), claimed=None) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 9, added in `accessionflow.api.collate`:

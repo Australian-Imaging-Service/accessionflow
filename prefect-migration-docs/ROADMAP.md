@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–10 are done.
+Status: In progress. Steps 0–11 are done.
 
 The current call chain is:
 
@@ -192,7 +192,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 8 | `disable_metadata_reading` | L1000-1007 | batch. **Done** |
 | 9 | `drop_ignored_filesets` | L1009-1019 | batch. **Done** |
 | 10 | `apply_path_metadata` | L1021-1035 | batch. **Done** |
-| 11 | `tag_fileset_types` | L1037-1041 | batch |
+| 11 | `tag_fileset_types` | L1037-1041 | batch. **Done** |
 | 12 | `inject_fileset_tables` | L1043 | batch |
 | 13 | `group_into_accessions` | L1045-1118 | batch |
 | 14 | `inject_accession_tables` | L1119-1128 | batch |
@@ -254,7 +254,7 @@ Adding metadata from paths and tables.
 | Step | From | Notes |
 | --- | --- | --- |
 | `apply_path_metadata(filesets, path_metadata_regex=(), claimed=None) -> list[FileSet]` | L1021-1035 | **Done.** Matches each regular expression, in order, against the path of each file-set of its datatype (`fspath`, or `parent` for a file-set of several files such as a DICOM series), mapped back to its **original** path with `claimed.original_of`, so `--path-metadata` and `--path-metadata-regex` patterns, including ones anchored with `/`, match the same paths as today. A later pattern wins for the same field. A pattern that doesn't match raises `ValueError` naming the original path. Changes the file-sets' metadata in place and returns them. No progress bar. Without `claimed`, the file-sets' own paths are matched. |
-| `tag_fileset_types(filesets) -> list[FileSet]` | L1037-1041 | |
+| `tag_fileset_types(filesets) -> list[FileSet]` | L1037-1041 | **Done.** Sets each file-set's `__datatype__` field (`Accession.TYPE_METADATA_KEY`) to its `type_name`, e.g. `DicomSeries`, for use in `--accession`, `--acquisition` and `--resource` specs. Uses `setdefault`, so a value already set is kept: a path-metadata group of the same name (step 10 runs first) or a header field. The metadata tables (step 12) come after it and can override it. Changes the file-sets in place and returns them. |
 | `inject_fileset_tables(filesets, metadata_tables) -> list[FileSet]` | L1043 | |
 | `inject_accession_tables(accessions, metadata_tables) -> list[Accession]` | L1119-1128 | At the accession, acquisition and resource levels. |
 

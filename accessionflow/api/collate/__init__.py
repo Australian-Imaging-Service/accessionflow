@@ -19,7 +19,7 @@ from .classify import (
     plan_recursion,
 )
 from .discover import list_input_files
-from .metadata import apply_path_metadata
+from .metadata import apply_path_metadata, tag_fileset_types
 
 __all__ = [
     "CLAIMED_FILES_DIRNAME",
@@ -37,4 +37,5 @@ __all__ = [
     "list_input_files",
     "make_run_uid",
     "plan_recursion",
+    "tag_fileset_types",
 ]

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
-from fileformats.generic import DirectoryOf, SetOf
+from fileformats.generic import DirectoryOf, File, SetOf
 from fileformats.text import Csv
 
 from accessionflow.api.collate import (
@@ -12,10 +12,13 @@ from accessionflow.api.collate import (
     apply_path_metadata,
     claim_input_files,
     classify_paths,
+    disable_metadata_reading,
     expand_claimed_paths,
     plan_recursion,
+    tag_fileset_types,
 )
 from accessionflow.helpers.arg_types import PathMetadataPattern, PathMetadataRegex
+from accessionflow.model.accession import Accession
 from accessionflow.sources.folder.api.collate_api import merge_path_metadata
 
 RUN_UID = "abc12320261124010203"
@@ -150,3 +153,54 @@ def test_relative_processing_dir(
         claimed,
     )
     assert fileset.metadata["cohort"] == "cohort-A"
+
+
+# tag_fileset_types ----------------------------------------------------------------
+
+TYPE_KEY = Accession.TYPE_METADATA_KEY
+
+
+def test_tag_fileset_types(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["a.json", "b.csv", "d/x.json"])
+    filesets = _filesets(claimed, [Json, Csv, DirectoryOf[Json]], recursive=False)
+    result = tag_fileset_types(filesets)
+    assert result == filesets
+    assert TYPE_KEY == "__datatype__"
+    assert sorted(f.metadata[TYPE_KEY] for f in result) == [
+        "Csv",
+        "DirectoryOf[Json]",
+        "Json",
+    ]
+
+
+def test_tag_fileset_types_keeps_value_from_path(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["custom.json"])
+    filesets = apply_path_metadata(
+        _filesets(claimed, [Json]),
+        [PathMetadataRegex(r".*/(?P<__datatype__>[^/]+)\.json$", Json)],
+        claimed,
+    )
+    (fileset,) = tag_fileset_types(filesets)
+    assert fileset.metadata[TYPE_KEY] == "custom"
+
+
+def test_tag_fileset_types_with_reading_disabled(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["a.json"])
+    filesets = disable_metadata_reading(_filesets(claimed, [Json]), [Json])
+    (fileset,) = tag_fileset_types(filesets)
+    assert dict(fileset.metadata) == {TYPE_KEY: "Json"}
+
+
+def test_steps_7_to_11_together(tmp_path: Path) -> None:
+    """Mirrors model/tests/test_accession.py::
+    test_from_paths_injects_datatype_metadata_field up to grouping"""
+    _, claimed = _claim(tmp_path, ["src/a.txt"])
+    (fileset,) = tag_fileset_types(
+        apply_path_metadata(
+            _filesets(claimed, [File]),
+            [PathMetadataRegex(r".*/(?P<sess>[^/]+)\.txt", File)],
+            claimed,
+        )
+    )
+    assert fileset.metadata["sess"] == "a"
+    assert fileset.metadata[TYPE_KEY] == "File"
