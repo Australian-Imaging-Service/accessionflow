@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–11 are done.
+Status: In progress. Steps 0–13 are done.
 
 The current call chain is:
 
@@ -184,26 +184,28 @@ The table lists the steps in the order they run. Line numbers are in
 | 0 | `list_input_files` | L920-971, `_drop_excluded_paths` L231 | before collate, used by the CLI. **Done** |
 | 1 | `check_datatypes` | L888-897 | batch, checks the arguments, **the first step of the API**. **Done** |
 | 2 | `plan_recursion` | L899-918 | batch, checks the arguments. **Done** |
-| 3 | `make_run_uid` | L980-988 | batch. **Done** |
-| 4 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. Builds in `__build__/<run_uid>/`. **Done** |
-| 5 | `claim_input_files` | new | batch, the first step that changes the input. **Done** |
-| 6 | `expand_claimed_paths` | L920-968 | batch. **Done** |
-| 7 | `classify_paths` | L990-999 | batch. **Done** |
-| 8 | `disable_metadata_reading` | L1000-1007 | batch. **Done** |
-| 9 | `drop_ignored_filesets` | L1009-1019 | batch. **Done** |
-| 10 | `apply_path_metadata` | L1021-1035 | batch. **Done** |
-| 11 | `tag_fileset_types` | L1037-1041 | batch. **Done** |
-| 12 | `inject_fileset_tables` | L1043 | batch |
-| 13 | `group_into_accessions` | L1045-1118 | batch |
-| 14 | `inject_accession_tables` | L1119-1128 | batch |
-| 15 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch |
-| 16 | `stage_accession` | `api/collate_api.py:83-106` | **per accession** |
-| 17 | `finish_claim` | new | batch |
-| 18 | `remove_build_dir` | new | shared, `api/staging.py`. **Done** |
+| 3 | `load_metadata_tables` | `MetadataTable.table` | batch, reads and checks the metadata tables. **Done** |
+| 4 | `make_run_uid` | L980-988 | batch. **Done** |
+| 5 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. Builds in `__build__/<run_uid>/`. **Done** |
+| 6 | `claim_input_files` | new | batch, the first step that changes the input. **Done** |
+| 7 | `expand_claimed_paths` | L920-968 | batch. **Done** |
+| 8 | `classify_paths` | L990-999 | batch. **Done** |
+| 9 | `disable_metadata_reading` | L1000-1007 | batch. **Done** |
+| 10 | `drop_ignored_filesets` | L1009-1019 | batch. **Done** |
+| 11 | `apply_path_metadata` | L1021-1035 | batch. **Done** |
+| 12 | `tag_fileset_types` | L1037-1041 | batch. **Done** |
+| 13 | `inject_fileset_tables` | L1043 | batch. **Done** |
+| 14 | `group_into_accessions` | L1045-1118 | batch |
+| 15 | `inject_accession_tables` | L1119-1128 | batch |
+| 16 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch |
+| 17 | `stage_accession` | `api/collate_api.py:83-106` | **per accession** |
+| 18 | `finish_claim` | new | batch |
+| 19 | `remove_build_dir` | new | shared, `api/staging.py`. **Done** |
 
-Steps 1–15, 17 and 18 run once per collation. Step 16 runs once per accession, and is the
-unit that a flow maps over. Steps 1 and 2 only check the arguments, so they run before
-any step that changes the file system (principle 12): a bad combination of options,
+Steps 1–16, 18 and 19 run once per collation. Step 17 runs once per accession, and is the
+unit that a flow maps over. Steps 1–3 only read and check the arguments, so they run
+before any step that changes the file system (principle 12): a bad combination of
+options, or a metadata table that can't be read or doesn't have its join columns,
 such as `--recursive` with `generic/directory`, fails before any input file has been
 moved into the processing area. Compared with the current code, the existence check
 (L973-978) is no longer needed, because the claim step handles missing files.
@@ -214,7 +216,7 @@ Choosing the files, before collation starts. Not part of the collate API itself.
 
 | Step | From | Notes |
 | --- | --- | --- |
-| `list_input_files(input_paths, exclude_paths=()) -> list[Path]` | L920-971, `_drop_excluded_paths` L231 | **Done.** Expands directories and glob patterns into a sorted list of files without duplicates, as the CLI's `INPUT_PATHS` and `--exclude-path` do today, and applies `fix_long_path`. Every directory is listed in full, so a directory datatype in it (e.g. a DICOM directory) is kept whole. The listing is the same with or without `--recursive`, which only changes classification (step 6), so the function has no `recursive` argument. Hidden files and directories are skipped at every depth, since they are often uploads in progress; a hidden file named as an input path is still listed. Symlinked directories aren't followed. An exclude pattern that matches a directory excludes everything in it. Excluded files are never listed, so they are never moved. |
+| `list_input_files(input_paths, exclude_paths=()) -> list[Path]` | L920-971, `_drop_excluded_paths` L231 | **Done.** Expands directories and glob patterns into a sorted list of files without duplicates, as the CLI's `INPUT_PATHS` and `--exclude-path` do today, and applies `fix_long_path`. Every directory is listed in full, so a directory datatype in it (e.g. a DICOM directory) is kept whole. The listing is the same with or without `--recursive`, which only changes classification (step 7), so the function has no `recursive` argument. Hidden files and directories are skipped at every depth, since they are often uploads in progress; a hidden file named as an input path is still listed. Symlinked directories aren't followed. An exclude pattern that matches a directory excludes everything in it. Excluded files are never listed, so they are never moved. |
 
 ### `accessionflow/api/collate/claim.py`
 
@@ -224,7 +226,7 @@ Taking ownership of the files. New.
 | --- | --- |
 | `make_run_uid(input_files, now=None) -> str` | **Done.** L939-947. The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions. |
 | `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | **Done.** Moves each file into `processing_dir / run_uid`, keeping its path relative to the common directory of the source roots, so that directory datatypes and file names that repeat across directories survive. The roots default to each file's directory; the CLI will pass its input directories. On the same file system a claim is an atomic `os.rename`. Across file systems (`EXDEV`) the file is copied to a hidden temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. Checks the run UID and the roots before anything is moved (principle 12). With no files, nothing is created. Known limits: on one file system, a file still being written is moved and goes on growing in the processing area (completeness is checked by a later step); across file systems, two runs claiming the same file at once can both copy it. |
-| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 6, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 10. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. `run_dir` is always absolute, as file-sets' paths are, and `original_of` accepts relative paths too. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
+| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 7, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 11. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. `run_dir` is always absolute, as file-sets' paths are, and `original_of` accepts relative paths too. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
 | `finish_claim(claimed) -> list[Path]` | After staging: removes the run directory if it's empty. Otherwise it leaves it in place and returns, and logs, what is left: files that weren't recognised or were ignored, and the files of accessions that failed to stage. |
 
 `PROCESSING_NAME_DEFAULT = "__processing__"` and `CLAIMED_MANIFEST = "claimed.json"` are
@@ -241,9 +243,9 @@ Turning the claimed files into file-sets.
 | Step | From | Notes |
 | --- | --- | --- |
 | `check_datatypes(datatypes, ignore_datatypes=()) -> None` | L888-897 | **Done.** Raises if no datatype is given (`fileformats.core.from_paths` with no candidates tries every installed format), or if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API. |
-| `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | L899-918 | **Done.** Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 6 uses it; `from_paths` keeps its own copy until it is removed. |
+| `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | L899-918 | **Done.** Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 7 uses it; `from_paths` keeps its own copy until it is removed. |
 | `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]` | L920-968 | **Done.** Takes the `RecursionPlan` from step 2. Applies today's expansion rules to the outermost claimed roots: without `recursive`, each root's top-level entries (so a subdirectory such as a DICOM directory is classified whole); with `recursive` and only file datatypes, every claimed file (the directories that today's glob also lists, only for `Directory` to drop them, are left out); with `recursive` and a directory format among the wanted or ignored datatypes, the prune-on-match walk, copied from `_recursive_collect` (L265) as `_walk_pruning`, so `--recursive` and directory datatypes behave as they do now. Only claimed files and the directories that hold them are returned, so a leftover temporary file or anything else in the run directory is never classified. A root inside another root is dropped, so nothing is listed twice; the caller claims with its input directories as the source roots to get today's top-level entries. `from_paths` keeps `_recursive_collect` until it is removed. |
-| `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]` | L990-999 | **Done.** `fileformats.core.from_paths` with the wanted datatypes before the ignored ones, so the first match wins and a wanted datatype beats an ignored one. `ignore_datatypes` is `RecursionPlan.ignore_datatypes` from step 2. File-sets of ignored datatypes are returned; step 9 drops them. The `allow_unrecognised` regular expressions are matched from the start of each path's base name, and any other unrecognised path raises `FormatMismatchError`. |
+| `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]` | L990-999 | **Done.** `fileformats.core.from_paths` with the wanted datatypes before the ignored ones, so the first match wins and a wanted datatype beats an ignored one. `ignore_datatypes` is `RecursionPlan.ignore_datatypes` from step 2. File-sets of ignored datatypes are returned; step 10 drops them. The `allow_unrecognised` regular expressions are matched from the start of each path's base name, and any other unrecognised path raises `FormatMismatchError`. |
 | `disable_metadata_reading(filesets, dont_read_metadata=()) -> list[FileSet]` | L1000-1007 | **Done.** Sets the public `fileset.metadata.read_disabled` (in `fileformats` 0.22.8, the minimum version) on each file-set that is an instance of one of the datatypes, so a subclass matches too. Changes the file-sets in place and returns the same ones. `from_paths` now uses the public setter too, which resolves its TODO. |
 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes=()) -> list[FileSet]` | L1009-1019 | **Done.** Returns a new list without the file-sets of the ignored datatypes (`RecursionPlan.ignore_datatypes`), matched with `isinstance`. A wanted datatype wins, so a wanted `DirectoryOf[Json]` isn't dropped because `Directory` is ignored. The dropped file-sets' files stay in the processing area, for `finish_claim` to report. |
 
@@ -254,8 +256,9 @@ Adding metadata from paths and tables.
 | Step | From | Notes |
 | --- | --- | --- |
 | `apply_path_metadata(filesets, path_metadata_regex=(), claimed=None) -> list[FileSet]` | L1021-1035 | **Done.** Matches each regular expression, in order, against the path of each file-set of its datatype (`fspath`, or `parent` for a file-set of several files such as a DICOM series), mapped back to its **original** path with `claimed.original_of`, so `--path-metadata` and `--path-metadata-regex` patterns, including ones anchored with `/`, match the same paths as today. A later pattern wins for the same field. A pattern that doesn't match raises `ValueError` naming the original path. Changes the file-sets' metadata in place and returns them. No progress bar. Without `claimed`, the file-sets' own paths are matched. |
-| `tag_fileset_types(filesets) -> list[FileSet]` | L1037-1041 | **Done.** Sets each file-set's `__datatype__` field (`Accession.TYPE_METADATA_KEY`) to its `type_name`, e.g. `DicomSeries`, for use in `--accession`, `--acquisition` and `--resource` specs. Uses `setdefault`, so a value already set is kept: a path-metadata group of the same name (step 10 runs first) or a header field. The metadata tables (step 12) come after it and can override it. Changes the file-sets in place and returns them. |
-| `inject_fileset_tables(filesets, metadata_tables) -> list[FileSet]` | L1043 | |
+| `tag_fileset_types(filesets) -> list[FileSet]` | L1037-1041 | **Done.** Sets each file-set's `__datatype__` field (`Accession.TYPE_METADATA_KEY`) to its `type_name`, e.g. `DicomSeries`, for use in `--accession`, `--acquisition` and `--resource` specs. Uses `setdefault`, so a value already set is kept: a path-metadata group of the same name (step 11 runs first) or a header field. The metadata tables (step 13) come after it and can override it. Changes the file-sets in place and returns them. |
+| `load_metadata_tables(metadata_tables=None) -> list[MetadataTable]` | `MetadataTable.table` (lazy today) | **Done.** Step 3. Reads every `--metadata-table` into memory and checks that its join columns are in it, before the claim. A table is often delivered with the data (the Canfield export writes its CSV into the input directory), so it is claimed with the files around it and is no longer at its path when the tables are injected; the loaded rows are kept in the `MetadataTable`, which pickles with them. A missing, unreadable or mismatched table fails before anything is created or moved. |
+| `inject_fileset_tables(filesets, metadata_tables=None) -> list[FileSet]` | L1043 | **Done.** `MetadataTable.inject_list` on the file-sets: only `fileset` tables apply, joined on the file-sets' metadata (e.g. a path-metadata field), and every column of the one matching row is merged; several matching rows raise `ValueError`. Changes the file-sets in place and returns them. |
 | `inject_accession_tables(accessions, metadata_tables) -> list[Accession]` | L1119-1128 | At the accession, acquisition and resource levels. |
 
 ### `accessionflow/api/collate/group.py`
@@ -290,12 +293,13 @@ The wait-period check (L71-81) is removed, with `Accession.last_modified`
 
 Plain-Python sequences of the steps. Their signatures can change.
 
-- `accessionflow.api.collate.collect_accessions(claimed, ...)` runs steps 6–14:
+- `accessionflow.api.collate.collect_accessions(claimed, ...)` runs steps 7–15:
   expand, classify, add metadata, group.
-- `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 15–16:
+- `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 16–17:
   `warn_if_hardlinks_unavailable`, then `for_each_accession(stage_accession)`.
 - `sources/folder/api/collate_api.py::collate(input_files, output_dir, ...)` runs
-  `check_datatypes`, `plan_recursion`, `make_run_uid`, `prepare_build_dir`,
+  `check_datatypes`, `plan_recursion`, `load_metadata_tables`, `make_run_uid`,
+  `prepare_build_dir`,
   `claim_input_files`, `collect_accessions` (with the patterns from
   `merge_path_metadata`), `save_accessions_to_dir`, `finish_claim`, `remove_build_dir`
   (in a `finally`, so that a run that raises doesn't leave an empty build directory)
@@ -397,8 +401,8 @@ doesn't need draining, since the accession directories don't change.
   - `ClaimedFiles` pickling and loading
 
   Path metadata matching the original paths, including patterns anchored with `/`, is
-  tested with step 10 (**done**, `api/tests/collate/test_metadata.py`). Still to come:
-  `finish_claim` with and without files left over (step 17).
+  tested with step 11 (**done**, `api/tests/collate/test_metadata.py`). Still to come:
+  `finish_claim` with and without files left over (step 18).
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
   The claim's part is done (`test_claim_leaves_files_that_arrive_after_listing`); the

@@ -1,3 +1,4 @@
+import pickle
 import re
 from pathlib import Path
 
@@ -14,10 +15,16 @@ from accessionflow.api.collate import (
     classify_paths,
     disable_metadata_reading,
     expand_claimed_paths,
+    inject_fileset_tables,
+    load_metadata_tables,
     plan_recursion,
     tag_fileset_types,
 )
-from accessionflow.helpers.arg_types import PathMetadataPattern, PathMetadataRegex
+from accessionflow.helpers.arg_types import (
+    MetadataTable,
+    PathMetadataPattern,
+    PathMetadataRegex,
+)
 from accessionflow.model.accession import Accession
 from accessionflow.sources.folder.api.collate_api import merge_path_metadata
 
@@ -204,3 +211,115 @@ def test_steps_7_to_11_together(tmp_path: Path) -> None:
     )
     assert fileset.metadata["sess"] == "a"
     assert fileset.metadata[TYPE_KEY] == "File"
+
+
+# load_metadata_tables and inject_fileset_tables -----------------------------------
+
+NAME_REGEX = [PathMetadataRegex(r".*/(?P<name>[^/]+)\.json$", Json)]
+
+
+def _table(path: Path, content: str, row_frequency: str, join: str) -> MetadataTable:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+    return MetadataTable(str(path), row_frequency, join)
+
+
+def test_load_metadata_tables_caches_the_rows(tmp_path: Path) -> None:
+    table_path = tmp_path / "t.csv"
+    table = _table(
+        table_path, "Name,Note\na,first\n", "fileset[application/json]", "Name=name"
+    )
+    assert load_metadata_tables([table]) == [table]
+    table_path.unlink()  # e.g. claimed away with the data
+    _, claimed = _claim(tmp_path, ["a.json"])
+    filesets = apply_path_metadata(_filesets(claimed, [Json]), NAME_REGEX, claimed)
+    (fileset,) = inject_fileset_tables(filesets, [table])
+    assert fileset.metadata["Note"] == "first"
+
+
+def test_load_metadata_tables_checks_join_columns(tmp_path: Path) -> None:
+    table = _table(tmp_path / "t.csv", "Name,Note\na,b\n", "fileset", "Missing=name")
+    with pytest.raises(ValueError, match="Join column 'Missing' not found"):
+        load_metadata_tables([table])
+
+
+def test_load_metadata_tables_none() -> None:
+    assert load_metadata_tables(None) == []
+    assert load_metadata_tables([]) == []
+
+
+def test_loaded_metadata_table_pickles(tmp_path: Path) -> None:
+    table_path = tmp_path / "t.csv"
+    table = _table(table_path, "Name,Note\na,b\n", "fileset", "Name=name")
+    load_metadata_tables([table])
+    table_path.unlink()
+    assert pickle.loads(pickle.dumps(table)).table == {"Name": ["a"], "Note": ["b"]}
+
+
+def test_inject_fileset_tables(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["a.json", "b.json", "c.json"])
+    filesets = apply_path_metadata(_filesets(claimed, [Json]), NAME_REGEX, claimed)
+    tables = load_metadata_tables(
+        [
+            _table(
+                tmp_path / "files.csv",
+                "Name,Note\na,first\nb,second\n",
+                "fileset[application/json]",
+                "Name={name}",
+            ),
+            # An accession table doesn't apply to file-sets
+            _table(
+                tmp_path / "acc.csv", "Name,Cohort\na,x\n", "accession", "Name=name"
+            ),
+        ]
+    )
+    result = inject_fileset_tables(filesets, tables)
+    assert result == filesets
+    notes = {f.metadata["name"]: f.metadata.get("Note") for f in result}
+    assert notes == {"a": "first", "b": "second", "c": None}
+    assert not any("Cohort" in f.metadata for f in result)
+
+
+def test_inject_fileset_tables_several_rows_raise(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["a.json"])
+    filesets = apply_path_metadata(_filesets(claimed, [Json]), NAME_REGEX, claimed)
+    table = _table(tmp_path / "t.csv", "Name,Note\na,1\na,2\n", "fileset", "Name=name")
+    with pytest.raises(ValueError, match="Multiple rows"):
+        inject_fileset_tables(filesets, load_metadata_tables([table]))
+
+
+def test_inject_fileset_tables_none(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["a.json"])
+    filesets = _filesets(claimed, [Json])
+    assert inject_fileset_tables(filesets) == filesets
+    assert inject_fileset_tables(filesets, []) == filesets
+
+
+def test_table_delivered_with_the_data(tmp_path: Path) -> None:
+    """As in the Canfield export: the table is in the input directory, is loaded
+    before the claim, and is claimed with the images"""
+    inbox = tmp_path / "inbox"
+    table = _table(
+        inbox / "Dermoscopy" / "LesionData_20260805.csv",
+        "ImagePath,LesionID\nsubj/a.json,L1\n",
+        "fileset[application/json]",
+        "ImagePath={relpath}",
+    )
+    (inbox / "subj").mkdir()
+    (inbox / "subj" / "a.json").write_text("{}")
+    load_metadata_tables([table])
+
+    files = sorted(p for p in inbox.rglob("*") if p.is_file())
+    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    assert not table.table_file.fspath.exists()  # the table was claimed too
+
+    plan = plan_recursion([Json], recursive=True)
+    fspaths = expand_claimed_paths(claimed, [Json], plan, recursive=True)
+    filesets = classify_paths(fspaths, [Json], plan.ignore_datatypes, [r".*\.csv"])
+    filesets = apply_path_metadata(
+        filesets,
+        [PathMetadataRegex(r".*/(?P<relpath>[^/]+/[^/]+\.json)$", Json)],
+        claimed,
+    )
+    (fileset,) = inject_fileset_tables(filesets, [table])
+    assert fileset.metadata["LesionID"] == "L1"

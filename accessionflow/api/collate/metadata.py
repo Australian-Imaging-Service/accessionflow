@@ -7,12 +7,56 @@ from pathlib import Path
 
 from fileformats.core import FileSet
 
-from accessionflow.helpers.arg_types import PathMetadataRegex
+from accessionflow.helpers.arg_types import MetadataTable, PathMetadataRegex
 from accessionflow.model.accession import Accession
 
 from .claim import ClaimedFiles
 
-__all__ = ["apply_path_metadata", "tag_fileset_types"]
+__all__ = [
+    "apply_path_metadata",
+    "inject_fileset_tables",
+    "load_metadata_tables",
+    "tag_fileset_types",
+]
+
+
+def load_metadata_tables(
+    metadata_tables: ty.Sequence[MetadataTable] | None = None,
+) -> list[MetadataTable]:
+    """Reads every metadata table into memory, and checks that the columns its join
+    expressions name are in it. It only reads, so it runs before the claim, and a
+    missing, unreadable or mismatched table fails before anything is created or moved.
+
+    A table is read once and kept in the ``MetadataTable`` object, which pickles with
+    it. That matters when the table is delivered with the data: a table file inside
+    the input directory is claimed with the files around it, so it is no longer at its
+    original path by the time the tables are injected.
+
+    Parameters
+    ----------
+    metadata_tables : Sequence[MetadataTable], optional
+        the tables, from ``--metadata-table``
+
+    Returns
+    -------
+    list[MetadataTable]
+        the same tables, now loaded
+
+    Raises
+    ------
+    ValueError
+        if a join expression names a column that isn't in its table
+    """
+    tables = list(metadata_tables or [])
+    for table in tables:
+        columns = table.table
+        for expr in table.join_exprs:
+            if expr.column_name not in columns:
+                raise ValueError(
+                    f"Join column '{expr.column_name}' not found in metadata table "
+                    f"{table.table_file} (available columns: {list(columns)})"
+                )
+    return tables
 
 
 def apply_path_metadata(
@@ -98,4 +142,38 @@ def tag_fileset_types(filesets: ty.Sequence[FileSet]) -> list[FileSet]:
     """
     for fileset in filesets:
         fileset.metadata.setdefault(Accession.TYPE_METADATA_KEY, fileset.type_name)
+    return list(filesets)
+
+
+def inject_fileset_tables(
+    filesets: ty.Sequence[FileSet],
+    metadata_tables: ty.Sequence[MetadataTable] | None = None,
+) -> list[FileSet]:
+    """Merges into each file-set the row of each ``fileset`` metadata table that its
+    metadata joins to. Tables with another row frequency (accession, acquisition or
+    resource) are left for `inject_accession_tables`, after the file-sets are grouped.
+
+    Load the tables with `load_metadata_tables` before the claim: a table that isn't
+    loaded yet is read here, from a path the claim may have moved it from.
+
+    The file-sets' metadata is changed in place, and the same file-sets are returned.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets, after `tag_fileset_types`
+    metadata_tables : Sequence[MetadataTable], optional
+        the tables, from `load_metadata_tables`
+
+    Returns
+    -------
+    list[FileSet]
+        the same file-sets
+
+    Raises
+    ------
+    ValueError
+        if more than one row of a table joins to a file-set
+    """
+    MetadataTable.inject_list(list(metadata_tables or []), list(filesets))
     return list(filesets)

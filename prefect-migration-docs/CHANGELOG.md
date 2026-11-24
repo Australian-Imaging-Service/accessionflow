@@ -133,8 +133,23 @@ contract, so each entry says "CLI unchanged".
   `accessionflow/api/tests/collate/test_metadata.py`. Nothing calls it yet. CLI
   unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, steps 3 and 13, `accessionflow/api/collate/metadata.py`:
+  `load_metadata_tables`, which reads every metadata table into memory and checks its
+  join columns before the claim, and `inject_fileset_tables`, which merges the rows of
+  the `fileset` tables into the file-sets. Tests in
+  `accessionflow/api/tests/collate/test_metadata.py`, including a table delivered in
+  the input directory and claimed with the data. Nothing calls them yet. CLI unchanged.
+  PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1 design, `ROADMAP.md`: a new step 3, `load_metadata_tables`,
+  runs with the argument checks, before the claim, because a metadata table delivered
+  with the data (as the Canfield export does) is claimed with it and is no longer at
+  its path when the tables are injected. Every later step moves up by one:
+  `make_run_uid` is now step 4, `prepare_build_dir` 5, `claim_input_files` 6, and so
+  on to `remove_build_dir`, now 19. Earlier entries in this changelog keep the numbers
+  they had when they were written. PR: pending.
 - 2026-11-24, Phase 1, step 10 (a revision of step 5): `claim_input_files` makes the
   run directory absolute, and `ClaimedFiles.original_of` accepts relative paths, so
   that a relative processing directory still maps the file-sets' absolute paths back to
@@ -221,6 +236,9 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, steps 3 and 13, added in `accessionflow.api.collate`:
+  - `load_metadata_tables(metadata_tables=None) -> list[MetadataTable]`
+  - `inject_fileset_tables(filesets, metadata_tables=None) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 11, added in `accessionflow.api.collate`:
   - `tag_fileset_types(filesets) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 10, added in `accessionflow.api.collate`:

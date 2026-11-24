@@ -19,7 +19,12 @@ from .classify import (
     plan_recursion,
 )
 from .discover import list_input_files
-from .metadata import apply_path_metadata, tag_fileset_types
+from .metadata import (
+    apply_path_metadata,
+    inject_fileset_tables,
+    load_metadata_tables,
+    tag_fileset_types,
+)
 
 __all__ = [
     "CLAIMED_FILES_DIRNAME",
@@ -34,7 +39,9 @@ __all__ = [
     "disable_metadata_reading",
     "drop_ignored_filesets",
     "expand_claimed_paths",
+    "inject_fileset_tables",
     "list_input_files",
+    "load_metadata_tables",
     "make_run_uid",
     "plan_recursion",
     "tag_fileset_types",
