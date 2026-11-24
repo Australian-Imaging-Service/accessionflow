@@ -21,6 +21,7 @@ from accessionflow.exceptions import (
     UnknownStudyIdentity,
     UnsupportedModalityError,
 )
+from accessionflow.helpers.arg_types import ClashSpec
 from accessionflow.helpers.logging import logger
 from accessionflow.helpers.remotes import (
     LocalSessionListing,
@@ -30,7 +31,7 @@ from accessionflow.helpers.remotes import (
     SessionOnlyListing,
     read_grouping_uid,
 )
-from accessionflow.model.accession import Accession
+from accessionflow.model.accession import Accession, _fileset_in_scope
 from accessionflow.model.acquisition import Acquisition
 from accessionflow.model.resource import Resource
 
@@ -662,8 +663,34 @@ def split_resource_by_modality(resource: Resource) -> ty.List[Resource]:
     ]
 
 
+def resource_clash_policy(specs: ty.Sequence[ClashSpec], resource: Resource) -> str:
+    """The --on-resource-clash policy of a staged resource that is not the same as
+    its copy on XNAT. The first spec whose scope covers the resource's datatype
+    applies. With no specs, the policy is "merge". A resource that no spec covers
+    gets "error", so that a person decides.
+    """
+    if not specs:
+        return "merge"
+    for spec in specs:
+        if _fileset_in_scope(resource.fileset, spec.scope):
+            return spec.policy
+    return "error"
+
+
+def _clash_message(name: str, where: str, comparison: ResourceComparison) -> str:
+    return (
+        f"'{name}' resource in '{where}' on XNAT is not the same as the staged one "
+        f"({len(comparison.missing)} missing, {len(comparison.extra)} unexpected and "
+        f"{len(comparison.differing)} different file(s)), and --on-resource-clash is "
+        "'error' for its datatype. Delete the resource on XNAT to have it uploaded "
+        "afresh."
+    )
+
+
 def get_xnat_resource(
-    resource: Resource, xsession: ty.Any
+    resource: Resource,
+    xsession: ty.Any,
+    on_resource_clash: ty.Sequence[ClashSpec] = (),
 ) -> tuple[ty.Any, ty.Optional[ty.Set[str]]]:
     """Get the XNAT resource object for the given resource
 
@@ -677,6 +704,11 @@ def get_xnat_resource(
         the resource to upload
     xsession : ty.Any
         the XNAT session object
+    on_resource_clash : Sequence[ClashSpec]
+        what to do when the resource exists on XNAT and is not the same as the
+        staged one (see resource_clash_policy). "merge" uploads the files that
+        XNAT does not have, when that is enough. "error" raises, and changes
+        nothing on XNAT.
 
     Returns
     -------
@@ -708,7 +740,8 @@ def get_xnat_resource(
                 resource.checksums, get_xnat_checksums(xresource)
             )
             log_name_only_comparison(comparison, resource.path, xsession.label)
-            if comparison.repairable:
+            policy = resource_clash_policy(on_resource_clash, resource)
+            if comparison.repairable and policy == "merge":
                 logger.warning(
                     "'%s' session resource exists on XNAT but is missing %d of "
                     "%d file(s) held in the staged session. Uploading the "
@@ -730,7 +763,16 @@ def get_xnat_resource(
                     sorted(comparison.missing),
                     sorted(comparison.extra),
                     sorted(comparison.differing),
+                    extra={
+                        "event": "xnat_resource_clash",
+                        "resource": resource.path,
+                        "policy": policy,
+                    },
                 )
+                if policy == "error":
+                    raise IncompleteCheckumsException(
+                        _clash_message(resource_name, xsession.label, comparison)
+                    )
                 if comparison.missing:
                     raise IncompleteCheckumsException(
                         f"'{resource_name}' session resource exists on XNAT but "
@@ -835,7 +877,8 @@ def get_xnat_resource(
         xnat_checksums = get_xnat_checksums(xresource)
         comparison = compare_resource_with_xnat(resource.checksums, xnat_checksums)
         log_name_only_comparison(comparison, resource.path, resource.acquisition.path)
-        if comparison.repairable:
+        policy = resource_clash_policy(on_resource_clash, resource)
+        if comparison.repairable and policy == "merge":
             # We hold files XNAT does not and nothing else is wrong, so hand
             # back the shortfall. Not the whole resource: XNAT would reject or
             # duplicate the files it already holds.
@@ -862,7 +905,18 @@ def get_xnat_resource(
                 sorted(comparison.missing),
                 sorted(comparison.extra),
                 sorted(comparison.differing),
+                extra={
+                    "event": "xnat_resource_clash",
+                    "resource": resource.path,
+                    "policy": policy,
+                },
             )
+            if policy == "error":
+                # An operator decides: for a package (e.g. a zip made again
+                # with a late series), an upload cannot merge the two copies.
+                raise IncompleteCheckumsException(
+                    _clash_message(resource_name, resource.acquisition.path, comparison)
+                )
             if comparison.missing:
                 # Missing alone is repaired above, so XNAT also holds files we
                 # do not or a shared file differs. An upload can only add, so it

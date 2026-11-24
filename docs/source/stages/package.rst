@@ -26,7 +26,9 @@ The input stays untouched unless ``--unlink-source`` is given (see
 :ref:`concepts-unlink-source`), and a packaged accession only appears in the output once
 every conversion and manifest has been written successfully. ``--on-resource-clash``
 decides what happens when an output label clashes with another resource of the same
-acquisition.
+acquisition. When a package made again (e.g. with a late series) meets its older copy
+on XNAT, the ``--on-resource-clash`` option of the store stage decides (see
+:ref:`store-xnat-clashes`).
 
 The accession's fields (see :doc:`annotate`) are carried through to the output
 unchanged.

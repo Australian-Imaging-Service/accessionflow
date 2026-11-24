@@ -93,6 +93,35 @@ uploads into the ``radiology-doc-report`` resource of session ``000077``. Labell
 session labels.
 
 
+.. _store-xnat-clashes:
+
+When a resource is already on XNAT
+----------------------------------
+
+An accession can be staged again after its upload, e.g. when a late series arrives.
+``store xnat`` then compares each resource with its copy on XNAT, by file name and
+checksum (by file name only when XNAT has no checksums). An identical resource is
+skipped. For a resource that is not the same, ``--on-resource-clash <policy> <scope>``
+decides what happens, by datatype (``ACFLOW_ON_RESOURCE_CLASH``):
+
+* ``merge`` uploads the files that XNAT does not have, when that is enough. Otherwise it
+  changes nothing on XNAT and logs an error.
+* ``error`` changes nothing on XNAT. It logs an error with the event
+  ``xnat_resource_clash`` and reports the accession as not uploaded. After an operator
+  deletes the resource on XNAT, the next pass uploads the staged one.
+
+The first spec whose scope covers the datatype of the resource applies. A resource that
+no spec covers gets ``error``, and with no specs every resource gets ``merge``. Use
+``error`` for a package that an upload of the missing files cannot repair, e.g. a zip
+made by :doc:`/stages/package`:
+
+.. code-block:: console
+
+    $ accessionflow store xnat /data/staging/packaged xnat.example.org \
+        --on-resource-clash merge medimage/dicom-series \
+        --on-resource-clash error all
+
+
 .. _store-xnat-snapshots:
 
 Generating scan snapshots
