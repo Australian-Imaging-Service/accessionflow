@@ -17,7 +17,7 @@ from frametree.xnat import Xnat
 from xnat.exceptions import XNATResponseError
 
 from accessionflow.cli.store_cli import store_group
-from accessionflow.helpers.arg_types import LoggerConfig, StoreCredentials
+from accessionflow.helpers.arg_types import ClashSpec, LoggerConfig, StoreCredentials
 from accessionflow.helpers.logging import logger, set_logger_handling
 from accessionflow.helpers.remotes import DEFAULT_MAX_WORKERS
 from accessionflow.stores.xnat.api.store_api import store
@@ -263,6 +263,25 @@ by setting the "ACFLOW_HOST" environment variable.
         "isn't changed (ACFLOW_NO_UID_CHECK env. var)"
     ),
 )
+@click.option(
+    "--on-resource-clash",
+    type=ClashSpec.cli_type,
+    nargs=2,
+    multiple=True,
+    default=(),
+    metavar="<policy> <scope>",
+    envvar="ACFLOW_ON_RESOURCE_CLASH",
+    help=(
+        "What to do when a resource exists on XNAT and is not the same as the staged "
+        "one: a <policy> plus the datatype <scope> it applies to (a mime-like, a "
+        "'|'-union, or 'all'). 'merge' uploads the files that XNAT does not have, when "
+        "that is enough. 'error' changes nothing on XNAT and reports the session as not "
+        "uploaded, until the resource is deleted on XNAT. Repeatable: the first spec "
+        "whose scope covers the resource applies, and a resource that no spec covers "
+        "gets 'error'. With no specs, all resources get 'merge' "
+        "(ACFLOW_ON_RESOURCE_CLASH env. var)"
+    ),
+)
 def store_cmd(
     staged: str,
     server: str,
@@ -288,6 +307,7 @@ def store_cmd(
     dry_run: bool,
     modality: ty.Optional[str],
     skip_uid_check: bool,
+    on_resource_clash: ty.Sequence[ClashSpec],
 ) -> None:
 
     if raise_errors and loop >= 0:
@@ -424,6 +444,7 @@ def store_cmd(
                     date_field=date_field,
                     modality=modality,
                     skip_uid_check=skip_uid_check,
+                    on_resource_clash=on_resource_clash,
                 )
                 if errors:
                     # If the errors are XNAT auth failures, the held session has
