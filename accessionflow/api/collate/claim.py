@@ -174,7 +174,8 @@ def claim_input_files(
     copied to a hidden temporary name, checked to be unchanged (size and modification
     time), renamed into place, and then deleted from the input. A file that changes
     while it is copied is left for the next run, and a file that has disappeared since
-    it was listed is skipped. Both are logged.
+    it was listed is skipped. Both are logged, and so, once, are any copies across file
+    systems.
 
     The plan of the claim (``claimed.json``) is written to the run directory before any
     file is moved. If the run is retried with the same ``run_uid``, the saved plan is
@@ -230,11 +231,22 @@ def claim_input_files(
             return ClaimedFiles._from_plan(run_dir, plan)
         _write_plan(run_dir, plan)
 
+    n_copied = 0
     for entry in plan["files"]:
-        _claim_one(
+        n_copied += _claim_one(
             Path(entry["original"]), run_dir / CLAIMED_FILES_DIRNAME / entry["claimed"]
         )
     claimed = ClaimedFiles._from_plan(run_dir, plan)
+    if n_copied:
+        logger.warning(
+            "%s of %s files were copied into '%s' from a different file system, "
+            "which is slower than moving them and not atomic. To move them, put the "
+            "input on the same file system as the processing area (by default the "
+            "output directory).",
+            n_copied,
+            len(plan["files"]),
+            run_dir,
+        )
     logger.info(
         "Claimed %s of %s files into '%s'",
         len(claimed.files),
@@ -289,12 +301,12 @@ def _read_plan(run_dir: Path) -> dict[str, ty.Any]:
     return plan
 
 
-def _claim_one(src: Path, dest: Path) -> None:
+def _claim_one(src: Path, dest: Path) -> bool:
     """Moves one file into the run directory, or works out that it was claimed by an
-    earlier attempt"""
+    earlier attempt. Returns whether it was copied across file systems"""
     if dest.exists():
         if not src.exists():
-            return  # claimed by an earlier attempt
+            return False  # claimed by an earlier attempt
         # An earlier attempt copied the file across file systems but stopped before it
         # deleted the source, or a new file with the same name has arrived since
         if _same_contents_stat(src.stat(), dest.stat()):
@@ -305,10 +317,10 @@ def _claim_one(src: Path, dest: Path) -> None:
                 "from the same path",
                 src,
             )
-        return
+        return False
     if not src.exists():
         logger.warning("Skipping '%s', which has disappeared since it was listed", src)
-        return
+        return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         os.rename(src, dest)
@@ -317,12 +329,14 @@ def _claim_one(src: Path, dest: Path) -> None:
     except OSError as e:
         if e.errno != errno.EXDEV:
             raise
-        _copy_across_file_systems(src, dest)
+        return _copy_across_file_systems(src, dest)
+    return False
 
 
-def _copy_across_file_systems(src: Path, dest: Path) -> None:
+def _copy_across_file_systems(src: Path, dest: Path) -> bool:
     """Copies a file to a hidden temporary name next to ``dest``, renames it into place
-    if the source didn't change while it was copied, and then deletes the source"""
+    if the source didn't change while it was copied, and then deletes the source.
+    Returns whether the file was claimed"""
     tmp = dest.with_name(f".{dest.name}{_COPY_SUFFIX}")
     try:
         before = src.stat()
@@ -331,7 +345,7 @@ def _copy_across_file_systems(src: Path, dest: Path) -> None:
     except FileNotFoundError:
         tmp.unlink(missing_ok=True)
         logger.warning("Skipping '%s', which has disappeared since it was listed", src)
-        return
+        return False
     except BaseException:
         tmp.unlink(missing_ok=True)
         raise
@@ -340,9 +354,10 @@ def _copy_across_file_systems(src: Path, dest: Path) -> None:
         logger.info(
             "Leaving '%s' for the next run, as it changed while it was copied", src
         )
-        return
+        return False
     os.replace(tmp, dest)
     src.unlink(missing_ok=True)
+    return True
 
 
 def _same_contents_stat(a: os.stat_result, b: os.stat_result) -> bool:

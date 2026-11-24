@@ -154,8 +154,18 @@ contract, so each entry says "CLI unchanged".
   `accessionflow/api/tests/collate/test_metadata.py`. Nothing calls it yet. CLI
   unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 16, `accessionflow/api/collate/save.py`:
+  `warn_if_hardlinks_unavailable`, moved from `accessionflow/api/collate_api.py`. Tests
+  in `accessionflow/api/tests/collate/test_save.py`. CLI unchanged: the folder
+  `collate()` logs the same warning. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 16: `warn_if_hardlinks_unavailable` returns one file of
+  each resource that can't be hard-linked, and works out the output directory it names
+  from the build directory instead of assuming its layout. `claim_input_files` logs one
+  warning when it has copied files into the processing area from a different file
+  system. CLI unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 15 (a revision of step 8): `classify_paths` returns the
   file-sets sorted by path. `fileformats` returns them in an order that can change from
   run to run (with Python's hash randomisation), which made the order of the grouped
@@ -246,6 +256,9 @@ contract, so each entry says "CLI unchanged".
 
 ### Removed
 
+- 2026-11-24, Phase 1, step 16:
+  `accessionflow.api.collate_api.warn_if_hardlinks_unavailable`. Use
+  `accessionflow.api.collate.warn_if_hardlinks_unavailable`. PR: pending.
 - 2026-11-24, Phase 0: `accessionflow.api.collate_api.BUILD_NAME_DEFAULT`. Use
   `accessionflow.api.staging.BUILD_NAME_DEFAULT`, or `accessionflow.api.BUILD_NAME_DEFAULT`,
   which is still exported. PR: pending.
@@ -254,6 +267,9 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 16, moved to `accessionflow.api.collate`:
+  - `warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map=None) -> list[Path]`,
+    which returned `None` before
 - 2026-11-24, Phase 1, step 15:
   - added in `accessionflow.api.collate`:
     `inject_accession_tables(accessions, metadata_tables=None) -> list[Accession]`

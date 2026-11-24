@@ -32,6 +32,7 @@ from .metadata import (
     load_metadata_tables,
     tag_fileset_types,
 )
+from .save import warn_if_hardlinks_unavailable
 
 __all__ = [
     "CLAIMED_FILES_DIRNAME",
@@ -57,4 +58,5 @@ __all__ = [
     "plan_recursion",
     "resource_label_for",
     "tag_fileset_types",
+    "warn_if_hardlinks_unavailable",
 ]

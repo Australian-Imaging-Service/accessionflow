@@ -102,10 +102,13 @@ def _exdev_rename(*args: ty.Any, **kwargs: ty.Any) -> ty.NoReturn:
     raise OSError(errno.EXDEV, "Invalid cross-device link")
 
 
-def test_claim_moves_files_keeping_layout(tmp_path: Path) -> None:
+def test_claim_moves_files_keeping_layout(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     inbox = tmp_path / "inbox"
     files = _tree(inbox, "a.txt", "sub/b.txt", "sub/deeper/c.txt")
     processing = tmp_path / "out" / PROCESSING_NAME_DEFAULT
+    caplog.set_level("WARNING")
 
     claimed = claim_input_files(files, processing, RUN_UID, source_roots=[inbox])
 
@@ -120,6 +123,8 @@ def test_claim_moves_files_keeping_layout(tmp_path: Path) -> None:
     assert not any(p.exists() for p in files)
     assert (inbox / "sub" / "deeper").is_dir()  # emptied source dirs are left
     assert (run_dir / CLAIMED_MANIFEST).exists()
+    # Moved, not copied, so no warning
+    assert not any("different file system" in r.getMessage() for r in caplog.records)
 
 
 def test_claim_keeps_repeated_names_and_directories_apart(tmp_path: Path) -> None:
@@ -184,14 +189,23 @@ def test_claim_no_files_creates_nothing(tmp_path: Path) -> None:
 
 
 def test_claim_across_file_systems(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     inbox = tmp_path / "inbox"
     files = _tree(inbox, "a.txt", "sub/b.txt")
     mtimes = {p.name: p.stat().st_mtime_ns for p in files}
     monkeypatch.setattr(os, "rename", _exdev_rename)
 
-    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    with caplog.at_level("WARNING"):
+        claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+
+    copy_warnings = [
+        r.getMessage()
+        for r in caplog.records
+        if "different file system" in r.getMessage()
+    ]
+    assert len(copy_warnings) == 1
+    assert copy_warnings[0].startswith("2 of 2 files were copied")
 
     assert len(claimed.files) == 2
     assert not any(p.exists() for p in files)

@@ -141,9 +141,9 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–15 are done. Every step up to the
+Status: In progress. Steps 0–16 are done. Every step up to the
 accessions now exists, tested on its own and chained against today's `from_paths`
-results; what is left is the staging steps (16–19), the composites, and moving the folder
+results; what is left is the staging steps (17–18), the composites, and moving the folder
 `collate()` and the CLI onto them.
 
 The current call chain is:
@@ -200,7 +200,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 13 | `inject_fileset_tables` | L1043 | batch. **Done** |
 | 14 | `group_into_accessions` | L1045-1118 | batch. **Done** |
 | 15 | `inject_accession_tables` | L1119-1128 | batch. **Done** |
-| 16 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch |
+| 16 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch. **Done** |
 | 17 | `stage_accession` | `api/collate_api.py:83-106` | **per accession** |
 | 18 | `finish_claim` | new | batch |
 | 19 | `remove_build_dir` | new | shared, `api/staging.py`. **Done** |
@@ -236,8 +236,9 @@ Taking ownership of the files. New.
 exported with the steps. The processing area defaults to `<output_dir>/__processing__`, on the same file system
 as the staging directory, so that saving into the build directory can still hard-link.
 The claim is only atomic when the source is on that file system too.
-`warn_if_hardlinks_unavailable` gets a counterpart that warns once when claims will be
-copies.
+`claim_input_files` logs one warning when it has copied files across file systems
+(**done**), the claim's counterpart to `warn_if_hardlinks_unavailable`; only the claim
+knows whether it renamed or copied, so there is no separate step.
 
 ### `accessionflow/api/collate/classify.py`
 
@@ -286,7 +287,7 @@ Saving accessions into the staging directory. From `accessionflow/api/collate_ap
 
 | Step | From | Notes |
 | --- | --- | --- |
-| `warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map)` | L122-172 | Unchanged. It now compares the processing area, not the source, with the build directory. |
+| `warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map=None) -> list[Path]` | L118-169 | **Done.** Moved here from `api/collate_api.py`, which imports it. Same checks and warning, now also returning one file of each resource that can't be hard-linked. The output directory it names is worked out from the build directory (`<output_dir>/__build__/<run_uid>`), or is the build directory itself if it isn't in a `__build__` directory. Once collate claims its input, it compares the processing area, not the source, with the build directory, so it only warns if the processing area is put elsewhere. |
 | `save_to_build_dir(accession, build_dir, copy_mode, collation_map, conversion_map) -> Path` | L87-97 | Clears the accession's scratch directory first (principle 9). |
 | `remove_claimed_files(accession)` | L100-106 | Deletes the accession's files from the processing area. Always run, replacing the optional `unlink_source`. |
 | `stage_accession(accession, build_dir, output_dir, copy_mode, collation_map, conversion_map) -> Path` | L83-106 | **The per-accession unit**: `save_to_build_dir`, then `move_into_place`, then `remove_claimed_files`. Raises on failure, which leaves the accession's files in the processing area. |
