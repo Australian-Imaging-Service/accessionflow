@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–3 are done.
+Status: In progress. Steps 0–4 are done.
 
 The current call chain is:
 
@@ -184,8 +184,8 @@ The table lists the steps in the order they run. Line numbers are in
 | 0 | `list_input_files` | L920-971, `_drop_excluded_paths` L231 | before collate, used by the CLI. **Done** |
 | 1 | `check_datatypes` | L888-897 | batch, checks the arguments, **the first step of the API**. **Done** |
 | 2 | `plan_recursion` | L899-918 | batch, checks the arguments. **Done** |
-| 3 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. **Done** |
-| 4 | `make_run_uid` | L980-988 | batch |
+| 3 | `make_run_uid` | L980-988 | batch. **Done** |
+| 4 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. Builds in `__build__/<run_uid>/`. **Done** |
 | 5 | `claim_input_files` | new | batch, the first step that changes the input |
 | 6 | `expand_claimed_paths` | L920-968 | batch |
 | 7 | `classify_paths` | L990-999 | batch |
@@ -199,8 +199,9 @@ The table lists the steps in the order they run. Line numbers are in
 | 15 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch |
 | 16 | `stage_accession` | `api/collate_api.py:83-106` | **per accession** |
 | 17 | `finish_claim` | new | batch |
+| 18 | `remove_build_dir` | new | shared, `api/staging.py`. **Done** |
 
-Steps 1–15 and 17 run once per collation. Step 16 runs once per accession, and is the
+Steps 1–15, 17 and 18 run once per collation. Step 16 runs once per accession, and is the
 unit that a flow maps over. Steps 1 and 2 only check the arguments, so they run before
 any step that changes the file system (principle 12): a bad combination of options,
 such as `--recursive` with `generic/directory`, fails before any input file has been
@@ -221,6 +222,7 @@ Taking ownership of the files. New.
 
 | Step | Notes |
 | --- | --- |
+| `make_run_uid(input_files, now=None) -> str` | **Done.** L939-947. The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions. |
 | `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | Moves each file into `processing_dir / run_uid`, keeping its path relative to its source root, so that directory datatypes and file names that repeat across directories survive. The roots default to the files' common directory. On the same file system a claim is an atomic `os.rename`. Across file systems the file is copied to a temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. |
 | `ClaimedFiles` | An attrs record that pickles: the run directory, the claimed roots, and each claimed file's original path. It is written to `claimed.json` in the run directory before any file moves, and updated as they move, so a run that is retried with the same `run_uid` picks up where it stopped (principle 9). |
 | `finish_claim(claimed) -> list[Path]` | After staging: removes the run directory if it's empty. Otherwise it leaves it in place and returns, and logs, what is left: files that weren't recognised or were ignored, and the files of accessions that failed to stage. |
@@ -243,9 +245,6 @@ Turning the claimed files into file-sets.
 | `classify_paths(fspaths, datatypes, ignore_datatypes, allow_unrecognised) -> list[FileSet]` | L990-999 | |
 | `disable_metadata_reading(filesets, dont_read_metadata) -> list[FileSet]` | L1000-1007 | |
 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes) -> list[FileSet]` | L1009-1019 | |
-
-`make_run_uid(input_files, now=None) -> str` (L980-988, injectable clock) also lives
-here. It names the claim's run directory.
 
 ### `accessionflow/api/collate/metadata.py`
 
@@ -290,14 +289,16 @@ The wait-period check (L71-81) is removed, with `Accession.last_modified`
 
 Plain-Python sequences of the steps. Their signatures can change.
 
-- `accessionflow.api.collate.collect_accessions(claimed, ...)` runs steps 5–14:
+- `accessionflow.api.collate.collect_accessions(claimed, ...)` runs steps 6–14:
   expand, classify, add metadata, group.
 - `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 15–16:
   `warn_if_hardlinks_unavailable`, then `for_each_accession(stage_accession)`.
 - `sources/folder/api/collate_api.py::collate(input_files, output_dir, ...)` runs
-  `prepare_build_dir`, `check_datatypes`, `make_run_uid`, `claim_input_files`,
-  `collect_accessions` (with the patterns from `merge_path_metadata`),
-  `save_accessions_to_dir`, `finish_claim` and `log_stage_summary`. Compared with
+  `check_datatypes`, `plan_recursion`, `make_run_uid`, `prepare_build_dir`,
+  `claim_input_files`, `collect_accessions` (with the patterns from
+  `merge_path_metadata`), `save_accessions_to_dir`, `finish_claim`, `remove_build_dir`
+  (in a `finally`, so that a run that raises doesn't leave an empty build directory)
+  and `log_stage_summary`. Compared with
   today, it takes `input_files: list[Path]` and loses `wait_period`, `unlink_source`,
   `recursive`'s directory listing and `exclude_paths`. `recursive` stays, for directory
   datatypes. `path_metadata_pattern_to_regex` and `merge_path_metadata` stay in the
@@ -363,6 +364,11 @@ These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
   `MIGRATING.md:293` is updated in Phase 10.
 
 ### Staging layout
+
+Each run builds in its own `__build__/<run_uid>/`, instead of directly in the shared
+`__build__/`, so that runs writing to the same output directory at the same time don't
+collide. `remove_build_dir` removes it at the end of the run, or leaves it and reports
+what a failed save left in it. **Done.**
 
 `__processing__/<run_uid>/` is new in the output directory, with `claimed.json` in each
 run directory. A run directory that is left behind holds the files `finish_claim`
@@ -564,6 +570,9 @@ Status: Planned.
   (unrecognised and ignored files, and failed accessions)? Retried automatically by a
   later run, moved to a separate area for someone to look at, or deleted after a
   while?
+- Two runs at the same time now build in separate directories, but if both stage the
+  same accession, `move_into_place` still merges them in the output directory. Is that
+  acceptable, or does staging need a lock per accession?
 - Should the processing area's location be configurable (a new optional CLI option
   such as `--processing-dir`), for input directories on a different file system from
   the staging directory?

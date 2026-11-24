@@ -7,9 +7,9 @@ from pathlib import Path
 from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
-from accessionflow.api.collate import check_datatypes, plan_recursion
+from accessionflow.api.collate import check_datatypes, make_run_uid, plan_recursion
 from accessionflow.api.collate_api import save_accessions_to_dir
-from accessionflow.api.staging import prepare_build_dir
+from accessionflow.api.staging import prepare_build_dir, remove_build_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -295,38 +295,42 @@ def collate(
     # the plan, Accession.from_paths works it out again for itself
     plan_recursion(datatypes, ignore_datatypes, recursive)
 
-    errors = []
+    # Until the CLI passes the listed files, the run UID is made from the input paths
+    run_uid = make_run_uid([Path(p) for p in input_paths])
+    build_dir = prepare_build_dir(output_dir, run_uid)
+    try:
+        sessions = Accession.from_paths(
+            files_path=input_paths,
+            datatypes=datatypes,
+            accession_uid_field=accession_uid,
+            acquisition_id_field=acquisition_id,
+            resource_field=resource,
+            recursive=recursive,
+            on_resource_clash=on_resource_clash,
+            allow_unrecognised=allow_unrecognised,
+            exclude_paths=exclude_paths,
+            ignore_datatypes=ignore_datatypes,
+            path_metadata_regex=merge_path_metadata(path_metadata, path_metadata_regex),
+            metadata_tables=metadata_tables,
+            dont_read_metadata=dont_read_metadata,
+        )
 
-    build_dir = prepare_build_dir(output_dir)
-
-    sessions = Accession.from_paths(
-        files_path=input_paths,
-        datatypes=datatypes,
-        accession_uid_field=accession_uid,
-        acquisition_id_field=acquisition_id,
-        resource_field=resource,
-        recursive=recursive,
-        on_resource_clash=on_resource_clash,
-        allow_unrecognised=allow_unrecognised,
-        exclude_paths=exclude_paths,
-        ignore_datatypes=ignore_datatypes,
-        path_metadata_regex=merge_path_metadata(path_metadata, path_metadata_regex),
-        metadata_tables=metadata_tables,
-        dont_read_metadata=dont_read_metadata,
-    )
-
-    errors = save_accessions_to_dir(
-        sessions,
-        f"Collating files found in '{input_paths}' to {output_dir!s}",
-        wait_period=wait_period,
-        build_dir=build_dir,
-        copy_mode=copy_mode,
-        output_dir=output_dir,
-        unlink_source=unlink_source,
-        raise_errors=raise_errors,
-        collation_map=collation_map,
-        conversion_map=conversion_map,
-    )
+        errors = save_accessions_to_dir(
+            sessions,
+            f"Collating files found in '{input_paths}' to {output_dir!s}",
+            wait_period=wait_period,
+            build_dir=build_dir,
+            copy_mode=copy_mode,
+            output_dir=output_dir,
+            unlink_source=unlink_source,
+            raise_errors=raise_errors,
+            collation_map=collation_map,
+            conversion_map=conversion_map,
+        )
+    finally:
+        # Stops an empty build directory being left by every run, even one that
+        # raised
+        remove_build_dir(build_dir)
     if errors:
         logger.error("Collating completed with %s errors", len(errors))
     else:

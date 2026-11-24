@@ -75,8 +75,28 @@ contract, so each entry says "CLI unchanged".
   used with `--recursive` and work out how the claimed files will be expanded. Tests in
   `accessionflow/api/tests/collate/test_classify.py`. PR: pending.
 
+- 2026-11-24, Phase 1, step 3, `accessionflow/api/collate/claim.py`: with
+  `make_run_uid`, which makes a run's UID from the files it collates and the time
+  (injectable). Same format as `from_paths` makes today, with the paths hashed in
+  sorted order. Tests in `accessionflow/api/tests/collate/test_claim.py`. PR: pending.
+- 2026-11-24, Phase 1, step 18, `accessionflow/api/staging.py`: `remove_build_dir`,
+  which removes a run's build directory once it is empty, and otherwise leaves it and
+  reports what is left. Tests in `accessionflow/api/tests/test_staging.py`. PR:
+  pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1 design, `ROADMAP.md`: `make_run_uid` (now step 3) runs before
+  `prepare_build_dir` (now step 4), because the run UID names the run's build
+  directory. New final step 18, `remove_build_dir`. PR: pending.
+- 2026-11-24, Phase 1, step 4: `prepare_build_dir(output_dir, run_uid)` creates the
+  run's own build directory, `<output_dir>/__build__/<run_uid>/`, so that parallel runs
+  don't collide, and rejects a run UID that isn't a plain directory name. The folder
+  `collate()` makes a run UID from its input paths, builds in that directory, and
+  removes it afterwards, even when it raises. `warn_if_hardlinks_unavailable` still
+  names the output directory in its warning. Tests revised in `test_staging.py` and
+  `test_collate.py`, with a new test that the build directory is removed when collate
+  raises. CLI unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 2: the folder source's `collate()` calls `plan_recursion`
   after `check_datatypes`, so `--recursive` with `generic/directory` or
   `generic/file-set` as a datatype fails before the build directory is created. The
@@ -130,6 +150,12 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, steps 3, 4 and 18:
+  - added in `accessionflow.api.collate`: `make_run_uid(input_files, now=None) -> str`
+  - changed in `accessionflow.api.staging`: `prepare_build_dir(output_dir) -> Path` is
+    now `prepare_build_dir(output_dir, run_uid) -> Path`, and returns the run's own
+    directory, `output_dir / BUILD_NAME_DEFAULT / run_uid`
+  - added in `accessionflow.api.staging`: `remove_build_dir(build_dir) -> list[Path]`
 - 2026-11-24, Phase 1, step 2, added in `accessionflow.api.collate`:
   - `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan`
   - `RecursionPlan`, a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`
@@ -146,4 +172,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Staging layout
 
-- No changes yet.
+- 2026-11-24, Phase 1, step 4: collate builds each run in its own
+  `<output_dir>/__build__/<run_uid>/` instead of directly in `__build__/`, and removes
+  it at the end of the run. A directory left there holds what a failed save left
+  behind. The staged accession directories don't change, so nothing needs to be
+  drained before upgrading. PR: pending.

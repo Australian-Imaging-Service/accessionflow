@@ -278,7 +278,33 @@ def test_collate_creates_build_dir(tmp_path: Path) -> None:
         resource=RESOURCE_FIELD,
     )
 
-    assert (output_dir / BUILD_NAME_DEFAULT).exists()
+    # The run built in its own subdirectory, which is removed once it is empty
+    build_root = output_dir / BUILD_NAME_DEFAULT
+    assert build_root.is_dir()
+    assert list(build_root.iterdir()) == []
+
+
+def test_collate_removes_build_dir_when_raising(
+    dicom_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def failing_save(self: Accession, *args: ty.Any, **kwargs: ty.Any) -> ty.NoReturn:
+        raise RuntimeError("save failed")
+
+    monkeypatch.setattr(Accession, "save", failing_save)
+    output_dir = tmp_path / "collated"
+
+    with pytest.raises(RuntimeError, match="save failed"):
+        collate(
+            input_paths=[str(dicom_dir)],
+            output_dir=output_dir,
+            datatypes=[DicomSeries],
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
+            resource=RESOURCE_FIELD,
+            raise_errors=True,
+        )
+
+    assert list((output_dir / BUILD_NAME_DEFAULT).iterdir()) == []
 
 
 @pytest.fixture
@@ -419,6 +445,8 @@ def test_collate_warns_when_hardlinks_unavailable(
         r.getMessage() for r in caplog.records if "hard-linked" in r.getMessage()
     ]
     assert len(warnings) == (0 if same_mount else 1)
+    # The warning names the output directory, not the run's build directory
+    assert all(f"'{output_dir}'" in w for w in warnings)
 
 
 def test_collate_hashes_each_resource_once(

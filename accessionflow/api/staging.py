@@ -19,6 +19,7 @@ from accessionflow.model.accession import Accession
 __all__ = [
     "BUILD_NAME_DEFAULT",
     "prepare_build_dir",
+    "remove_build_dir",
     "move_into_place",
     "for_each_accession",
 ]
@@ -30,23 +31,65 @@ BUILD_NAME_DEFAULT = "__build__"
 T = ty.TypeVar("T")
 
 
-def prepare_build_dir(output_dir: Path) -> Path:
-    """Creates the build directory of a stage's output directory, if it doesn't
-    exist yet.
+def prepare_build_dir(output_dir: Path, run_uid: str) -> Path:
+    """Creates the build directory of one run of a stage, if it doesn't exist yet.
+    Each run builds in its own subdirectory of ``BUILD_NAME_DEFAULT``, so that runs
+    writing to the same output directory at the same time don't collide.
 
     Parameters
     ----------
     output_dir : Path
         the stage's output (staging) directory
+    run_uid : str
+        the UID of the run, which names its build directory. It must be a single,
+        non-hidden path component that doesn't start with ``__``
 
     Returns
     -------
     Path
-        the build directory, ``output_dir / BUILD_NAME_DEFAULT``
+        the run's build directory, ``output_dir / BUILD_NAME_DEFAULT / run_uid``
+
+    Raises
+    ------
+    ValueError
+        if ``run_uid`` isn't a valid directory name
     """
-    build_dir = Path(output_dir) / BUILD_NAME_DEFAULT
+    if not run_uid or Path(run_uid).name != run_uid or run_uid.startswith((".", "__")):
+        raise ValueError(f"Invalid run UID for a build directory: {run_uid!r}")
+    build_dir = Path(output_dir) / BUILD_NAME_DEFAULT / run_uid
     build_dir.mkdir(parents=True, exist_ok=True)
     return build_dir
+
+
+def remove_build_dir(build_dir: Path) -> list[Path]:
+    """Removes a run's build directory once the run has finished, if it is empty.
+    ``BUILD_NAME_DEFAULT`` itself is left, since other runs share it.
+
+    Parameters
+    ----------
+    build_dir : Path
+        the run's build directory, as returned by `prepare_build_dir`
+
+    Returns
+    -------
+    list[Path]
+        what was left in the build directory, e.g. by a save that failed part way, in
+        which case the directory is kept and a warning logged. Empty if it was removed
+    """
+    if not build_dir.exists():
+        return []
+    leftovers = sorted(build_dir.iterdir())
+    if leftovers:
+        logger.warning(
+            "Leaving build directory '%s' in place, as it still holds %s entries "
+            "(e.g. '%s')",
+            build_dir,
+            len(leftovers),
+            leftovers[0].name,
+        )
+        return leftovers
+    build_dir.rmdir()
+    return []
 
 
 def move_into_place(

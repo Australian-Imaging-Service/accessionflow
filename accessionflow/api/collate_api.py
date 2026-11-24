@@ -164,5 +164,6 @@ def warn_if_hardlinks_unavailable(
             len(unlinkable),
             n_resources,
             unlinkable[0],
-            build_dir.parent,
+            # The build directory is <output_dir>/__build__/<run_uid>
+            build_dir.parents[1],
         )
