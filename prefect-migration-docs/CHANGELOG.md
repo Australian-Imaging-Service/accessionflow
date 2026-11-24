@@ -141,6 +141,13 @@ contract, so each entry says "CLI unchanged".
   the input directory and claimed with the data. Nothing calls them yet. CLI unchanged.
   PR: pending.
 
+- 2026-11-24, Phase 1, step 14, `accessionflow/api/collate/group.py`:
+  `group_into_accessions`, which groups the file-sets into accessions, acquisitions and
+  resources, and the helpers it uses, `resource_label_for`, `acquisition_id_for` and
+  `clash_hint_for`. Tests in `accessionflow/api/tests/collate/test_group.py`, including
+  steps 7–14 together giving the same accessions as two `from_paths` tests. Nothing
+  calls them yet. CLI unchanged. PR: pending.
+
 ### Changed
 
 - 2026-11-24, Phase 1 design, `ROADMAP.md`: a new step 3, `load_metadata_tables`,
@@ -236,6 +243,11 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 14, added in `accessionflow.api.collate`:
+  - `resource_label_for(fileset, resource_field=()) -> tuple[str, bool]`
+  - `acquisition_id_for(fileset, acquisition_id_field, resource_label) -> tuple[str, bool]`
+  - `clash_hint_for(acquisition_derived, resource_derived) -> str | None`
+  - `group_into_accessions(filesets, accession_uid_field, acquisition_id_field=(), resource_field=(), on_resource_clash="error", run_uid=None) -> list[Accession]`
 - 2026-11-24, Phase 1, steps 3 and 13, added in `accessionflow.api.collate`:
   - `load_metadata_tables(metadata_tables=None) -> list[MetadataTable]`
   - `inject_fileset_tables(filesets, metadata_tables=None) -> list[FileSet]`

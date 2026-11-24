@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–13 are done.
+Status: In progress. Steps 0–14 are done.
 
 The current call chain is:
 
@@ -195,7 +195,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 11 | `apply_path_metadata` | L1021-1035 | batch. **Done** |
 | 12 | `tag_fileset_types` | L1037-1041 | batch. **Done** |
 | 13 | `inject_fileset_tables` | L1043 | batch. **Done** |
-| 14 | `group_into_accessions` | L1045-1118 | batch |
+| 14 | `group_into_accessions` | L1045-1118 | batch. **Done** |
 | 15 | `inject_accession_tables` | L1119-1128 | batch |
 | 16 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch |
 | 17 | `stage_accession` | `api/collate_api.py:83-106` | **per accession** |
@@ -267,13 +267,15 @@ Grouping file-sets into accessions, acquisitions and resources.
 
 | Step | From | Notes |
 | --- | --- | --- |
-| `resource_label_for(fileset, resource_field) -> (label, derived)` | L1054-1072 | From the DICOM ImageType, the fileset's type (`_datatype_resource_label`, L168) or a `--resource` spec. |
-| `acquisition_id_for(fileset, acquisition_id_field, resource_label) -> (acquisition_id, derived)` | L1073-1081 | Takes `_DERIVED_ID` (L65) with it. |
-| `clash_hint_for(acquisition_derived, resource_derived) -> str \| None` | L1082-1096 | |
-| `group_into_accessions(filesets, accession_uid_field, acquisition_id_field, resource_field, on_resource_clash, run_uid) -> list[Accession]` | L1045-1118 | Uses the three steps above. |
+| `resource_label_for(fileset, resource_field=()) -> (label, derived)` | L1054-1072 | **Done.** A DICOM collection from the `ImageType` of its first file (`dicom_image_type_to_resource_label`), or 'DICOM'; with no `--resource` spec, from the file-set's type (`_datatype_resource_label`, L169), marked derived; otherwise from the matching `--resource` spec. |
+| `acquisition_id_for(fileset, acquisition_id_field, resource_label) -> (acquisition_id, derived)` | L1073-1081 | **Done.** From the `--acquisition` spec that matches the file-set's datatype, or, if none does, the resource's label, marked derived. The `_DERIVED_ID` sentinel (L66) stays inside. |
+| `clash_hint_for(acquisition_derived, resource_derived) -> str \| None` | L1082-1096 | **Done.** The hint added to a resource-name clash when the IDs were derived, naming the specs to give. |
+| `group_into_accessions(filesets, accession_uid_field, acquisition_id_field=(), resource_field=(), on_resource_clash="error", run_uid=None) -> list[Accession]` | L1045-1118 | **Done.** Uses the three steps above and `Accession.add_resource`, which applies the clash policy. Returns the accessions in the order their first file-sets came in, each with the run UID. Keeps its progress bar: this is where the file-sets' headers are first read for their ID fields, which can take minutes for a large DICOM delivery. |
 
 `dicom_image_type_to_resource_label` stays in `model/accession.py`, because the Orthanc
-source uses it too.
+source uses it too. Until `from_paths` is removed, `group.py` imports
+`_datatype_resource_label` and `_DERIVED_ID` from the model, which still uses them; they
+move into `group.py` with the removal.
 
 ### `accessionflow/api/collate/save.py`
 

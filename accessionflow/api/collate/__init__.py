@@ -19,6 +19,12 @@ from .classify import (
     plan_recursion,
 )
 from .discover import list_input_files
+from .group import (
+    acquisition_id_for,
+    clash_hint_for,
+    group_into_accessions,
+    resource_label_for,
+)
 from .metadata import (
     apply_path_metadata,
     inject_fileset_tables,
@@ -33,16 +39,20 @@ __all__ = [
     "ClaimedFiles",
     "claim_input_files",
     "RecursionPlan",
+    "acquisition_id_for",
     "apply_path_metadata",
     "check_datatypes",
+    "clash_hint_for",
     "classify_paths",
     "disable_metadata_reading",
     "drop_ignored_filesets",
     "expand_claimed_paths",
+    "group_into_accessions",
     "inject_fileset_tables",
     "list_input_files",
     "load_metadata_tables",
     "make_run_uid",
     "plan_recursion",
+    "resource_label_for",
     "tag_fileset_types",
 ]
