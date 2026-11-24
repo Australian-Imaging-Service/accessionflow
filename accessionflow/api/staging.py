@@ -18,6 +18,7 @@ from accessionflow.model.accession import Accession
 
 __all__ = [
     "BUILD_NAME_DEFAULT",
+    "check_run_uid",
     "prepare_build_dir",
     "remove_build_dir",
     "move_into_place",
@@ -29,6 +30,27 @@ __all__ = [
 BUILD_NAME_DEFAULT = "__build__"
 
 T = ty.TypeVar("T")
+
+
+def check_run_uid(run_uid: str, purpose: str) -> None:
+    """Checks that a run UID can name a run's directory: a single path component that
+    isn't hidden and doesn't start with ``__``, so that it can't escape its parent or be
+    mistaken for a hidden or internal entry
+
+    Parameters
+    ----------
+    run_uid : str
+        the run UID to check
+    purpose : str
+        what the run UID names, e.g. 'build directory', for the error message
+
+    Raises
+    ------
+    ValueError
+        if ``run_uid`` isn't a valid directory name
+    """
+    if not run_uid or Path(run_uid).name != run_uid or run_uid.startswith((".", "__")):
+        raise ValueError(f"Invalid run UID for a {purpose}: {run_uid!r}")
 
 
 def prepare_build_dir(output_dir: Path, run_uid: str) -> Path:
@@ -54,8 +76,7 @@ def prepare_build_dir(output_dir: Path, run_uid: str) -> Path:
     ValueError
         if ``run_uid`` isn't a valid directory name
     """
-    if not run_uid or Path(run_uid).name != run_uid or run_uid.startswith((".", "__")):
-        raise ValueError(f"Invalid run UID for a build directory: {run_uid!r}")
+    check_run_uid(run_uid, "build directory")
     build_dir = Path(output_dir) / BUILD_NAME_DEFAULT / run_uid
     build_dir.mkdir(parents=True, exist_ok=True)
     return build_dir

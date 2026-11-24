@@ -84,8 +84,22 @@ contract, so each entry says "CLI unchanged".
   reports what is left. Tests in `accessionflow/api/tests/test_staging.py`. PR:
   pending.
 
+- 2026-11-24, Phase 1, step 5, `accessionflow/api/collate/claim.py`:
+  `claim_input_files` and its result, `ClaimedFiles`, which move the files to collate
+  into the run's own directory in the processing area, `<processing_dir>/<run_uid>/`,
+  so that the rest of the run works on a fixed set of files. Same file system: atomic
+  rename. Across file systems: copy, check the source is unchanged, rename into place,
+  delete the source. The plan is saved to `claimed.json` first, so a retry with the
+  same run UID picks up where it stopped. With the constants `PROCESSING_NAME_DEFAULT`
+  and `CLAIMED_MANIFEST`. Tests in `accessionflow/api/tests/collate/test_claim.py`.
+  Nothing calls them yet: the folder `collate()` switches to the claim once the
+  expand and path-metadata steps exist. CLI unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 5: the run UID check in `prepare_build_dir` moved to
+  `accessionflow.api.staging.check_run_uid(run_uid, purpose)`, which the claim uses
+  too. Same rule and message. CLI unchanged. PR: pending.
 - 2026-11-24, Phase 1 design, `ROADMAP.md`: `make_run_uid` (now step 3) runs before
   `prepare_build_dir` (now step 4), because the run UID names the run's build
   directory. New final step 18, `remove_build_dir`. PR: pending.
@@ -150,6 +164,12 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 5:
+  - added in `accessionflow.api.collate`:
+    `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles`,
+    `ClaimedFiles` (with `claimed_roots`, `original_of` and `load`),
+    `PROCESSING_NAME_DEFAULT` and `CLAIMED_MANIFEST`
+  - added in `accessionflow.api.staging`: `check_run_uid(run_uid, purpose) -> None`
 - 2026-11-24, Phase 1, steps 3, 4 and 18:
   - added in `accessionflow.api.collate`: `make_run_uid(input_files, now=None) -> str`
   - changed in `accessionflow.api.staging`: `prepare_build_dir(output_dir) -> Path` is

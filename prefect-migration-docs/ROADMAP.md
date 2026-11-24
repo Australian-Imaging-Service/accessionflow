@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–4 are done.
+Status: In progress. Steps 0–5 are done.
 
 The current call chain is:
 
@@ -186,7 +186,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 2 | `plan_recursion` | L899-918 | batch, checks the arguments. **Done** |
 | 3 | `make_run_uid` | L980-988 | batch. **Done** |
 | 4 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. Builds in `__build__/<run_uid>/`. **Done** |
-| 5 | `claim_input_files` | new | batch, the first step that changes the input |
+| 5 | `claim_input_files` | new | batch, the first step that changes the input. **Done** |
 | 6 | `expand_claimed_paths` | L920-968 | batch |
 | 7 | `classify_paths` | L990-999 | batch |
 | 8 | `disable_metadata_reading` | L1000-1007 | batch |
@@ -223,11 +223,12 @@ Taking ownership of the files. New.
 | Step | Notes |
 | --- | --- |
 | `make_run_uid(input_files, now=None) -> str` | **Done.** L939-947. The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions. |
-| `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | Moves each file into `processing_dir / run_uid`, keeping its path relative to its source root, so that directory datatypes and file names that repeat across directories survive. The roots default to the files' common directory. On the same file system a claim is an atomic `os.rename`. Across file systems the file is copied to a temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. |
-| `ClaimedFiles` | An attrs record that pickles: the run directory, the claimed roots, and each claimed file's original path. It is written to `claimed.json` in the run directory before any file moves, and updated as they move, so a run that is retried with the same `run_uid` picks up where it stopped (principle 9). |
+| `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | **Done.** Moves each file into `processing_dir / run_uid`, keeping its path relative to the common directory of the source roots, so that directory datatypes and file names that repeat across directories survive. The roots default to each file's directory; the CLI will pass its input directories. On the same file system a claim is an atomic `os.rename`. Across file systems (`EXDEV`) the file is copied to a hidden temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. Checks the run UID and the roots before anything is moved (principle 12). With no files, nothing is created. Known limits: on one file system, a file still being written is moved and goes on growing in the processing area (completeness is checked by a later step); across file systems, two runs claiming the same file at once can both copy it. |
+| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. `claimed_roots` gives the roots' equivalents in the run directory, for step 7, and `original_of` a claimed file's original path, for step 11. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. The plan, `claimed.json`, is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already in the run directory is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
 | `finish_claim(claimed) -> list[Path]` | After staging: removes the run directory if it's empty. Otherwise it leaves it in place and returns, and logs, what is left: files that weren't recognised or were ignored, and the files of accessions that failed to stage. |
 
-The processing area defaults to `<output_dir>/__processing__`, on the same file system
+`PROCESSING_NAME_DEFAULT = "__processing__"` and `CLAIMED_MANIFEST = "claimed.json"` are
+exported with the steps. The processing area defaults to `<output_dir>/__processing__`, on the same file system
 as the staging directory, so that saving into the build directory can still hard-link.
 The claim is only atomic when the source is on that file system too.
 `warn_if_hardlinks_unavailable` gets a counterpart that warns once when claims will be
@@ -383,15 +384,23 @@ doesn't need draining, since the accession directories don't change.
   `--unlink-source` changes, to say that they are deprecated. Later phases extend the
   snapshot to their commands.
 - **Unit tests** for each step module, under `accessionflow/api/tests/collate/`. The
-  pure steps need no DICOM fixtures. The claim tests cover:
+  pure steps need no DICOM fixtures. The claim tests (**done**,
+  `api/tests/collate/test_claim.py`) cover:
   - a move on one file system, and a copy across file systems (simulated)
   - a source that changes during the copy, and one that disappears after it was listed
-  - a retry with the same `run_uid`, picking up from `claimed.json`
+  - a retry with the same `run_uid` after a crash part way, picking up from
+    `claimed.json`, and a retry after a crash between a copy and deleting its source
   - repeated file names in different directories, and directory datatypes kept whole
-  - path metadata matching the original paths, including patterns anchored with `/`
-  - `finish_claim` with and without files left over
+  - source roots, and files outside them
+  - `ClaimedFiles` pickling and loading
+
+  Still to come: path metadata matching the original paths, including patterns
+  anchored with `/` (step 11), and `finish_claim` with and without files left over
+  (step 17).
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
+  The claim's part is done (`test_claim_leaves_files_that_arrive_after_listing`); the
+  end-to-end test comes when the folder `collate()` uses the claim.
 - **Ported tests**, keeping their assertions as the regression net:
   - the 15 calls to `Accession.from_paths` in `model/tests/test_accession.py` and the 2
     in `api/tests/test_collate.py`, which list and claim the files, then call
