@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–6 are done.
+Status: In progress. Steps 0–7 are done.
 
 The current call chain is:
 
@@ -188,7 +188,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 4 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. Builds in `__build__/<run_uid>/`. **Done** |
 | 5 | `claim_input_files` | new | batch, the first step that changes the input. **Done** |
 | 6 | `expand_claimed_paths` | L920-968 | batch. **Done** |
-| 7 | `classify_paths` | L990-999 | batch |
+| 7 | `classify_paths` | L990-999 | batch. **Done** |
 | 8 | `disable_metadata_reading` | L1000-1007 | batch |
 | 9 | `drop_ignored_filesets` | L1009-1019 | batch |
 | 10 | `apply_path_metadata` | L1021-1035 | batch |
@@ -240,10 +240,10 @@ Turning the claimed files into file-sets.
 
 | Step | From | Notes |
 | --- | --- | --- |
-| `check_datatypes(datatypes, ignore_datatypes=()) -> None` | L888-897 | **Done.** Raises if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API. |
+| `check_datatypes(datatypes, ignore_datatypes=()) -> None` | L888-897 | **Done.** Raises if no datatype is given (`fileformats.core.from_paths` with no candidates tries every installed format), or if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API. |
 | `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | L899-918 | **Done.** Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 6 uses it; `from_paths` keeps its own copy until it is removed. |
 | `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]` | L920-968 | **Done.** Takes the `RecursionPlan` from step 2. Applies today's expansion rules to the outermost claimed roots: without `recursive`, each root's top-level entries (so a subdirectory such as a DICOM directory is classified whole); with `recursive` and only file datatypes, every claimed file (the directories that today's glob also lists, only for `Directory` to drop them, are left out); with `recursive` and a directory format among the wanted or ignored datatypes, the prune-on-match walk, copied from `_recursive_collect` (L265) as `_walk_pruning`, so `--recursive` and directory datatypes behave as they do now. Only claimed files and the directories that hold them are returned, so a leftover temporary file or anything else in the run directory is never classified. A root inside another root is dropped, so nothing is listed twice; the caller claims with its input directories as the source roots to get today's top-level entries. `from_paths` keeps `_recursive_collect` until it is removed. |
-| `classify_paths(fspaths, datatypes, ignore_datatypes, allow_unrecognised) -> list[FileSet]` | L990-999 | |
+| `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]` | L990-999 | **Done.** `fileformats.core.from_paths` with the wanted datatypes before the ignored ones, so the first match wins and a wanted datatype beats an ignored one. `ignore_datatypes` is `RecursionPlan.ignore_datatypes` from step 2. File-sets of ignored datatypes are returned; step 9 drops them. The `allow_unrecognised` regular expressions are matched from the start of each path's base name, and any other unrecognised path raises `FormatMismatchError`. |
 | `disable_metadata_reading(filesets, dont_read_metadata) -> list[FileSet]` | L1000-1007 | |
 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes) -> list[FileSet]` | L1009-1019 | |
 
@@ -299,8 +299,9 @@ Plain-Python sequences of the steps. Their signatures can change.
   `claim_input_files`, `collect_accessions` (with the patterns from
   `merge_path_metadata`), `save_accessions_to_dir`, `finish_claim`, `remove_build_dir`
   (in a `finally`, so that a run that raises doesn't leave an empty build directory)
-  and `log_stage_summary`. Compared with
-  today, it takes `input_files: list[Path]` and loses `wait_period`, `unlink_source`,
+  and `log_stage_summary`. A `FormatMismatchError` from classification names the
+  claimed paths, so the composite adds their original paths to it (`original_of`,
+  with `add_note`). Compared with today, it takes `input_files: list[Path]` and loses `wait_period`, `unlink_source`,
   `recursive`'s directory listing and `exclude_paths`. `recursive` stays, for directory
   datatypes. `path_metadata_pattern_to_regex` and `merge_path_metadata` stay in the
   folder plugin.
@@ -579,7 +580,10 @@ Status: Planned.
 - What happens to the run directories that `finish_claim` leaves in `__processing__`
   (unrecognised and ignored files, and failed accessions)? Retried automatically by a
   later run, moved to a separate area for someone to look at, or deleted after a
-  while?
+  while? This includes a run that raises after the claim, e.g. a `FormatMismatchError`
+  for an unrecognised file: today its files stay in the input and the same error is
+  raised on every run; once collate claims its input, the input directory moves on and
+  the whole run directory waits in `__processing__`.
 - Two runs at the same time now build in separate directories, but if both stage the
   same accession, `move_into_place` still merges them in the output directory. Is that
   acceptable, or does staging need a lock per accession?

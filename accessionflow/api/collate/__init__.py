@@ -12,6 +12,7 @@ from .claim import (
 from .classify import (
     RecursionPlan,
     check_datatypes,
+    classify_paths,
     expand_claimed_paths,
     plan_recursion,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "claim_input_files",
     "RecursionPlan",
     "check_datatypes",
+    "classify_paths",
     "expand_claimed_paths",
     "list_input_files",
     "make_run_uid",

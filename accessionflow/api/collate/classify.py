@@ -4,7 +4,7 @@ Phase 1)"""
 import typing as ty
 from pathlib import Path
 
-from fileformats.core import FileSet, to_mime
+from fileformats.core import FileSet, from_paths, to_mime
 from fileformats.generic import Directory
 
 from .claim import ClaimedFiles
@@ -12,6 +12,7 @@ from .claim import ClaimedFiles
 __all__ = [
     "RecursionPlan",
     "check_datatypes",
+    "classify_paths",
     "expand_claimed_paths",
     "plan_recursion",
 ]
@@ -35,15 +36,66 @@ def check_datatypes(
     Raises
     ------
     ValueError
-        if a datatype is in both ``datatypes`` and ``ignore_datatypes``. The message
-        names each such datatype by its MIME-like name
+        if no datatype is given (classification would then try every installed
+        format), or if a datatype is in both ``datatypes`` and ``ignore_datatypes``.
+        The message names each such datatype by its MIME-like name
     """
+    if not datatypes:
+        raise ValueError("At least one datatype must be given to collate")
     if contradicting := set(datatypes) & set(ignore_datatypes):
         names = sorted(to_mime(d, official=False) for d in contradicting)
         raise ValueError(
             "The following datatypes were listed for both inclusion (`datatypes`) and "
             f"exclusion (`ignore_datatypes`): {names}"
         )
+
+
+def classify_paths(
+    fspaths: ty.Sequence[Path],
+    datatypes: ty.Sequence[type[FileSet]],
+    ignore_datatypes: ty.Sequence[type[FileSet]] = (),
+    allow_unrecognised: ty.Sequence[str] = (),
+) -> list[FileSet]:
+    """Classifies the paths to collate into file-sets of the wanted and ignored
+    datatypes
+
+    The datatypes are tried in order, wanted before ignored, and the first that matches
+    a path wins, so a path that matches both is classified as the wanted datatype.
+    File-sets of the ignored datatypes are returned too: `drop_ignored_filesets` drops
+    them after their metadata is read.
+
+    Parameters
+    ----------
+    fspaths : Sequence[Path]
+        the paths to classify, from `expand_claimed_paths`
+    datatypes : Sequence[type[FileSet]]
+        the datatypes to collate. Must not be empty (see `check_datatypes`)
+    ignore_datatypes : Sequence[type[FileSet]], optional
+        the datatypes that are expected but not wanted. Pass
+        ``RecursionPlan.ignore_datatypes`` from `plan_recursion`, which adds
+        ``Directory`` for recursion over files only
+    allow_unrecognised : Sequence[str], optional
+        regular expressions matched from the start of the base name of each path that no
+        datatype recognised. A path that matches one is skipped instead of raising
+
+    Returns
+    -------
+    list[FileSet]
+        the file-sets, of both wanted and ignored datatypes. Empty if there are no
+        paths
+
+    Raises
+    ------
+    FormatMismatchError
+        listing the paths that no datatype recognised and no ``allow_unrecognised``
+        pattern matched
+    """
+    return from_paths(
+        list(fspaths),
+        *datatypes,
+        *ignore_datatypes,
+        ignore="|".join(allow_unrecognised) or None,
+    )
 
 
 class RecursionPlan(ty.NamedTuple):

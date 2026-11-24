@@ -102,8 +102,18 @@ contract, so each entry says "CLI unchanged".
   claimed entries. Tests in `accessionflow/api/tests/collate/test_classify.py`. Nothing
   calls it yet. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 7, `accessionflow/api/collate/classify.py`:
+  `classify_paths`, which classifies the expanded paths into file-sets of the wanted
+  and ignored datatypes, as `from_paths` does today. Tests in
+  `accessionflow/api/tests/collate/test_classify.py`, including the steps so far run
+  together. Nothing calls it yet. CLI unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 7: `check_datatypes` rejects an empty `datatypes`, which
+  would make classification try every installed format. The folder `collate()` calls
+  it first, so it now raises before anything is created. CLI options unchanged; an
+  explicitly empty `--datatype` is now an error. PR: pending.
 - 2026-11-24, Phase 1, step 6 (a revision of step 5): `claim_input_files` claims the
   files into `<run_dir>/files/` (`CLAIMED_FILES_DIRNAME`, `ClaimedFiles.files_dir`)
   instead of directly into the run directory, so that an input file named
@@ -178,6 +188,10 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 7:
+  - added in `accessionflow.api.collate`:
+    `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]`
+  - changed: `check_datatypes` raises `ValueError` if `datatypes` is empty
 - 2026-11-24, Phase 1, step 6:
   - added in `accessionflow.api.collate`:
     `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]`,

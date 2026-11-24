@@ -3,15 +3,17 @@ from pathlib import Path
 import pytest
 from fileformats.application import Json, Zip
 from fileformats.core import FileSet
+from fileformats.core.exceptions import FormatMismatchError
 from fileformats.generic import Directory, DirectoryOf
 from fileformats.medimage import DicomSeries
-from fileformats.text import Csv
+from fileformats.text import Csv, Plain
 
 from accessionflow.api.collate import (
     ClaimedFiles,
     RecursionPlan,
     check_datatypes,
     claim_input_files,
+    classify_paths,
     expand_claimed_paths,
     plan_recursion,
 )
@@ -172,3 +174,99 @@ def test_expand_two_source_roots(tmp_path: Path) -> None:
 def test_expand_empty_claim(tmp_path: Path) -> None:
     claimed = claim_input_files([], tmp_path / "proc", RUN_UID)
     assert _expand(claimed, [Json]) == []
+
+
+# classify_paths -------------------------------------------------------------------
+
+
+def _classify(
+    tmp_path: Path,
+    relpaths: list[str],
+    datatypes: list[type[FileSet]],
+    ignore_datatypes: list[type[FileSet]] = [],
+    allow_unrecognised: list[str] = [],
+) -> list[FileSet]:
+    claimed = _claim_tree(tmp_path, relpaths)
+    plan = plan_recursion(datatypes, ignore_datatypes)
+    fspaths = expand_claimed_paths(claimed, datatypes, plan)
+    return classify_paths(fspaths, datatypes, plan.ignore_datatypes, allow_unrecognised)
+
+
+def _names(filesets: list[FileSet]) -> list[tuple[str, str]]:
+    return sorted((type(f).__name__, f.fspath.name) for f in filesets)
+
+
+def test_classify_returns_wanted_and_ignored(tmp_path: Path) -> None:
+    filesets = _classify(tmp_path, ["a.json", "b.csv"], [Json], [Csv])
+    assert _names(filesets) == [("Csv", "b.csv"), ("Json", "a.json")]
+
+
+def test_classify_wanted_datatype_wins(tmp_path: Path) -> None:
+    (fileset,) = _classify(
+        tmp_path, ["d/x.json", "d/y.json"], [DirectoryOf[Json]], [Directory]
+    )
+    assert isinstance(fileset, DirectoryOf[Json])
+
+
+def test_classify_unrecognised_raises(tmp_path: Path) -> None:
+    with pytest.raises(FormatMismatchError, match="notes.txt"):
+        _classify(tmp_path, ["a.json", "notes.txt"], [Json])
+
+
+@pytest.mark.parametrize(
+    "allow_unrecognised, raises",
+    [
+        ([r".*\.txt"], False),
+        ([r".*\.md"], True),
+        ([r".*\.md", r".*\.txt"], False),
+        (["notes"], False),  # matched from the start of the base name
+        (["otes"], True),
+    ],
+)
+def test_classify_allow_unrecognised(
+    tmp_path: Path, allow_unrecognised: list[str], raises: bool
+) -> None:
+    if raises:
+        with pytest.raises(FormatMismatchError):
+            _classify(tmp_path, ["a.json", "notes.txt"], [Json], [], allow_unrecognised)
+    else:
+        filesets = _classify(
+            tmp_path, ["a.json", "notes.txt"], [Json], [], allow_unrecognised
+        )
+        assert _names(filesets) == [("Json", "a.json")]
+
+
+def test_classify_no_paths() -> None:
+    assert classify_paths([], [Json]) == []
+
+
+def test_classify_after_recursive_expansion(tmp_path: Path) -> None:
+    """Mirrors model/tests/test_accession.py::
+    test_from_paths_recursive_pulls_nested_directory_datatype up to classification"""
+    claimed = _claim_tree(
+        tmp_path,
+        [
+            "analysis/result.json",
+            "analysis/notes.txt",
+            "lesion/data.csv",
+            "plain/deep/result.json",
+            "scan.txt",
+        ],
+    )
+    datatypes: list[type[FileSet]] = [DirectoryOf[Json]]
+    plan = plan_recursion(datatypes, [DirectoryOf[Csv], Plain], recursive=True)
+    fspaths = expand_claimed_paths(claimed, datatypes, plan, recursive=True)
+    filesets = classify_paths(fspaths, datatypes, plan.ignore_datatypes)
+    assert sorted(
+        (type(f).__name__, f.fspath.relative_to(claimed.files_dir).as_posix())
+        for f in filesets
+    ) == [
+        ("DirectoryOf[Json]", "analysis"),
+        ("DirectoryOf[Json]", "plain/deep"),
+        ("Plain", "scan.txt"),
+    ]
+
+
+def test_check_datatypes_rejects_none() -> None:
+    with pytest.raises(ValueError, match="At least one datatype"):
+        check_datatypes([])
