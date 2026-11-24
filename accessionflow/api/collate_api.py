@@ -10,10 +10,6 @@ from tqdm import tqdm
 from accessionflow.helpers.logging import logger
 from accessionflow.model.accession import Accession
 
-# The subdirectory of a stage's output directory that accessions are built in before
-# they are moved into place
-BUILD_NAME_DEFAULT = "__build__"
-
 
 def save_accessions_to_dir(
     accessions: list[Accession],

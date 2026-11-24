@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fileformats.core import FileSet
 
-from accessionflow.api.collate_api import BUILD_NAME_DEFAULT
+from accessionflow.api.staging import BUILD_NAME_DEFAULT
 from accessionflow.helpers.logging import logger
 
 from ..staging import stage_studies

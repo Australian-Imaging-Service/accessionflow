@@ -104,7 +104,7 @@ The phases follow the pipeline order:
 
 | Phase | Scope | Status |
 | --- | --- | --- |
-| 0 | [Foundations](#phase-0-foundations): these documents, the shared `api/staging.py` and `cli/runner.py` | Documents done, the rest Planned |
+| 0 | [Foundations](#phase-0-foundations): these documents, the shared `api/staging.py` and `cli/runner.py` | Done |
 | 1 | [Collate, core and folder source](#phase-1-collate-core-and-folder-source) | Planned |
 | 2 | [Collate step API hand-off](#phase-2-collate-step-api-hand-off) to the flows repository, proving the pattern before it is repeated | Planned |
 | 3 | [Collate, Orthanc source](#phase-3-collate-orthanc-source) | Planned |
@@ -125,8 +125,13 @@ the pickle and retry contract tests, an extension of the CLI snapshot test, and 
 | Item | Status |
 | --- | --- |
 | `prefect-migration-docs/` with `ROADMAP.md` and `CHANGELOG.md` | Done |
-| `accessionflow/api/staging.py` | Planned |
-| `accessionflow/cli/runner.py` | Planned |
+| `accessionflow/api/staging.py` | Done |
+| `accessionflow/cli/runner.py` | Done |
+
+Phase 0 adds the shared helpers and moves `BUILD_NAME_DEFAULT` and
+`check_loop_options` into them. Each stage starts using `prepare_build_dir`,
+`move_into_place`, `for_each_accession`, `run_on_interval` and `log_stage_summary` in
+its own phase, starting with collate in Phase 1.
 
 ### `accessionflow/api/staging.py`
 
@@ -141,15 +146,17 @@ Helpers that every stage repeats today.
 - `move_into_place(saved_dir, output_dir, relpath) -> Path` wraps `Accession.move_dir`.
   Collate, label (see the comment at `api/label_api.py:254`), deidentify and annotate
   all build an accession and then move it into place.
-- `for_each_accession(accessions, step, desc, raise_errors) -> list[str]` is the progress
-  loop that every stage repeats: run `step` on each accession, and either raise or log
-  the error and collect its message.
+- `for_each_accession(accessions, step, desc, raise_errors, name_of) -> list[str]` is the
+  progress loop that every stage repeats: run `step` on each accession, and either raise
+  or log the error and collect its message. `name_of` names an accession in the
+  messages, by default by its `name` or else its `uid`, so it also works on the
+  listings that the later stages iterate over.
 
 ### `accessionflow/cli/runner.py`
 
 Helpers shared by the CLI commands.
 
-- `run_on_interval(run_once, loop, name)` replaces the `while True` … `time.sleep` block
+- `run_on_interval(run_once, loop, name, monotonic, sleep)` replaces the `while True` … `time.sleep` block
   repeated in 9 CLI modules: `collate folder`, `collate orthanc`, `label`, `attach`,
   `annotate`, `deidentify`, `package`, `store folder` and `store xnat`. Collate adopts it
   in Phase 1 and the other commands in their phases.

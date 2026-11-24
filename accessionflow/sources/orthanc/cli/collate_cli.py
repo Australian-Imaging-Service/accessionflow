@@ -5,11 +5,8 @@ from pathlib import Path
 import click
 from fileformats.core import FileSet
 
-from accessionflow.cli.collate_cli import (
-    check_loop_options,
-    collate_group,
-    collate_options,
-)
+from accessionflow.cli.collate_cli import collate_group, collate_options
+from accessionflow.cli.runner import check_loop_options
 from accessionflow.helpers.arg_types import Convert, LoggerConfig
 from accessionflow.helpers.logging import logger, set_logger_handling
 

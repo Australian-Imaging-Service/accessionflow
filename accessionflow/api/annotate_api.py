@@ -11,7 +11,7 @@ from accessionflow.helpers.logging import logger
 from accessionflow.helpers.remotes import LocalSessionListing, list_session_dirs
 from accessionflow.model.accession import Accession
 
-from .collate_api import BUILD_NAME_DEFAULT
+from .staging import BUILD_NAME_DEFAULT
 
 
 def annotate(

@@ -21,7 +21,7 @@ from accessionflow.stores.xnat.scan_types import (
     xnat_resource_label_from_sop_class,
 )
 
-from .collate_api import BUILD_NAME_DEFAULT
+from .staging import BUILD_NAME_DEFAULT
 
 OutputResources = ty.Mapping[str, tuple[type[FileSet], ty.Mapping[str, ty.Any]]]
 

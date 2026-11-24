@@ -104,12 +104,3 @@ def collate_options(func: ty.Callable[..., None]) -> ty.Callable[..., None]:
     for decorator in reversed(decorators):
         func = decorator(func)
     return func
-
-
-def check_loop_options(raise_errors: bool, loop: int) -> None:
-    """Refuse --raise-errors with --loop, since raising would end the loop"""
-    if raise_errors and loop >= 0:
-        raise ValueError(
-            "Cannot use --raise-errors and --loop together as the loop will "
-            "continue to run even if an error occurs"
-        )

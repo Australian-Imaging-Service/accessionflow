@@ -6,11 +6,8 @@ import click
 from fileformats.core import FileSet
 
 from accessionflow.cli.aliases import resolve_deprecated_alias
-from accessionflow.cli.collate_cli import (
-    check_loop_options,
-    collate_group,
-    collate_options,
-)
+from accessionflow.cli.collate_cli import collate_group, collate_options
+from accessionflow.cli.runner import check_loop_options
 from accessionflow.helpers.arg_types import (
     SEMICOLON_LIST,
     ClashSpec,

@@ -7,7 +7,8 @@ from pathlib import Path
 from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
-from accessionflow.api.collate_api import BUILD_NAME_DEFAULT, save_accessions_to_dir
+from accessionflow.api.collate_api import save_accessions_to_dir
+from accessionflow.api.staging import BUILD_NAME_DEFAULT
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,

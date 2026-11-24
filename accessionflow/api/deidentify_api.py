@@ -18,7 +18,7 @@ from accessionflow.helpers.metadata import Metadata
 from accessionflow.helpers.remotes import LocalSessionListing, list_session_dirs
 from accessionflow.model.accession import Accession, recipe_formats_for
 
-from .collate_api import BUILD_NAME_DEFAULT
+from .staging import BUILD_NAME_DEFAULT
 
 DEFAULT_RECIPE_DIR = "__default__"
 
