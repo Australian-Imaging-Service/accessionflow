@@ -14,6 +14,7 @@ from accessionflow.api.collate import (
     check_datatypes,
     claim_input_files,
     classify_paths,
+    disable_metadata_reading,
     expand_claimed_paths,
     plan_recursion,
 )
@@ -270,3 +271,37 @@ def test_classify_after_recursive_expansion(tmp_path: Path) -> None:
 def test_check_datatypes_rejects_none() -> None:
     with pytest.raises(ValueError, match="At least one datatype"):
         check_datatypes([])
+
+
+# disable_metadata_reading ---------------------------------------------------------
+
+
+def test_disable_metadata_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    filesets = _classify(
+        tmp_path, ["a.json", "b.csv", "d/x.json"], [Json, Csv, DirectoryOf[Json]]
+    )
+    # Stands in for reading a header, which plain JSON and CSV files don't have
+    monkeypatch.setattr(
+        FileSet, "_loaded_metadata", property(lambda self: {"from_header": 1})
+    )
+    for fileset in filesets:
+        fileset.metadata["from_path"] = "p"
+
+    # Directory matches DirectoryOf[Json] by isinstance
+    result = disable_metadata_reading(filesets, [Json, Directory])
+
+    assert result == filesets
+    by_type = {type(f).__name__: dict(f.metadata) for f in result}
+    assert by_type == {
+        "Json": {"from_path": "p"},
+        "DirectoryOf[Json]": {"from_path": "p"},
+        "Csv": {"from_path": "p", "from_header": 1},
+    }
+
+
+def test_disable_metadata_reading_with_no_datatypes(tmp_path: Path) -> None:
+    filesets = _classify(tmp_path, ["a.json"], [Json])
+    assert disable_metadata_reading(filesets) == filesets
+    assert not filesets[0].metadata.read_disabled

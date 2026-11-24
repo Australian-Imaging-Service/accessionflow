@@ -13,6 +13,7 @@ from .classify import (
     RecursionPlan,
     check_datatypes,
     classify_paths,
+    disable_metadata_reading,
     expand_claimed_paths,
     plan_recursion,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "RecursionPlan",
     "check_datatypes",
     "classify_paths",
+    "disable_metadata_reading",
     "expand_claimed_paths",
     "list_input_files",
     "make_run_uid",

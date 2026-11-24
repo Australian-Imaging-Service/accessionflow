@@ -13,6 +13,7 @@ __all__ = [
     "RecursionPlan",
     "check_datatypes",
     "classify_paths",
+    "disable_metadata_reading",
     "expand_claimed_paths",
     "plan_recursion",
 ]
@@ -96,6 +97,39 @@ def classify_paths(
         *ignore_datatypes,
         ignore="|".join(allow_unrecognised) or None,
     )
+
+
+def disable_metadata_reading(
+    filesets: ty.Sequence[FileSet],
+    dont_read_metadata: ty.Sequence[type[FileSet]] = (),
+) -> list[FileSet]:
+    """Stops the files of the given datatypes being read for metadata, so their only
+    metadata fields are those set on them, from their paths (`apply_path_metadata`) and
+    from metadata tables. Reading the headers of many files can be slow, e.g. on a
+    network file system, and is wasted when none of their fields are used.
+
+    The file-sets are changed in place (``fileset.metadata.read_disabled``), and the
+    same file-sets are returned.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets, from `classify_paths`
+    dont_read_metadata : Sequence[type[FileSet]], optional
+        the datatypes whose files aren't read, matched with ``isinstance``, so a
+        subclass is matched too
+
+    Returns
+    -------
+    list[FileSet]
+        the same file-sets
+    """
+    if dont_read_metadata:
+        skip = tuple(dont_read_metadata)
+        for fileset in filesets:
+            if isinstance(fileset, skip):
+                fileset.metadata.read_disabled = True
+    return list(filesets)
 
 
 class RecursionPlan(ty.NamedTuple):

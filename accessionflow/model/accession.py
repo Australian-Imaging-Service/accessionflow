@@ -960,10 +960,8 @@ class Accession:
             for fileset in filesets:
                 if isinstance(fileset, tuple(dont_read_metadata)):
                     # Only the metadata set on the fileset (e.g. from the path or a
-                    # metadata table) is used, its file(s) are never read for more.
-                    # TODO: set the public ``fileset.metadata.read_disabled`` instead
-                    # once the fileformats release that adds it is the minimum version
-                    fileset.metadata._read_disabled = True
+                    # metadata table) is used, its file(s) are never read for more
+                    fileset.metadata.read_disabled = True
 
         if ignore_datatypes:
             # drop filesets of an ignored datatype, but never one that also matches

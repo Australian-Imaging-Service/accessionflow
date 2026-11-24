@@ -108,8 +108,18 @@ contract, so each entry says "CLI unchanged".
   `accessionflow/api/tests/collate/test_classify.py`, including the steps so far run
   together. Nothing calls it yet. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 8, `accessionflow/api/collate/classify.py`:
+  `disable_metadata_reading`, which stops the files of the `--dont-read-metadata`
+  datatypes being read for metadata. Tests in
+  `accessionflow/api/tests/collate/test_classify.py`. Nothing calls it yet. CLI
+  unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 8: `Accession.from_paths` disables reading metadata with
+  the public `fileset.metadata.read_disabled` setter instead of the private
+  `_read_disabled`, now that `fileformats` 0.22.8, the minimum version, has it. Same
+  behaviour. CLI unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 7: `check_datatypes` rejects an empty `datatypes`, which
   would make classification try every installed format. The folder `collate()` calls
   it first, so it now raises before anything is created. CLI options unchanged; an
@@ -188,6 +198,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 8, added in `accessionflow.api.collate`:
+  - `disable_metadata_reading(filesets, dont_read_metadata=()) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 7:
   - added in `accessionflow.api.collate`:
     `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]`

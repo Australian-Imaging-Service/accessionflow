@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–7 are done.
+Status: In progress. Steps 0–8 are done.
 
 The current call chain is:
 
@@ -189,7 +189,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 5 | `claim_input_files` | new | batch, the first step that changes the input. **Done** |
 | 6 | `expand_claimed_paths` | L920-968 | batch. **Done** |
 | 7 | `classify_paths` | L990-999 | batch. **Done** |
-| 8 | `disable_metadata_reading` | L1000-1007 | batch |
+| 8 | `disable_metadata_reading` | L1000-1007 | batch. **Done** |
 | 9 | `drop_ignored_filesets` | L1009-1019 | batch |
 | 10 | `apply_path_metadata` | L1021-1035 | batch |
 | 11 | `tag_fileset_types` | L1037-1041 | batch |
@@ -244,7 +244,7 @@ Turning the claimed files into file-sets.
 | `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | L899-918 | **Done.** Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 6 uses it; `from_paths` keeps its own copy until it is removed. |
 | `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]` | L920-968 | **Done.** Takes the `RecursionPlan` from step 2. Applies today's expansion rules to the outermost claimed roots: without `recursive`, each root's top-level entries (so a subdirectory such as a DICOM directory is classified whole); with `recursive` and only file datatypes, every claimed file (the directories that today's glob also lists, only for `Directory` to drop them, are left out); with `recursive` and a directory format among the wanted or ignored datatypes, the prune-on-match walk, copied from `_recursive_collect` (L265) as `_walk_pruning`, so `--recursive` and directory datatypes behave as they do now. Only claimed files and the directories that hold them are returned, so a leftover temporary file or anything else in the run directory is never classified. A root inside another root is dropped, so nothing is listed twice; the caller claims with its input directories as the source roots to get today's top-level entries. `from_paths` keeps `_recursive_collect` until it is removed. |
 | `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]` | L990-999 | **Done.** `fileformats.core.from_paths` with the wanted datatypes before the ignored ones, so the first match wins and a wanted datatype beats an ignored one. `ignore_datatypes` is `RecursionPlan.ignore_datatypes` from step 2. File-sets of ignored datatypes are returned; step 9 drops them. The `allow_unrecognised` regular expressions are matched from the start of each path's base name, and any other unrecognised path raises `FormatMismatchError`. |
-| `disable_metadata_reading(filesets, dont_read_metadata) -> list[FileSet]` | L1000-1007 | |
+| `disable_metadata_reading(filesets, dont_read_metadata=()) -> list[FileSet]` | L1000-1007 | **Done.** Sets the public `fileset.metadata.read_disabled` (in `fileformats` 0.22.8, the minimum version) on each file-set that is an instance of one of the datatypes, so a subclass matches too. Changes the file-sets in place and returns the same ones. `from_paths` now uses the public setter too, which resolves its TODO. |
 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes) -> list[FileSet]` | L1009-1019 | |
 
 ### `accessionflow/api/collate/metadata.py`
