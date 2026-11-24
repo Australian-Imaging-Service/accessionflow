@@ -70,8 +70,19 @@ contract, so each entry says "CLI unchanged".
   `check_datatypes`, which raises if a datatype is both wanted and ignored. Tests in
   `accessionflow/api/tests/collate/test_classify.py`. PR: pending.
 
+- 2026-11-24, Phase 1, step 2, `accessionflow/api/collate/classify.py`:
+  `plan_recursion` and its result, `RecursionPlan`, which check the datatypes can be
+  used with `--recursive` and work out how the claimed files will be expanded. Tests in
+  `accessionflow/api/tests/collate/test_classify.py`. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 2: the folder source's `collate()` calls `plan_recursion`
+  after `check_datatypes`, so `--recursive` with `generic/directory` or
+  `generic/file-set` as a datatype fails before the build directory is created. The
+  error names the datatypes by MIME-like name instead of by class. New test
+  `api/tests/test_collate.py::test_collate_recursive_generic_directory_raises`. CLI
+  options unchanged; the error text changes. PR: pending.
 - 2026-11-24, Phase 1, step 1: the folder source's `collate()` calls
   `check_datatypes` first, so a datatype given to both `--datatype` and
   `--ignore-datatype` fails before the build directory is created. The error names
@@ -119,6 +130,9 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 2, added in `accessionflow.api.collate`:
+  - `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan`
+  - `RecursionPlan`, a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`
 - 2026-11-24, Phase 1, step 1, added in `accessionflow.api.collate`:
   - `check_datatypes(datatypes, ignore_datatypes=()) -> None`
 - 2026-11-24, Phase 1, step 0, added in `accessionflow.api.collate`:

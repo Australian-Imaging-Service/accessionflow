@@ -6,6 +6,7 @@ import pytest
 from fileformats.application import Json, Zip
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
+from fileformats.generic import Directory
 from fileformats.medimage import DicomDir, DicomSeries
 from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
     get_image as get_pet_image,  # type: ignore[import-untyped]
@@ -241,6 +242,25 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
             ignore_datatypes=[DicomSeries],
         )
     assert "medimage/dicom-series" in str(excinfo.value)
+    assert not output_dir.exists()
+
+
+def test_collate_recursive_generic_directory_raises(tmp_path: Path) -> None:
+    """The check runs before anything is created (principle 12)"""
+    output_dir = tmp_path / "collated"
+    empty_input = tmp_path / "empty"
+    empty_input.mkdir()
+
+    with pytest.raises(ValueError, match="generic/directory"):
+        collate(
+            input_paths=[str(empty_input)],
+            output_dir=output_dir,
+            datatypes=[Directory],
+            accession_uid=ACCESSION_UID_FIELD,
+            acquisition_id=ACQUISITION_ID_FIELD,
+            resource=RESOURCE_FIELD,
+            recursive=True,
+        )
     assert not output_dir.exists()
 
 

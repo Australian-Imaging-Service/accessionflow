@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0, 1 and 3 are done.
+Status: In progress. Steps 0–3 are done.
 
 The current call chain is:
 
@@ -183,7 +183,7 @@ The table lists the steps in the order they run. Line numbers are in
 | --- | --- | --- | --- |
 | 0 | `list_input_files` | L920-971, `_drop_excluded_paths` L231 | before collate, used by the CLI. **Done** |
 | 1 | `check_datatypes` | L888-897 | batch, checks the arguments, **the first step of the API**. **Done** |
-| 2 | `plan_recursion` | L899-918 | batch, checks the arguments |
+| 2 | `plan_recursion` | L899-918 | batch, checks the arguments. **Done** |
 | 3 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. **Done** |
 | 4 | `make_run_uid` | L980-988 | batch |
 | 5 | `claim_input_files` | new | batch, the first step that changes the input |
@@ -238,7 +238,7 @@ Turning the claimed files into file-sets.
 | Step | From | Notes |
 | --- | --- | --- |
 | `check_datatypes(datatypes, ignore_datatypes=()) -> None` | L888-897 | **Done.** Raises if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API. |
-| `plan_recursion(datatypes, ignore_datatypes, recursive) -> (recurse_into_dirs, ignore_datatypes)` | L899-918 | Pure. Rejects the generic directory and file-set types with `recursive`. |
+| `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | L899-918 | **Done.** Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 6 uses it; `from_paths` keeps its own copy until it is removed. |
 | `expand_claimed_paths(claimed, datatypes, ignore_datatypes, recursive, recurse_into_dirs) -> list[Path]` | L920-968 | Applies today's expansion rules to the claimed roots, including the prune-on-match walk for directory datatypes (`_recursive_collect`, L296), so `--recursive` and directory datatypes behave as they do now. Only claimed files can be found. |
 | `classify_paths(fspaths, datatypes, ignore_datatypes, allow_unrecognised) -> list[FileSet]` | L990-999 | |
 | `disable_metadata_reading(filesets, dont_read_metadata) -> list[FileSet]` | L1000-1007 | |
@@ -415,7 +415,9 @@ Status: Planned.
 - Export the Phase 1 steps and composites from `accessionflow.api.collate` (`__all__`),
   and document them in `docs/source/reference/api.rst`.
 - **Pickle contract test**: each step's arguments and return values round-trip through
-  `pickle`, including `Accession`, `FileSet`, `Path` and the option types. Anything that
+  `pickle`, including `Accession`, `FileSet`, `Path` and the option types. This includes
+  datatype classes, e.g. in `RecursionPlan.ignore_datatypes`: check that parametrised
+  ones such as `DirectoryOf[Json]` pickle. Anything that
   fails is fixed here, not worked around in the flows repository.
 - **Retry tests**: running `claim_input_files` again with the same `run_uid` after it
   stopped part way claims the remaining files and nothing twice, and running
