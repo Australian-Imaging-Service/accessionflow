@@ -148,8 +148,19 @@ contract, so each entry says "CLI unchanged".
   steps 7–14 together giving the same accessions as two `from_paths` tests. Nothing
   calls them yet. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 15, `accessionflow/api/collate/metadata.py`:
+  `inject_accession_tables`, which merges the rows of the accession, acquisition and
+  resource metadata tables into the grouped accessions. Tests in
+  `accessionflow/api/tests/collate/test_metadata.py`. Nothing calls it yet. CLI
+  unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 15 (a revision of step 8): `classify_paths` returns the
+  file-sets sorted by path. `fileformats` returns them in an order that can change from
+  run to run (with Python's hash randomisation), which made the order of the grouped
+  accessions change too. `Accession.from_paths` still has the unsorted order until it
+  is removed. CLI unchanged. PR: pending.
 - 2026-11-24, Phase 1 design, `ROADMAP.md`: a new step 3, `load_metadata_tables`,
   runs with the argument checks, before the claim, because a metadata table delivered
   with the data (as the Canfield export does) is claimed with it and is no longer at
@@ -243,6 +254,10 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 15:
+  - added in `accessionflow.api.collate`:
+    `inject_accession_tables(accessions, metadata_tables=None) -> list[Accession]`
+  - changed: `classify_paths` returns the file-sets sorted by path
 - 2026-11-24, Phase 1, step 14, added in `accessionflow.api.collate`:
   - `resource_label_for(fileset, resource_field=()) -> tuple[str, bool]`
   - `acquisition_id_for(fileset, acquisition_id_field, resource_label) -> tuple[str, bool]`

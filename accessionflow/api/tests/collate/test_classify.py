@@ -332,3 +332,10 @@ def test_drop_ignored_filesets_with_none_ignored(tmp_path: Path) -> None:
     kept = drop_ignored_filesets(filesets, [Json])
     assert kept == filesets
     assert kept is not filesets
+
+
+def test_classify_returns_filesets_sorted_by_path(tmp_path: Path) -> None:
+    relpaths = ["c.json", "a.json", "d.json", "b.json"]
+    filesets = _classify(tmp_path, relpaths, [Json])
+    paths = [str(f.fspath) for f in filesets]
+    assert paths == sorted(paths)

@@ -27,6 +27,7 @@ from .group import (
 )
 from .metadata import (
     apply_path_metadata,
+    inject_accession_tables,
     inject_fileset_tables,
     load_metadata_tables,
     tag_fileset_types,
@@ -48,6 +49,7 @@ __all__ = [
     "drop_ignored_filesets",
     "expand_claimed_paths",
     "group_into_accessions",
+    "inject_accession_tables",
     "inject_fileset_tables",
     "list_input_files",
     "load_metadata_tables",

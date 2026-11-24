@@ -14,6 +14,7 @@ from .claim import ClaimedFiles
 
 __all__ = [
     "apply_path_metadata",
+    "inject_accession_tables",
     "inject_fileset_tables",
     "load_metadata_tables",
     "tag_fileset_types",
@@ -177,3 +178,49 @@ def inject_fileset_tables(
     """
     MetadataTable.inject_list(list(metadata_tables or []), list(filesets))
     return list(filesets)
+
+
+def inject_accession_tables(
+    accessions: ty.Sequence[Accession],
+    metadata_tables: ty.Sequence[MetadataTable] | None = None,
+) -> list[Accession]:
+    """Merges into each accession, acquisition and resource the row of each metadata
+    table of that level (row frequency 'accession', 'acquisition' or 'resource') that
+    its metadata joins to. ``fileset`` tables were injected by
+    `inject_fileset_tables`, before grouping.
+
+    The accessions are injected first, then their acquisitions, then their resources.
+    An accession's or acquisition's metadata includes the fields that all its
+    file-sets agree on, so an accession table can join on e.g. ``PatientID``.
+
+    Load the tables with `load_metadata_tables` before the claim. The metadata of the
+    accessions, acquisitions and resources is changed in place, and the same
+    accessions are returned.
+
+    Parameters
+    ----------
+    accessions : Sequence[Accession]
+        the accessions, from `group_into_accessions`
+    metadata_tables : Sequence[MetadataTable], optional
+        the tables, from `load_metadata_tables`
+
+    Returns
+    -------
+    list[Accession]
+        the same accessions
+
+    Raises
+    ------
+    ValueError
+        if more than one row of a table joins to an accession, acquisition or resource
+    """
+    tables = list(metadata_tables or [])
+    if not tables:
+        return list(accessions)
+    MetadataTable.inject_list(tables, list(accessions))
+    for accession in accessions:
+        acquisitions = list(accession.acquisitions.values())
+        MetadataTable.inject_list(tables, acquisitions)
+        for acquisition in acquisitions:
+            MetadataTable.inject_list(tables, list(acquisition.resources.values()))
+    return list(accessions)

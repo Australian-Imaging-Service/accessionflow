@@ -15,12 +15,15 @@ from accessionflow.api.collate import (
     classify_paths,
     disable_metadata_reading,
     expand_claimed_paths,
+    group_into_accessions,
+    inject_accession_tables,
     inject_fileset_tables,
     load_metadata_tables,
     plan_recursion,
     tag_fileset_types,
 )
 from accessionflow.helpers.arg_types import (
+    IDSpec,
     MetadataTable,
     PathMetadataPattern,
     PathMetadataRegex,
@@ -323,3 +326,103 @@ def test_table_delivered_with_the_data(tmp_path: Path) -> None:
     )
     (fileset,) = inject_fileset_tables(filesets, [table])
     assert fileset.metadata["LesionID"] == "L1"
+
+
+# inject_accession_tables ----------------------------------------------------------
+
+SESS_AND_NAME = [PathMetadataRegex(r".*/(?P<sess>[^/]+)/(?P<name>[^/]+)\.json$", Json)]
+
+
+def _accessions(tmp_path: Path) -> list[Accession]:
+    _, claimed = _claim(tmp_path, ["s1/a.json", "s1/b.json", "s2/a.json"])
+    filesets = tag_fileset_types(
+        apply_path_metadata(_filesets(claimed, [Json]), SESS_AND_NAME, claimed)
+    )
+    return group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
+
+
+def test_inject_accession_tables_at_each_level(tmp_path: Path) -> None:
+    accessions = _accessions(tmp_path)
+    tables = load_metadata_tables(
+        [
+            _table(
+                tmp_path / "acc.csv",
+                "Session,Cohort\ns1,case\n",
+                "accession",
+                "Session=sess",
+            ),
+            _table(
+                tmp_path / "acq.csv",
+                "Name,Protocol\na,p-a\n",
+                "acquisition",
+                "Name=name",
+            ),
+            _table(
+                tmp_path / "res.csv",
+                "Name,Quality\na,good\nb,poor\n",
+                "resource",
+                "Name=name",
+            ),
+        ]
+    )
+    result = inject_accession_tables(accessions, tables)
+    assert result == accessions
+    s1, s2 = accessions
+    assert s1.metadata["Cohort"] == "case"
+    assert "Cohort" not in s2.metadata
+    assert s1.acquisitions["a"].metadata["Protocol"] == "p-a"
+    assert s2.acquisitions["a"].metadata["Protocol"] == "p-a"
+    assert "Protocol" not in s1.acquisitions["b"].metadata
+    quality = {
+        (a.uid, acq_id): r.metadata["Quality"]
+        for a in accessions
+        for acq_id, acq in a.acquisitions.items()
+        for r in acq.resources.values()
+    }
+    assert quality == {("s1", "a"): "good", ("s1", "b"): "poor", ("s2", "a"): "good"}
+
+
+def test_inject_accession_tables_skips_fileset_tables(tmp_path: Path) -> None:
+    accessions = _accessions(tmp_path)
+    table = _table(tmp_path / "fs.csv", "Name,FsNote\na,x\n", "fileset", "Name=name")
+    inject_accession_tables(accessions, load_metadata_tables([table]))
+    for accession in accessions:
+        assert "FsNote" not in accession.metadata
+        for acquisition in accession.acquisitions.values():
+            assert "FsNote" not in acquisition.metadata
+            for resource in acquisition.resources.values():
+                assert "FsNote" not in resource.metadata
+
+
+def test_inject_accession_tables_several_rows_raise(tmp_path: Path) -> None:
+    accessions = _accessions(tmp_path)
+    table = _table(
+        tmp_path / "acc.csv",
+        "Session,Cohort\ns1,a\ns1,b\n",
+        "accession",
+        "Session=sess",
+    )
+    with pytest.raises(ValueError, match="Multiple rows"):
+        inject_accession_tables(accessions, load_metadata_tables([table]))
+
+
+def test_inject_accession_tables_none(tmp_path: Path) -> None:
+    accessions = _accessions(tmp_path)
+    assert inject_accession_tables(accessions) == accessions
+    assert inject_accession_tables(accessions, []) == accessions
+
+
+def test_inject_accession_tables_after_table_is_claimed(tmp_path: Path) -> None:
+    """Mirrors api/tests/test_collate.py::
+    test_collate_injects_session_metadata_from_table, without DICOM"""
+    table_path = tmp_path / "clinical.csv"
+    table = _table(
+        table_path,
+        "Session,StudyComment\ns1,injected-via-table\nother,unused\n",
+        "accession",
+        "Session=sess",
+    )
+    load_metadata_tables([table])
+    table_path.unlink()
+    accessions = inject_accession_tables(_accessions(tmp_path), [table])
+    assert accessions[0].metadata["StudyComment"] == "injected-via-table"

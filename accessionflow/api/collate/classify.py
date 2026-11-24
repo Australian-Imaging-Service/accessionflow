@@ -85,8 +85,9 @@ def classify_paths(
     Returns
     -------
     list[FileSet]
-        the file-sets, of both wanted and ignored datatypes. Empty if there are no
-        paths
+        the file-sets, of both wanted and ignored datatypes, sorted by their paths so
+        that the order (e.g. of the accessions grouped from them) is the same on every
+        run. Empty if there are no paths
 
     Raises
     ------
@@ -94,12 +95,14 @@ def classify_paths(
         listing the paths that no datatype recognised and no ``allow_unrecognised``
         pattern matched
     """
-    return from_paths(
+    filesets = from_paths(
         list(fspaths),
         *datatypes,
         *ignore_datatypes,
         ignore="|".join(allow_unrecognised) or None,
     )
+    # fileformats returns them in an order that can change from run to run
+    return sorted(filesets, key=lambda f: sorted(str(p) for p in f.fspaths))
 
 
 def disable_metadata_reading(
