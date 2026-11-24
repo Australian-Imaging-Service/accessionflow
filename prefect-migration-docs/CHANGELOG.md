@@ -68,6 +68,11 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-24, Phase 1, step 1: the folder source's `collate()` creates its build
+  directory with `accessionflow.api.staging.prepare_build_dir`, instead of inline code
+  that did the same. `api/tests/test_collate.py::test_collate_creates_build_dir` now
+  also checks that collate creates an output directory that doesn't exist yet. CLI
+  unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 0: `accessionflow.model.accession._glob_to_regex` moved to
   `accessionflow.helpers.glob2re.glob_to_regex`, unchanged, so that the model and the
   collate steps share it. Its test moved to `helpers/tests/test_glob2re.py`. CLI

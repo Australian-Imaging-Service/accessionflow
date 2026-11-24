@@ -135,7 +135,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Step 0 is done.
+Status: In progress. Steps 0–1 are done.
 
 The current call chain is:
 
@@ -176,7 +176,7 @@ The table lists the steps in the order they run. Line numbers are in
 | # | Step | From | Kind |
 | --- | --- | --- | --- |
 | 0 | `list_input_files` | L920-971, `_drop_excluded_paths` L231 | before collate, used by the CLI. **Done** |
-| 1 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py` |
+| 1 | `prepare_build_dir` | `sources/folder/api/collate_api.py:293-297` | shared, `api/staging.py`. **Done** |
 | 2 | `check_datatypes` | L888-897 | batch |
 | 3 | `make_run_uid` | L980-988 | batch |
 | 4 | `claim_input_files` | new | batch, **the first step of the API** |

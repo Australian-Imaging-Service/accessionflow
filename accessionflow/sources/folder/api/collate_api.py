@@ -8,7 +8,7 @@ from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
 from accessionflow.api.collate_api import save_accessions_to_dir
-from accessionflow.api.staging import BUILD_NAME_DEFAULT
+from accessionflow.api.staging import prepare_build_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -291,11 +291,7 @@ def collate(
 
     errors = []
 
-    # Create sub-directory of the output directory to build sessions in before
-    # moving them into their final location
-    build_dir = output_dir / BUILD_NAME_DEFAULT
-
-    build_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = prepare_build_dir(output_dir)
 
     sessions = Accession.from_paths(
         files_path=input_paths,

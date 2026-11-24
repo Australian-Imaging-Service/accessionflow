@@ -240,8 +240,7 @@ def test_collate_ignore_datatypes_contradicting_datatype_raises(
 
 
 def test_collate_creates_build_dir(tmp_path: Path) -> None:
-    output_dir = tmp_path / "collated"
-    output_dir.mkdir()
+    output_dir = tmp_path / "collated"  # doesn't exist yet
     empty_input = tmp_path / "empty"
     empty_input.mkdir()
 
