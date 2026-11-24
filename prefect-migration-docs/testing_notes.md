@@ -137,6 +137,8 @@ same tests, and `git stash pop`.
   updating when that code moves (Phases 1 and 3).
 - **Shared helpers (Phase 0)**: `api/tests/test_staging.py` and
   `cli/tests/test_runner.py`.
+- **Collate steps (Phase 1)**: `api/tests/collate/`, one test module per step module,
+  using small trees of plain files in `tmp_path`, so they run in about a second.
 - `real-tests/` scripts drive collate through the CLI, so Python API changes don't
   affect them.
 

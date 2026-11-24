@@ -45,7 +45,6 @@ from accessionflow.model.accession import (
     Accession,
     Acquisition,
     _datatype_resource_label,
-    _glob_to_regex,
     _load_recipe,
     _metadata_diff,
 )
@@ -619,25 +618,6 @@ def test_from_paths_recursive_rejects_bare_generic_directory(tmp_path: Path) -> 
             acquisition_id_field=[IDSpec("__datatype__")],
             recursive=True,
         )
-
-
-@pytest.mark.parametrize(
-    "pattern, path, matches",
-    [
-        ("*/*/*.png", "a/b/c.png", True),
-        ("*/*/*.png", "a/c.png", False),
-        ("*/*/*.png", "w/x/y/z.png", False),
-        ("**/*.png", "a.png", True),
-        ("**/*.png", "a/b/c.png", True),
-        ("**/*.png", "a/b/c.txt", False),
-        ("**/[XY]P.png", "u/2026/XP.png", True),
-        ("**/[XY]P.png", "u/2026/ZP.png", False),
-        ("*.txt", "a.txt", True),
-        ("*.txt", "a/b.txt", False),
-    ],
-)
-def test_glob_to_regex(pattern: str, path: str, matches: bool) -> None:
-    assert bool(_glob_to_regex(pattern).match(path)) is matches
 
 
 def test_from_paths_exclude_path_drops_recognised_by_relative_depth(

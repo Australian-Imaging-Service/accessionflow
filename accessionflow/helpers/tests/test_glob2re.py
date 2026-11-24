@@ -1,6 +1,8 @@
 import re
 
-from accessionflow.helpers.glob2re import glob_to_re, transform_paths
+import pytest
+
+from accessionflow.helpers.glob2re import glob_to_re, glob_to_regex, transform_paths
 
 
 def test_glob_to_re():
@@ -49,3 +51,22 @@ def test_pattern_replacement():
         assert (
             str(transform_paths([paths], glb, old_values, new_values)[0]) == transformed
         )
+
+
+@pytest.mark.parametrize(
+    "pattern, path, matches",
+    [
+        ("*/*/*.png", "a/b/c.png", True),
+        ("*/*/*.png", "a/c.png", False),
+        ("*/*/*.png", "w/x/y/z.png", False),
+        ("**/*.png", "a.png", True),
+        ("**/*.png", "a/b/c.png", True),
+        ("**/*.png", "a/b/c.txt", False),
+        ("**/[XY]P.png", "u/2026/XP.png", True),
+        ("**/[XY]P.png", "u/2026/ZP.png", False),
+        ("*.txt", "a.txt", True),
+        ("*.txt", "a/b.txt", False),
+    ],
+)
+def testglob_to_regex(pattern: str, path: str, matches: bool) -> None:
+    assert bool(glob_to_regex(pattern).match(path)) is matches

@@ -154,3 +154,45 @@ _escaped_glob_replacement = re.compile(
 )
 
 _str_templ_replacement = re.compile(r"\{[\w\.]+\}")
+
+
+def glob_to_regex(pattern: str) -> re.Pattern[str]:
+    r"""Anchored regex for a ``/``-aware glob: ``*`` / ``?`` / ``[...]`` do not cross
+    ``/``, ``**`` (optionally followed by ``/``) matches across directory levels.
+    Equivalent to ``glob.translate(pattern, recursive=True)`` (py3.13+), spelled out
+    so 3.11/3.12 work too.
+    """
+    i, n = 0, len(pattern)
+    out = ["(?s:"]
+    while i < n:
+        c = pattern[i]
+        i += 1
+        if c == "*":
+            if i < n and pattern[i] == "*":
+                i += 1
+                if i < n and pattern[i] == "/":
+                    i += 1
+                    out.append("(?:[^/]*/)*")  # '**/' -> zero or more segments
+                else:
+                    out.append(".*")
+            else:
+                out.append("[^/]*")
+        elif c == "?":
+            out.append("[^/]")
+        elif c == "[":
+            j = i + 1 if i < n and pattern[i] in "!^" else i
+            j = j + 1 if j < n and pattern[j] == "]" else j
+            while j < n and pattern[j] != "]":
+                j += 1
+            if j >= n:
+                out.append(r"\[")
+            else:
+                inner = pattern[i:j]
+                i = j + 1
+                if inner[:1] in ("!", "^"):
+                    inner = "^" + inner[1:]
+                out.append("[" + inner + "]")
+        else:
+            out.append(re.escape(c))
+    out.append(r")\Z")
+    return re.compile("".join(out))
