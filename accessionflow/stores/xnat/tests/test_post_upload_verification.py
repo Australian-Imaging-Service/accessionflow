@@ -125,7 +125,7 @@ def test_a_name_only_comparison_is_logged_at_debug(
 
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert warnings == []
-    assert "compared by file name only" in caplog.text
+    assert "compared by name and, where known, size" in caplog.text
     assert "1:DICOM" in caplog.text and "PROJECT.SUBJECT.SESSION" in caplog.text
 
 
@@ -148,7 +148,7 @@ def test_partial_digests_log_debug_without_changing_comparison(caplog):
     assert comparison.without_checksums == {"new1.dcm", "new2.dcm"}
     with caplog.at_level(logging.DEBUG, logger="accessionflow"):
         log_name_only_comparison(comparison, "1:DICOM", "SESSION")
-    assert "2 file(s) compared by file name only" in caplog.text
+    assert "2 file(s) compared by name and, where known, size" in caplog.text
     remote["old1.dcm"] = "wrong"
     assert compare_resource_with_xnat(CALCULATED, remote).differing == {"old1.dcm"}
 
@@ -189,14 +189,15 @@ def test_existing_resource_logs_debug_without_warnings(caplog, scan_level, repai
     warnings = [
         r
         for r in caplog.records
-        if r.levelno == logging.WARNING and "compared by file name only" in r.message
+        if r.levelno == logging.WARNING
+        and "compared by name and, where known, size" in r.message
     ]
     assert warnings == []
     assert "SESSION" in caplog.text and resource.path in caplog.text
     caplog.clear()
     with caplog.at_level(logging.DEBUG, logger="accessionflow"):
         log_name_only_comparison(complete, resource.path, "SESSION")
-    assert "compared by file name only" in caplog.text
+    assert "compared by name and, where known, size" in caplog.text
 
 
 def test_empty_remote_listing_does_not_claim_a_name_comparison(caplog):

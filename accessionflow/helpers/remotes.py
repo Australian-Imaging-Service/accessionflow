@@ -88,6 +88,17 @@ class SessionListing(metaclass=abc.ABCMeta):
                 manifests[relpath] = manifest.contents
         return manifests
 
+    def resource_file_sizes(self, resource_path: str) -> dict[str, int]:
+        """The sizes of the staged files of a resource, keyed by their paths in the
+        resource, as its manifest names them. Read from the staging directory. A
+        listing that stages elsewhere overrides this."""
+        resource_dir = self.cache_path / resource_path
+        return {
+            p.relative_to(resource_dir).as_posix(): p.stat().st_size
+            for p in resource_dir.rglob("*")
+            if p.is_file()
+        }
+
     @property
     def expected_uid(self) -> str | None:
         """The UID that a session on XNAT must hold, or None if it isn't to be checked.
@@ -314,6 +325,15 @@ class S3SessionListing(SessionListing):
                 self.bucket.download_fileobj(obj.key, f)
             manifests[relpath] = Json(manifest_path).contents
         return manifests
+
+    def resource_file_sizes(self, resource_path: str) -> dict[str, int]:
+        """The sizes from the bucket listing, so that nothing is downloaded."""
+        parts = resource_path.split("/")
+        return {
+            "/".join(path_parts[len(parts) :]): int(obj.size)
+            for path_parts, obj in self.objects
+            if path_parts[: len(parts)] == parts and len(path_parts) > len(parts)
+        }
 
 
 @attrs.define

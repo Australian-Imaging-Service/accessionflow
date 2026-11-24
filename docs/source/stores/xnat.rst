@@ -100,8 +100,9 @@ When a resource is already on XNAT
 
 An accession can be staged again after its upload, e.g. when a late series arrives.
 ``store xnat`` then compares each resource with its copy on XNAT, by file name and
-checksum (by file name only when XNAT has no checksums). An identical resource is
-skipped. For a resource that is not the same, ``--on-resource-clash <policy> <scope>``
+checksum. When XNAT has no checksum for a file, it compares the file by name, and by
+size when both sizes are known. A matching resource is skipped. Without a checksum, a
+file that changes and keeps the same size looks the same. For a resource that is not the same, ``--on-resource-clash <policy> <scope>``
 decides what happens, by datatype (``ACFLOW_ON_RESOURCE_CLASH``):
 
 * ``merge`` uploads the files that XNAT does not have, when that is enough. Otherwise it

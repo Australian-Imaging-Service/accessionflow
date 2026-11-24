@@ -39,6 +39,7 @@ class FakeStagedResource:
 
     name = "REPORT"
     acquisition = None
+    fileset = None  # no staged files, so no sizes to compare
     path = "test_project:SUBJ:SESS:REPORT"
 
     def __init__(self, checksums: dict[str, str]) -> None:
