@@ -327,3 +327,16 @@ def test_claim_input_file_named_like_the_manifest(tmp_path: Path) -> None:
     assert (claimed.files_dir / CLAIMED_MANIFEST).read_text() == CLAIMED_MANIFEST
     assert ClaimedFiles.load(claimed.run_dir) == claimed  # the plan is intact
     assert not any(p.exists() for p in files)
+
+
+def test_claim_run_dir_is_absolute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    files = _tree(tmp_path / "inbox", "a.txt")
+    claimed = claim_input_files(files, Path("proc"), RUN_UID, [tmp_path / "inbox"])
+    assert claimed.run_dir == tmp_path / "proc" / RUN_UID
+    # A relative path to a claimed file is mapped too
+    assert claimed.original_of(
+        Path("proc") / RUN_UID / CLAIMED_FILES_DIRNAME / "a.txt"
+    ) == (tmp_path / "inbox" / "a.txt")

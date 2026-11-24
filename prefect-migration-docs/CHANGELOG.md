@@ -121,8 +121,18 @@ contract, so each entry says "CLI unchanged".
   ends with the same file-sets `from_paths` collates. Nothing calls it yet. CLI
   unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 10, `accessionflow/api/collate/metadata.py`:
+  `apply_path_metadata`, which adds the fields that `--path-metadata` and
+  `--path-metadata-regex` extract from each file-set's original path, from before it
+  was claimed. Tests in `accessionflow/api/tests/collate/test_metadata.py`. Nothing
+  calls it yet. CLI unchanged. PR: pending.
+
 ### Changed
 
+- 2026-11-24, Phase 1, step 10 (a revision of step 5): `claim_input_files` makes the
+  run directory absolute, and `ClaimedFiles.original_of` accepts relative paths, so
+  that a relative processing directory still maps the file-sets' absolute paths back to
+  the original ones. CLI unchanged. PR: pending.
 - 2026-11-24, Phase 1, step 8: `Accession.from_paths` disables reading metadata with
   the public `fileset.metadata.read_disabled` setter instead of the private
   `_read_disabled`, now that `fileformats` 0.22.8, the minimum version, has it. Same
@@ -205,6 +215,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 10, added in `accessionflow.api.collate`:
+  - `apply_path_metadata(filesets, path_metadata_regex=(), claimed=None) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 9, added in `accessionflow.api.collate`:
   - `drop_ignored_filesets(filesets, datatypes, ignore_datatypes=()) -> list[FileSet]`
 - 2026-11-24, Phase 1, step 8, added in `accessionflow.api.collate`:

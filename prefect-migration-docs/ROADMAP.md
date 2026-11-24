@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–9 are done.
+Status: In progress. Steps 0–10 are done.
 
 The current call chain is:
 
@@ -191,7 +191,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 7 | `classify_paths` | L990-999 | batch. **Done** |
 | 8 | `disable_metadata_reading` | L1000-1007 | batch. **Done** |
 | 9 | `drop_ignored_filesets` | L1009-1019 | batch. **Done** |
-| 10 | `apply_path_metadata` | L1021-1035 | batch |
+| 10 | `apply_path_metadata` | L1021-1035 | batch. **Done** |
 | 11 | `tag_fileset_types` | L1037-1041 | batch |
 | 12 | `inject_fileset_tables` | L1043 | batch |
 | 13 | `group_into_accessions` | L1045-1118 | batch |
@@ -224,7 +224,7 @@ Taking ownership of the files. New.
 | --- | --- |
 | `make_run_uid(input_files, now=None) -> str` | **Done.** L939-947. The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions. |
 | `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | **Done.** Moves each file into `processing_dir / run_uid`, keeping its path relative to the common directory of the source roots, so that directory datatypes and file names that repeat across directories survive. The roots default to each file's directory; the CLI will pass its input directories. On the same file system a claim is an atomic `os.rename`. Across file systems (`EXDEV`) the file is copied to a hidden temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. Checks the run UID and the roots before anything is moved (principle 12). With no files, nothing is created. Known limits: on one file system, a file still being written is moved and goes on growing in the processing area (completeness is checked by a later step); across file systems, two runs claiming the same file at once can both copy it. |
-| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 6, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 10. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
+| `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 6, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 10. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. `run_dir` is always absolute, as file-sets' paths are, and `original_of` accepts relative paths too. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
 | `finish_claim(claimed) -> list[Path]` | After staging: removes the run directory if it's empty. Otherwise it leaves it in place and returns, and logs, what is left: files that weren't recognised or were ignored, and the files of accessions that failed to stage. |
 
 `PROCESSING_NAME_DEFAULT = "__processing__"` and `CLAIMED_MANIFEST = "claimed.json"` are
@@ -253,7 +253,7 @@ Adding metadata from paths and tables.
 
 | Step | From | Notes |
 | --- | --- | --- |
-| `apply_path_metadata(filesets, path_metadata_regex, claimed) -> list[FileSet]` | L1021-1035 | Matches each fileset's **original** path, looked up in `claimed`, so `--path-metadata` and `--path-metadata-regex` patterns, including ones anchored with `/`, match the same paths as today. |
+| `apply_path_metadata(filesets, path_metadata_regex=(), claimed=None) -> list[FileSet]` | L1021-1035 | **Done.** Matches each regular expression, in order, against the path of each file-set of its datatype (`fspath`, or `parent` for a file-set of several files such as a DICOM series), mapped back to its **original** path with `claimed.original_of`, so `--path-metadata` and `--path-metadata-regex` patterns, including ones anchored with `/`, match the same paths as today. A later pattern wins for the same field. A pattern that doesn't match raises `ValueError` naming the original path. Changes the file-sets' metadata in place and returns them. No progress bar. Without `claimed`, the file-sets' own paths are matched. |
 | `tag_fileset_types(filesets) -> list[FileSet]` | L1037-1041 | |
 | `inject_fileset_tables(filesets, metadata_tables) -> list[FileSet]` | L1043 | |
 | `inject_accession_tables(accessions, metadata_tables) -> list[Accession]` | L1119-1128 | At the accession, acquisition and resource levels. |
@@ -396,9 +396,9 @@ doesn't need draining, since the accession directories don't change.
   - source roots, and files outside them
   - `ClaimedFiles` pickling and loading
 
-  Still to come: path metadata matching the original paths, including patterns
-  anchored with `/` (step 10), and `finish_claim` with and without files left over
-  (step 17).
+  Path metadata matching the original paths, including patterns anchored with `/`, is
+  tested with step 10 (**done**, `api/tests/collate/test_metadata.py`). Still to come:
+  `finish_claim` with and without files left over (step 17).
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
   The claim's part is done (`test_claim_leaves_files_that_arrive_after_listing`); the

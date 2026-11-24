@@ -122,7 +122,7 @@ class ClaimedFiles:
         ValueError
             if ``claimed_path`` isn't in ``files_dir``
         """
-        return self.base / Path(claimed_path).relative_to(self.files_dir)
+        return self.base / Path(claimed_path).absolute().relative_to(self.files_dir)
 
     @classmethod
     def load(cls, run_dir: Path) -> "ClaimedFiles":
@@ -214,7 +214,7 @@ def claim_input_files(
         roots, or the roots have no common directory. Nothing is moved
     """
     check_run_uid(run_uid, "claim directory")
-    run_dir = Path(processing_dir) / run_uid
+    run_dir = Path(processing_dir).absolute() / run_uid
     if (run_dir / CLAIMED_MANIFEST).exists():
         plan = _read_plan(run_dir)
         planned = {entry["original"] for entry in plan["files"]}

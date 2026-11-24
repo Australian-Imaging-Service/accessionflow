@@ -19,6 +19,7 @@ from .classify import (
     plan_recursion,
 )
 from .discover import list_input_files
+from .metadata import apply_path_metadata
 
 __all__ = [
     "CLAIMED_FILES_DIRNAME",
@@ -27,6 +28,7 @@ __all__ = [
     "ClaimedFiles",
     "claim_input_files",
     "RecursionPlan",
+    "apply_path_metadata",
     "check_datatypes",
     "classify_paths",
     "disable_metadata_reading",
