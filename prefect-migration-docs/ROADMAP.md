@@ -141,10 +141,10 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Steps 0–17 and 19 are done. Every step up to the
-accessions now exists, tested on its own and chained against today's `from_paths`
-results; what is left is `finish_claim` (step 18), the composites, and moving the folder
-`collate()` and the CLI onto them.
+Status: In progress. Steps 0–19 are done: every step exists, tested on its own,
+chained against today's `from_paths` results, and run end to end from claim to
+`finish_claim` (`test_steps_end_to_end_with_a_leftover`). What is left is the
+composites, and moving the folder `collate()` and the CLI onto them.
 
 The current call chain is:
 
@@ -202,7 +202,7 @@ The table lists the steps in the order they run. Line numbers are in
 | 15 | `inject_accession_tables` | L1119-1128 | batch. **Done** |
 | 16 | `warn_if_hardlinks_unavailable` | `api/collate_api.py:122-172` | batch. **Done** |
 | 17 | `stage_accession` | `api/collate_api.py:83-106` | **per accession**. **Done** |
-| 18 | `finish_claim` | new | batch |
+| 18 | `finish_claim` | new | batch. **Done** |
 | 19 | `remove_build_dir` | new | shared, `api/staging.py`. Prunes empty subdirectories first. **Done** |
 
 Steps 1–16, 18 and 19 run once per collation. Step 17 runs once per accession, and is the
@@ -230,7 +230,7 @@ Taking ownership of the files. New.
 | `make_run_uid(input_files, now=None) -> str` | **Done.** L939-947. The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions. |
 | `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | **Done.** Moves each file into `processing_dir / run_uid`, keeping its path relative to the common directory of the source roots, so that directory datatypes and file names that repeat across directories survive. The roots default to each file's directory; the CLI will pass its input directories. On the same file system a claim is an atomic `os.rename`. Across file systems (`EXDEV`) the file is copied to a hidden temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. Checks the run UID and the roots before anything is moved (principle 12). With no files, nothing is created. Known limits: on one file system, a file still being written is moved and goes on growing in the processing area (completeness is checked by a later step); across file systems, two runs claiming the same file at once can both copy it. |
 | `ClaimedFiles` | **Done.** A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 7, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 11. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. `run_dir` is always absolute, as file-sets' paths are, and `original_of` accepts relative paths too. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9). |
-| `finish_claim(claimed) -> list[Path]` | After staging: removes the run directory if it's empty. Otherwise it leaves it in place and returns, and logs, what is left: files that weren't recognised or were ignored, and the files of accessions that failed to stage. |
+| `finish_claim(claimed) -> list[Path]` | **Done.** After staging: deletes any hidden `.<name>.claiming` file left by a copy across file systems that was stopped part way (its source is still in the input), prunes the empty directories (`prune_empty_dirs`, shared with `remove_build_dir`), and removes the whole run directory, plan included, if no files are left. Otherwise it keeps the run directory with its plan, so `ClaimedFiles.load` still works, and returns, and logs once, the files left: ones `--allow-unrecognised` let through, file-sets of an `--ignore-datatype`, and the files of accessions that failed to stage. Returns `[]` if the run directory doesn't exist. |
 
 `PROCESSING_NAME_DEFAULT = "__processing__"` and `CLAIMED_MANIFEST = "claimed.json"` are
 exported with the steps. The processing area defaults to `<output_dir>/__processing__`, on the same file system
@@ -407,8 +407,8 @@ doesn't need draining, since the accession directories don't change.
   - `ClaimedFiles` pickling and loading
 
   Path metadata matching the original paths, including patterns anchored with `/`, is
-  tested with step 11 (**done**, `api/tests/collate/test_metadata.py`). Still to come:
-  `finish_claim` with and without files left over (step 18).
+  tested with step 11 (**done**, `api/tests/collate/test_metadata.py`), and
+  `finish_claim` with and without files left over with step 18 (**done**).
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
   The claim's part is done (`test_claim_leaves_files_that_arrive_after_listing`); the

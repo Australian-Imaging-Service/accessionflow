@@ -166,6 +166,13 @@ contract, so each entry says "CLI unchanged".
   skip the save and the move. Tests in `accessionflow/api/tests/collate/test_save.py`.
   Nothing calls them yet. CLI unchanged. PR: pending.
 
+- 2026-11-24, Phase 1, step 18, `accessionflow/api/collate/claim.py`: `finish_claim`,
+  which removes a run's directory from the processing area once its accessions are
+  staged, or keeps it with its plan and reports the files left in it. With
+  `accessionflow.api.staging.prune_empty_dirs`, taken out of `remove_build_dir`. Tests
+  in `accessionflow/api/tests/collate/test_claim.py`, including every step run end to
+  end from claim to `finish_claim`. Nothing calls it yet. CLI unchanged. PR: pending.
+
 ### Changed
 
 - 2026-11-24, Phase 1, step 17 (a fix to step 5's `remove_build_dir`): it removes
@@ -281,6 +288,9 @@ contract, so each entry says "CLI unchanged".
 
 ### Step API
 
+- 2026-11-24, Phase 1, step 18:
+  - added in `accessionflow.api.collate`: `finish_claim(claimed) -> list[Path]`
+  - added in `accessionflow.api.staging`: `prune_empty_dirs(root) -> None`
 - 2026-11-24, Phase 1, step 17, added in `accessionflow.api.collate`:
   - `save_to_build_dir(accession, build_dir, copy_mode=..., collation_map=None, conversion_map=None) -> Path`
   - `remove_claimed_files(accession, claimed) -> list[Path]`

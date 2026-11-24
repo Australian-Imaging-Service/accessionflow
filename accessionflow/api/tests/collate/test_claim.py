@@ -16,6 +16,7 @@ from accessionflow.api.collate import (
     PROCESSING_NAME_DEFAULT,
     ClaimedFiles,
     claim_input_files,
+    finish_claim,
     make_run_uid,
 )
 from accessionflow.model.accession import Accession
@@ -354,3 +355,109 @@ def test_claim_run_dir_is_absolute(
     assert claimed.original_of(
         Path("proc") / RUN_UID / CLAIMED_FILES_DIRNAME / "a.txt"
     ) == (tmp_path / "inbox" / "a.txt")
+
+
+# finish_claim ---------------------------------------------------------------------
+
+
+def test_finish_claim_removes_run_dir_when_all_staged(tmp_path: Path) -> None:
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "a.txt", "sub/b.txt", "sub/deeper/c.txt")
+    processing = tmp_path / "out" / PROCESSING_NAME_DEFAULT
+    claimed = claim_input_files(files, processing, RUN_UID, [inbox])
+    for path in claimed.files:
+        path.unlink()  # as stage_accession does
+    assert finish_claim(claimed) == []
+    assert not claimed.run_dir.exists()
+    assert processing.is_dir()
+
+
+def test_finish_claim_keeps_and_reports_leftovers(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "a.txt", "sub/notes.txt", "other/deeper/c.txt")
+    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    notes = claimed.files_dir / "sub" / "notes.txt"
+    for path in claimed.files:
+        if path != notes:
+            path.unlink()
+    with caplog.at_level("WARNING"):
+        assert finish_claim(claimed) == [notes]
+    assert (claimed.run_dir / CLAIMED_MANIFEST).exists()
+    assert ClaimedFiles.load(claimed.run_dir).files == {
+        notes: inbox / "sub" / "notes.txt"
+    }
+    assert not (claimed.files_dir / "other").exists()  # empty directories pruned
+    (warning,) = [
+        r.getMessage() for r in caplog.records if "weren't staged" in r.getMessage()
+    ]
+    assert warning.startswith("Leaving 1 files")
+    assert str(claimed.run_dir) in warning
+
+
+def test_finish_claim_removes_partial_copies(tmp_path: Path) -> None:
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "a.txt")
+    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    (claimed.files_dir / "a.txt").unlink()
+    (claimed.files_dir / ".b.txt.claiming").write_text("a copy stopped part way")
+    assert finish_claim(claimed) == []
+    assert not claimed.run_dir.exists()
+
+
+def test_finish_claim_without_run_dir(tmp_path: Path) -> None:
+    empty = claim_input_files([], tmp_path / "proc", RUN_UID)
+    assert finish_claim(empty) == []
+    files = _tree(tmp_path / "inbox", "a.txt")
+    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [tmp_path / "inbox"])
+    for path in claimed.files:
+        path.unlink()
+    assert finish_claim(claimed) == []
+    assert finish_claim(claimed) == []  # again
+
+
+def test_steps_end_to_end_with_a_leftover(tmp_path: Path) -> None:
+    """Claims, collects and stages one accession, leaving the file no datatype took"""
+    from fileformats.application import Json
+
+    from accessionflow.api.collate import (
+        apply_path_metadata,
+        classify_paths,
+        expand_claimed_paths,
+        group_into_accessions,
+        plan_recursion,
+        stage_accession,
+    )
+    from accessionflow.api.staging import prepare_build_dir, remove_build_dir
+    from accessionflow.helpers.arg_types import IDSpec, PathMetadataRegex
+    from accessionflow.model.accession import Accession
+
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "s1/a.json", "s1/b.json", "s1/notes.txt")
+    for path in files[:2]:
+        path.write_text(f'{{"{path.stem}": 1}}')
+    output_dir = tmp_path / "out"
+    build_dir = prepare_build_dir(output_dir, RUN_UID)
+    claimed = claim_input_files(
+        files, output_dir / PROCESSING_NAME_DEFAULT, RUN_UID, [inbox]
+    )
+    plan = plan_recursion([Json], recursive=True)
+    filesets = classify_paths(
+        expand_claimed_paths(claimed, [Json], plan, recursive=True),
+        [Json],
+        plan.ignore_datatypes,
+        allow_unrecognised=[r".*\.txt"],
+    )
+    filesets = apply_path_metadata(
+        filesets,
+        [PathMetadataRegex(r".*/(?P<sess>[^/]+)/(?P<name>[^/]+)\.json$", Json)],
+        claimed,
+    )
+    (accession,) = group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
+    staged_dir = stage_accession(accession, build_dir, output_dir, claimed)
+
+    assert finish_claim(claimed) == [claimed.files_dir / "s1" / "notes.txt"]
+    assert remove_build_dir(build_dir) == []
+    assert sorted(Accession.load(staged_dir).acquisitions) == ["a", "b"]
+    assert not any(p.exists() for p in files)  # all three were claimed

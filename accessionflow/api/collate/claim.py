@@ -12,7 +12,7 @@ from pathlib import Path
 
 import attrs
 
-from accessionflow.api.staging import check_run_uid
+from accessionflow.api.staging import check_run_uid, prune_empty_dirs
 from accessionflow.helpers.logging import logger
 
 __all__ = [
@@ -21,6 +21,7 @@ __all__ = [
     "PROCESSING_NAME_DEFAULT",
     "ClaimedFiles",
     "claim_input_files",
+    "finish_claim",
     "make_run_uid",
 ]
 
@@ -254,6 +255,52 @@ def claim_input_files(
         run_dir,
     )
     return claimed
+
+
+def finish_claim(claimed: ClaimedFiles) -> list[Path]:
+    """Finishes a run's claim once its accessions have been staged: removes the run
+    directory from the processing area if no claimed files are left in it, or else keeps
+    it, with its plan, and reports what is left.
+
+    Files can be left for several reasons: files that no datatype recognised but
+    ``--allow-unrecognised`` let through, file-sets of an ``--ignore-datatype``, and the
+    files of accessions that failed to stage. What to do with them is an open question
+    in the roadmap. Empty directories are removed in either case, and so is a hidden
+    temporary file left by a copy across file systems that was stopped part way, whose
+    source is still in the input.
+
+    Parameters
+    ----------
+    claimed : ClaimedFiles
+        the run's claimed files, from `claim_input_files`
+
+    Returns
+    -------
+    list[Path]
+        the files left in the run directory, sorted. Empty if it was removed, or never
+        created
+    """
+    run_dir = claimed.run_dir
+    if not run_dir.exists():
+        return []
+    files_dir = claimed.files_dir
+    if files_dir.exists():
+        for tmp in files_dir.rglob(f".*{_COPY_SUFFIX}"):
+            tmp.unlink()
+        prune_empty_dirs(files_dir)
+        leftovers = sorted(p for p in files_dir.rglob("*") if not p.is_dir())
+    else:
+        leftovers = []
+    if leftovers:
+        logger.warning(
+            "Leaving %s files that weren't staged in '%s' (e.g. '%s')",
+            len(leftovers),
+            run_dir,
+            leftovers[0].relative_to(files_dir),
+        )
+        return leftovers
+    shutil.rmtree(run_dir)
+    return []
 
 
 def _make_plan(

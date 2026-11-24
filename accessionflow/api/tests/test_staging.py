@@ -8,6 +8,7 @@ from accessionflow.api.staging import (
     for_each_accession,
     move_into_place,
     prepare_build_dir,
+    prune_empty_dirs,
     remove_build_dir,
 )
 
@@ -137,3 +138,16 @@ def test_for_each_accession_raises_errors() -> None:
 
 def test_for_each_accession_without_errors() -> None:
     assert for_each_accession([1, 2], lambda a: None, "Testing") == []
+
+
+def test_prune_empty_dirs(tmp_path: Path) -> None:
+    (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+    (tmp_path / "keep" / "empty").mkdir(parents=True)
+    (tmp_path / "keep" / "file.txt").write_text("x")
+    prune_empty_dirs(tmp_path)
+    assert sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*")) == [
+        "keep",
+        "keep/file.txt",
+    ]
+    prune_empty_dirs(tmp_path / "keep")
+    assert tmp_path.is_dir()

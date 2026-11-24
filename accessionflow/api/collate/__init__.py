@@ -7,6 +7,7 @@ from .claim import (
     PROCESSING_NAME_DEFAULT,
     ClaimedFiles,
     claim_input_files,
+    finish_claim,
     make_run_uid,
 )
 from .classify import (
@@ -56,6 +57,7 @@ __all__ = [
     "disable_metadata_reading",
     "drop_ignored_filesets",
     "expand_claimed_paths",
+    "finish_claim",
     "group_into_accessions",
     "inject_accession_tables",
     "inject_fileset_tables",

@@ -21,6 +21,7 @@ __all__ = [
     "BUILD_NAME_DEFAULT",
     "check_run_uid",
     "prepare_build_dir",
+    "prune_empty_dirs",
     "remove_build_dir",
     "move_into_place",
     "for_each_accession",
@@ -83,6 +84,20 @@ def prepare_build_dir(output_dir: Path, run_uid: str) -> Path:
     return build_dir
 
 
+def prune_empty_dirs(root: Path) -> None:
+    """Removes every empty directory under ``root``, deepest first, so that a directory
+    left empty by removing its empty subdirectories goes too. ``root`` itself is kept.
+
+    Parameters
+    ----------
+    root : Path
+        the directory to prune
+    """
+    for dirpath, _, _ in sorted(os.walk(root), key=lambda w: -len(w[0])):
+        if Path(dirpath) != Path(root) and not any(Path(dirpath).iterdir()):
+            Path(dirpath).rmdir()
+
+
 def remove_build_dir(build_dir: Path) -> list[Path]:
     """Removes a run's build directory once the run has finished, if it holds no files.
     Empty subdirectories are removed with it. ``BUILD_NAME_DEFAULT`` itself is left,
@@ -102,10 +117,8 @@ def remove_build_dir(build_dir: Path) -> list[Path]:
     if not build_dir.exists():
         return []
     # Empty subdirectories, e.g. the one Accession.save makes for its resources'
-    # temporary files, are removed first, deepest first
-    for dirpath, _, _ in sorted(os.walk(build_dir), key=lambda w: -len(w[0])):
-        if Path(dirpath) != build_dir and not any(Path(dirpath).iterdir()):
-            Path(dirpath).rmdir()
+    # temporary files, are removed first
+    prune_empty_dirs(build_dir)
     leftovers = sorted(build_dir.iterdir())
     if leftovers:
         logger.warning(
