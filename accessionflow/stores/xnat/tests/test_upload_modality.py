@@ -179,3 +179,12 @@ def test_upload_session_fields_uses_xnatpy_mapping():
         "scanner_site": "Sydney",
         "study_year": "2026",
     }
+
+
+def test_upload_session_fields_rejects_non_string():
+    xsession = SimpleNamespace(fields={})
+
+    with pytest.raises(ValueError, match="must be a string"):
+        store_api._upload_session_fields({"scanner_site": 5}, "sess", xsession)
+
+    assert xsession.fields == {}

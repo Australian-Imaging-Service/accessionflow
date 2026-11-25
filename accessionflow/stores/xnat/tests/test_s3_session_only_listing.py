@@ -219,3 +219,25 @@ def test_s3_session_label_upload_fails_when_session_is_missing(
                 s3_cache_dir=tmp_path,
                 raise_errors=True,
             )
+
+
+def test_s3_staged_fields_rejects_duplicate_objects(tmp_path: Path) -> None:
+    listing = _session_only_listing(tmp_path)
+    listing.objects = [
+        (["__FIELDS__.json"], MagicMock(key="first")),
+        (["__FIELDS__.json"], MagicMock(key="second")),
+    ]
+
+    with pytest.raises(ValueError, match="Duplicate __FIELDS__.json"):
+        _ = listing.staged_fields
+
+
+def test_s3_staged_fields_rejects_non_object_json(tmp_path: Path) -> None:
+    listing = _session_only_listing(tmp_path)
+    listing.objects = [(["__FIELDS__.json"], MagicMock(key="fields"))]
+    listing.bucket.download_fileobj.side_effect = lambda key, stream: stream.write(
+        b"[]"
+    )
+
+    with pytest.raises(ValueError, match="Malformed __FIELDS__.json"):
+        _ = listing.staged_fields

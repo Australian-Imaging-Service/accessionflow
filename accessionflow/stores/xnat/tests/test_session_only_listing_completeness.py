@@ -73,25 +73,6 @@ class FakeConnection:
         return {"ResultSet": {"Result": rows}}
 
     def get(self, uri: str) -> FakeResponse:
-        if uri == "/data/experiments/XNAT_E1":
-            return FakeResponse(
-                {
-                    "items": [
-                        {
-                            "children": [
-                                {
-                                    "field": "fields/field",
-                                    "items": [
-                                        {"data_fields": {"name": name, "field": value}}
-                                        for name, value in self.fields.items()
-                                    ],
-                                }
-                            ]
-                        }
-                    ]
-                }
-            )
-
         assert uri == "/data/experiments/XNAT_E1/resources/7/files", uri
         return FakeResponse(
             {
@@ -193,3 +174,11 @@ def test_staged_fields_must_match_before_skipping_session_only_upload(
 
     xnat = FakeConnection(dict(LOCAL), fields=remote_fields)
     assert listing.all_uploaded(xnat) is expected  # type: ignore[arg-type]
+
+
+def test_staged_fields_rejects_non_object_json(tmp_path: ty.Any) -> None:
+    listing = _staging(tmp_path, LOCAL)
+    (listing.cache_path / "__FIELDS__.json").write_text("[]")
+
+    with pytest.raises(ValueError, match="Malformed __FIELDS__.json"):
+        _ = listing.staged_fields
