@@ -113,6 +113,7 @@ class _XnatResource:
 class _Connection:
     def __init__(self, labels: tuple[str, ...] = ("000077",)) -> None:
         self.session = MagicMock(label="000077", uri="/data/experiments/XNAT_E1")
+        self.session.fields = {"existing": "keep"}
         self.experiments = MagicMock()
         self.experiments.values.return_value = [
             self.session if label == "000077" else MagicMock(label=label)
@@ -157,6 +158,11 @@ def test_uploads_s3_pdf_to_existing_session_resource(
             ),
             Body=b"%PDF-1.4\n%%EOF\n",
         )
+        s3.put_object(
+            Bucket=BUCKET,
+            Key="desired_structure/000077/__FIELDS__.json",
+            Body=b'{"scanner_site": "Sydney"}',
+        )
         repo = _Repo()
         with patch.object(XnatS3SessionOnlyListing, "all_uploaded", return_value=False):
             errors = store(
@@ -176,6 +182,10 @@ def test_uploads_s3_pdf_to_existing_session_resource(
     assert len(repo.connection.created_resource.uploads) == 1
     assert repo.connection.created_resource.uploads[0][1] == {
         "radiology-doc-report.pdf"
+    }
+    assert repo.connection.session.fields == {
+        "existing": "keep",
+        "scanner_site": "Sydney",
     }
 
 
@@ -209,3 +219,25 @@ def test_s3_session_label_upload_fails_when_session_is_missing(
                 s3_cache_dir=tmp_path,
                 raise_errors=True,
             )
+
+
+def test_s3_staged_fields_rejects_duplicate_objects(tmp_path: Path) -> None:
+    listing = _session_only_listing(tmp_path)
+    listing.objects = [
+        (["__FIELDS__.json"], MagicMock(key="first")),
+        (["__FIELDS__.json"], MagicMock(key="second")),
+    ]
+
+    with pytest.raises(ValueError, match="Duplicate __FIELDS__.json"):
+        _ = listing.staged_fields
+
+
+def test_s3_staged_fields_rejects_non_object_json(tmp_path: Path) -> None:
+    listing = _session_only_listing(tmp_path)
+    listing.objects = [(["__FIELDS__.json"], MagicMock(key="fields"))]
+    listing.bucket.download_fileobj.side_effect = lambda key, stream: stream.write(
+        b"[]"
+    )
+
+    with pytest.raises(ValueError, match="Malformed __FIELDS__.json"):
+        _ = listing.staged_fields

@@ -31,6 +31,7 @@ from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
 
 from .arg_types import StoreCredentials
+from .fields import Fields
 from .logging import logger
 from .metadata import Metadata
 
@@ -98,6 +99,16 @@ class SessionListing(metaclass=abc.ABCMeta):
             for p in resource_dir.rglob("*")
             if p.is_file()
         }
+
+    @property
+    def staged_fields(self) -> dict[str, ty.Any]:
+        try:
+            fields = json.loads((self.cache_path / Fields.FNAME).read_text())
+        except FileNotFoundError:
+            return {}
+        if not isinstance(fields, dict):
+            raise ValueError(f"Malformed {Fields.FNAME} in '{self.name}'")
+        return fields
 
     @property
     def expected_uid(self) -> str | None:
@@ -326,6 +337,21 @@ class S3SessionListing(SessionListing):
             manifests[relpath] = Json(manifest_path).contents
         return manifests
 
+    @property
+    def staged_fields(self) -> dict[str, ty.Any]:
+        fields_objects = [obj for parts, obj in self.objects if parts == [Fields.FNAME]]
+        if not fields_objects:
+            return {}
+        if len(fields_objects) != 1:
+            raise ValueError(f"Duplicate {Fields.FNAME} in '{self.name}'")
+
+        with io.BytesIO() as stream:
+            self.bucket.download_fileobj(fields_objects[0].key, stream)
+            fields = json.loads(stream.getvalue())
+
+        if not isinstance(fields, dict):
+            raise ValueError(f"Malformed {Fields.FNAME} in '{self.name}'")
+        return fields
     def resource_file_sizes(self, resource_path: str) -> dict[str, int]:
         """The sizes from the bucket listing, so that nothing is downloaded."""
         parts = resource_path.split("/")

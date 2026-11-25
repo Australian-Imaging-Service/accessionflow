@@ -1312,6 +1312,16 @@ class XnatSessionListing(SessionListing):
                 self.name,
             )
             return False
+
+        fields = self.staged_fields
+        if fields:
+            connection.clearcache()
+            xsession = connection.create_object(session_uri)
+            if any(
+                xsession.fields.get(name) != value for name, value in fields.items()
+            ):
+                return False
+
         return True
 
 
