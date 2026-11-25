@@ -20,6 +20,7 @@ __all__ = ["list_input_files"]
 def list_input_files(
     input_paths: ty.Sequence[str | Path],
     exclude_paths: ty.Sequence[str] = (),
+    metadata_table_paths: ty.Sequence[Path] = (),
 ) -> list[Path]:
     """Lists the files to collate, from the CLI's ``INPUT_PATHS`` and
     ``--exclude-path``
@@ -40,6 +41,9 @@ def list_input_files(
       still listed.
     - Only regular files are listed (a symlink to a file counts). Symlinked
       directories aren't followed.
+    - The metadata tables (``--metadata-table``) are left out, wherever they are
+      listed from, so a table kept in an input directory stays where it is, for this
+      run (`load_metadata_tables`) and later ones.
 
     Parameters
     ----------
@@ -51,6 +55,10 @@ def list_input_files(
         if its relative path, or that of any directory it is in, matches, so a pattern
         that matches a directory excludes everything in it. Files found by a glob
         pattern outside every input directory aren't matched
+    metadata_table_paths : Sequence[Path], optional
+        the files of the metadata tables, which are left out. A table is recognised
+        however its path is written (relative, with '..' or through a symlink). A path
+        that doesn't exist is ignored
 
     Returns
     -------
@@ -86,6 +94,8 @@ def list_input_files(
     fspaths = [fix_long_path(p) for p in fspaths]
     if exclude_paths:
         fspaths = _drop_excluded(fspaths, input_dirs, exclude_paths)
+    if metadata_table_paths:
+        fspaths = _drop_metadata_tables(fspaths, metadata_table_paths)
 
     unique: dict[Path, Path] = {}
     for fspath in fspaths:
@@ -127,6 +137,23 @@ def _drop_excluded(
             candidates.extend("/".join(parts[: i + 1]) for i in range(len(parts)))
         if any(m.match(c) for m in matchers for c in candidates):
             logger.debug("Excluding '%s' (matched --exclude-path)", fspath)
+            continue
+        kept.append(fspath)
+    return kept
+
+
+def _drop_metadata_tables(
+    fspaths: ty.Sequence[Path], metadata_table_paths: ty.Sequence[Path]
+) -> list[Path]:
+    """Drops the files that are metadata tables. Only the files with the base name of a
+    table are compared with it, so a large listing isn't stat'ed in full"""
+    tables = [Path(t) for t in metadata_table_paths if Path(t).exists()]
+    # A table named through a symlink may have a different name from its file
+    names = {t.name for t in tables} | {t.resolve().name for t in tables}
+    kept: list[Path] = []
+    for fspath in fspaths:
+        if fspath.name in names and any(os.path.samefile(fspath, t) for t in tables):
+            logger.debug("Leaving out metadata table '%s'", fspath)
             continue
         kept.append(fspath)
     return kept

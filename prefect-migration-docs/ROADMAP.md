@@ -437,7 +437,8 @@ variables. The body of `collate_cmd` becomes:
    `--unlink-source` (`ACFLOW_UNLINK_SOURCE`) is given: both are deprecated and have no
    effect
 5. `run_on_interval(run_once, loop, "collate")`, where each run calls
-   `list_input_files(INPUT_PATHS, exclude_paths)` and then `collate(...)`
+   `list_input_files(INPUT_PATHS, exclude_paths, metadata_table_paths=[t.table_file.fspath
+   for t in metadata_tables])` and then `collate(...)`
    with the files it listed and the arguments built by the option converters. Listing
    again on every run picks up the files that arrived since the last one.
 
@@ -453,6 +454,10 @@ These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
 - **Files that weren't recognised or were ignored** used to stay in the input
   directory. They are now moved into the processing area too, and stay there (see
   `finish_claim`).
+- **`--metadata-table` files in an input directory are no longer collated.** They are
+  left in place, so they are still there for later runs, and no longer need
+  `--allow-unrecognised` to get past classification. A table whose name changes with
+  every delivery (e.g. a timestamp) still has to be named on each run.
 - **Hidden files and directories are never collated.** They are left in the input
   directory. Before, a run without `--recursive` collated the hidden entries at the top
   level of an input directory.

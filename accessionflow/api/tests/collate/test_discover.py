@@ -133,3 +133,66 @@ def test_fifo_skipped(tmp_path: Path) -> None:
     _touch(tmp_path, "a.txt")
     os.mkfifo(tmp_path / "pipe")
     assert _rel(list_input_files([tmp_path]), tmp_path) == ["a.txt"]
+
+
+# metadata_table_paths -------------------------------------------------------------
+
+TABLE = "Dermoscopy/LesionData.csv"
+
+
+def test_metadata_table_in_input_dir_left_out(tmp_path: Path) -> None:
+    _touch(tmp_path, "s1/a.png", TABLE)
+    listed = list_input_files([tmp_path], metadata_table_paths=[tmp_path / TABLE])
+    assert _rel(listed, tmp_path) == ["s1/a.png"]
+
+
+def test_metadata_table_outside_inputs_changes_nothing(tmp_path: Path) -> None:
+    inbox = tmp_path / "inbox"
+    _touch(inbox, "s1/a.png")
+    _touch(tmp_path, "tables/LesionData.csv")
+    listed = list_input_files(
+        [inbox], metadata_table_paths=[tmp_path / "tables" / "LesionData.csv"]
+    )
+    assert _rel(listed, inbox) == ["s1/a.png"]
+
+
+def test_metadata_table_matched_however_spelled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _touch(tmp_path, "s1/a.png", TABLE)
+    monkeypatch.chdir(tmp_path)
+    for spelling in (Path(TABLE), tmp_path / "s1" / ".." / TABLE):
+        listed = list_input_files([tmp_path], metadata_table_paths=[spelling])
+        assert _rel(listed, tmp_path) == ["s1/a.png"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="needs POSIX symlinks")
+def test_metadata_table_named_through_a_symlink(tmp_path: Path) -> None:
+    inbox = tmp_path / "inbox"
+    _touch(inbox, "s1/a.png", TABLE)
+    link = tmp_path / "current-table.csv"
+    link.symlink_to(inbox / TABLE)
+    listed = list_input_files([inbox], metadata_table_paths=[link])
+    assert _rel(listed, inbox) == ["s1/a.png"]
+
+
+def test_same_name_in_another_directory_is_listed(tmp_path: Path) -> None:
+    _touch(tmp_path, TABLE, "other/LesionData.csv")
+    listed = list_input_files([tmp_path], metadata_table_paths=[tmp_path / TABLE])
+    assert _rel(listed, tmp_path) == ["other/LesionData.csv"]
+
+
+def test_metadata_table_from_glob_or_named_input_left_out(tmp_path: Path) -> None:
+    _touch(tmp_path, "s1/a.csv", TABLE)
+    table = tmp_path / TABLE
+    by_glob = list_input_files([f"{tmp_path}/**/*.csv"], metadata_table_paths=[table])
+    assert _rel(by_glob, tmp_path) == ["s1/a.csv"]
+    assert list_input_files([table], metadata_table_paths=[table]) == []
+
+
+def test_missing_metadata_table_ignored(tmp_path: Path) -> None:
+    _touch(tmp_path, "a.png")
+    listed = list_input_files(
+        [tmp_path], metadata_table_paths=[tmp_path / "missing.csv"]
+    )
+    assert _rel(listed, tmp_path) == ["a.png"]

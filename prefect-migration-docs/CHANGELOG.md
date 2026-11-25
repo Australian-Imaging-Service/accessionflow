@@ -175,6 +175,12 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-25, Phase 1, step 0: `list_input_files` takes `metadata_table_paths` and
+  leaves those files out of the listing, wherever they are listed from. A
+  `--metadata-table` file kept in an input directory is then never claimed, stays in
+  place for later runs, and doesn't need `--allow-unrecognised`. This reverses the
+  earlier choice to claim a table with the data. Tests in
+  `accessionflow/api/tests/collate/test_discover.py`. CLI unchanged. PR: pending.
 - 2026-11-25, Phase 1 design, `ROADMAP.md` only: a next action for `finish_claim` to
   move any files left after staging to an unprocessed directory given as a parameter,
   and then remove the run directory. This answers the open question about the run
@@ -340,7 +346,7 @@ Choosing the files, before collation starts. Not part of the collate API itself.
 
 | # | Step | Module | From | Notes |
 | --- | --- | --- | --- | --- |
-| 0 | `list_input_files(input_paths, exclude_paths=()) -> list[Path]` | `discover.py` | L920-971, `_drop_excluded_paths` L231 | Expands directories and glob patterns into a sorted list of files without duplicates, as the CLI's `INPUT_PATHS` and `--exclude-path` do today, and applies `fix_long_path`. Every directory is listed in full, so a directory datatype in it (e.g. a DICOM directory) is kept whole. The listing is the same with or without `--recursive`, which only changes classification (step 7), so the function has no `recursive` argument. Hidden files and directories are skipped at every depth, since they are often uploads in progress; a hidden file named as an input path is still listed. Symlinked directories aren't followed. An exclude pattern that matches a directory excludes everything in it. Excluded files are never listed, so they are never moved |
+| 0 | `list_input_files(input_paths, exclude_paths=(), metadata_table_paths=()) -> list[Path]` | `discover.py` | L920-971, `_drop_excluded_paths` L231 | Expands directories and glob patterns into a sorted list of files without duplicates, as the CLI's `INPUT_PATHS` and `--exclude-path` do today, and applies `fix_long_path`. Every directory is listed in full, so a directory datatype in it (e.g. a DICOM directory) is kept whole. The listing is the same with or without `--recursive`, which only changes classification (step 7), so the function has no `recursive` argument. Hidden files and directories are skipped at every depth, since they are often uploads in progress; a hidden file named as an input path is still listed. Symlinked directories aren't followed. An exclude pattern that matches a directory excludes everything in it. Excluded files are never listed, so they are never moved The files of the metadata tables (`metadata_table_paths`) are left out wherever they are listed from, compared as files (`os.path.samefile`, for files with a table's base name), so a table kept in an input directory stays in place. |
 
 ##### Check parameters
 
@@ -350,7 +356,7 @@ Only read and check, so a bad configuration fails before anything is created or 
 | --- | --- | --- | --- | --- |
 | 1 | `check_datatypes(datatypes, ignore_datatypes=()) -> None` | `classify.py` | L888-897 | Raises if no datatype is given (`fileformats.core.from_paths` with no candidates tries every installed format), or if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API |
 | 2 | `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | `classify.py` | L899-918 | Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 7 uses it; `from_paths` keeps its own copy until it is removed |
-| 3 | `load_metadata_tables(metadata_tables=None) -> list[MetadataTable]` | `metadata.py` | `MetadataTable.table` (lazy today) | Reads every `--metadata-table` into memory and checks that its join columns are in it, before the claim. A table is often delivered with the data (the Canfield export writes its CSV into the input directory), so it is claimed with the files around it and is no longer at its path when the tables are injected; the loaded rows are kept in the `MetadataTable`, which pickles with them. A missing, unreadable or mismatched table fails before anything is created or moved |
+| 3 | `load_metadata_tables(metadata_tables=None) -> list[MetadataTable]` | `metadata.py` | `MetadataTable.table` (lazy today) | Reads every `--metadata-table` into memory and checks that its join columns are in it, before the claim. A table is often delivered with the data (the Canfield export writes its CSV into the input directory), so it is claimed with the files around it and is no longer at its path when the tables are injected; the loaded rows are kept in the `MetadataTable`, which pickles with them. A missing, unreadable or mismatched table fails before anything is created or moved Since `list_input_files` leaves the tables out, a table in an input directory is no longer claimed; loading early still fails a bad table before the claim, and lets the tables be passed between tasks. |
 
 ##### Set up the run directory
 
@@ -434,6 +440,8 @@ Remove what the run leaves in the processing area and the build directory.
 
 #### Dated entries
 
+- 2026-11-25, Phase 1, step 0, changed in `accessionflow.api.collate`:
+  - `list_input_files(input_paths, exclude_paths=(), metadata_table_paths=()) -> list[Path]`
 - 2026-11-24, Phase 1, step 18:
   - added in `accessionflow.api.collate`: `finish_claim(claimed) -> list[Path]`
   - added in `accessionflow.api.staging`: `prune_empty_dirs(root) -> None`
