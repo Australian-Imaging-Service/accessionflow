@@ -175,6 +175,15 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-25, Phase 1, steps 4 and 5 (the next action "a random run UID"):
+  `make_run_uid` makes the UTC time, `_` and 6 random hex characters, instead of a hash
+  of the input paths and the time, so two runs that list the same files in the same
+  second no longer share a UID, and it no longer takes the files.
+  `prepare_build_dir` takes `exclusive`, and the folder `collate()` creates its build
+  directory exclusively, making another UID if one is taken. Tests in
+  `api/tests/collate/test_claim.py`, `api/tests/test_staging.py` and
+  `api/tests/test_collate.py::test_collate_makes_a_new_run_uid_on_a_clash`. CLI
+  unchanged. PR: pending.
 - 2026-11-25, Phase 1, step 0: `list_input_files` takes `metadata_table_paths` and
   leaves those files out of the listing, wherever they are listed from. A
   `--metadata-table` file kept in an input directory is then never claimed, stays in
@@ -364,8 +373,8 @@ Make the run's UID and build directory, and take ownership of the input files.
 
 | # | Step | Module | From | Notes |
 | --- | --- | --- | --- | --- |
-| 4 | `make_run_uid(input_files, now=None) -> str` | `claim.py` | L980-988 | The first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the UTC time as `YYYYMMDDHHMMSS` (injectable clock, principle 5): the same format as today, with no `.`, so it still follows the labels in a staged directory's name. It names the run's build directory (`__build__/<run_uid>/`), its claim directory and its accessions. Made once per run; a retry passes the same value on. Until the CLI passes the listed files, the folder `collate()` makes it from its input paths, and `from_paths` makes its own for the accessions |
-| 5 | `prepare_build_dir(output_dir, run_uid) -> Path` | `api/staging.py` | `sources/folder/api/collate_api.py:293-297` | Creates and returns the run's own build directory, `<output_dir>/__build__/<run_uid>/`, so that runs writing to the same output directory at the same time don't collide. Checks the run UID first (`check_run_uid`): a single path component, not hidden, not starting with `__`. Added in Phase 0; given the run UID in Phase 1. |
+| 4 | `make_run_uid(now=None, rng=None) -> str` | `claim.py` | L980-988 | The UTC time as `YYYYMMDDHHMMSS`, an underscore, and 6 random hex characters (`secrets.token_hex(3)`), e.g. `20261125073856_a3f09c`; the clock and the random source can be injected (principle 5). UIDs sort by time, and two runs in the same second get different ones. No `.` or `-`, so it still follows the labels in a staged directory's name. It names the run's build directory, its claim directory and its accessions. Made once per run; a new run creates its build directory exclusively and makes another UID if it is taken, and a retry passes the same UID on. Until 2026-11-25 it was the first 6 hex characters of a SHA-256 over the files' sorted absolute paths, then the time, which gave two runs listing the same files in the same second the same UID. |
+| 5 | `prepare_build_dir(output_dir, run_uid, exclusive=False) -> Path` | `api/staging.py` | `sources/folder/api/collate_api.py:293-297` | Creates and returns the run's own build directory, `<output_dir>/__build__/<run_uid>/`, so that runs writing to the same output directory at the same time don't collide. With `exclusive=True`, for a new run, raises `FileExistsError` if it already exists, so a UID another run has taken is caught; by default it reuses it, for a retry. Checks the run UID first (`check_run_uid`): a single path component, not hidden, not starting with `__`. Added in Phase 0; given the run UID and `exclusive` in Phase 1. |
 | 6 | `claim_input_files(input_files, processing_dir, run_uid, source_roots=None) -> ClaimedFiles` | `claim.py` | new | Moves each file into `processing_dir / run_uid`, keeping its path relative to the common directory of the source roots, so that directory datatypes and file names that repeat across directories survive. The roots default to each file's directory; the CLI will pass its input directories. On the same file system a claim is an atomic `os.rename`. Across file systems (`EXDEV`) the file is copied to a hidden temporary name, the source is checked to be unchanged (size and modification time), the copy is renamed into place and the source is deleted. A changed source is left for the next run. A file that has disappeared since it was listed is logged and skipped. Checks the run UID and the roots before anything is moved (principle 12). With no files, nothing is created. Known limits: on one file system, a file still being written is moved and goes on growing in the processing area (completeness is checked by a later step); across file systems, two runs claiming the same file at once can both copy it |
 | – | `ClaimedFiles` | `claim.py` | new | A frozen attrs record that pickles: the run directory, the base the layout is relative to, the source roots, and each claimed file's original path. The files are claimed into `files_dir`, the run directory's `files/` subdirectory (`CLAIMED_FILES_DIRNAME`), apart from the plan, so that no input file can clash with `claimed.json`. `claimed_roots` gives the roots' equivalents in `files_dir`, for step 7, and `original_of` the original path of a claimed file or of a directory that holds claimed files (e.g. a directory datatype), for step 11. `ClaimedFiles.load(run_dir)` rebuilds it from `claimed.json`. `run_dir` is always absolute, as file-sets' paths are, and `original_of` accepts relative paths too. The plan is written atomically once, before any file moves; it isn't rewritten after each move, which would be quadratic for large runs. A retry with the same `run_uid` uses the saved plan and reads each file's state from the file system: a file already claimed is skipped, and a source left behind by a crash after a copy across file systems is deleted if it is unchanged (principle 9) |
 
@@ -440,6 +449,9 @@ Remove what the run leaves in the processing area and the build directory.
 
 #### Dated entries
 
+- 2026-11-25, Phase 1, steps 4 and 5, changed:
+  - `make_run_uid(now=None, rng=None) -> str`, which no longer takes the input files
+  - `prepare_build_dir(output_dir, run_uid, exclusive=False) -> Path`
 - 2026-11-25, Phase 1, step 0, changed in `accessionflow.api.collate`:
   - `list_input_files(input_paths, exclude_paths=(), metadata_table_paths=()) -> list[Path]`
 - 2026-11-24, Phase 1, step 18:
@@ -511,6 +523,10 @@ Remove what the run leaves in the processing area and the build directory.
 
 ### Staging layout
 
+- 2026-11-25, Phase 1: the run directories in `__build__/` are named
+  `YYYYMMDDHHMMSS_<6 random hex characters>` instead of a path hash followed by the
+  time. Staged accession names still use `Accession.from_paths`' run UID until it is
+  removed, and both forms parse, so nothing needs draining. PR: pending.
 - 2026-11-24, Phase 1, step 17: `stage_accession` writes a transient
   `<accession dir>.staged` marker in the run's build directory between moving an
   accession into place and deleting its claimed files. It is removed straight after,

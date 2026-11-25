@@ -1,7 +1,7 @@
 import errno
-import hashlib
 import os
 import pickle
+import random
 import re
 import shutil
 import typing as ty
@@ -22,63 +22,51 @@ from accessionflow.api.collate import (
 from accessionflow.model.accession import Accession
 
 NOW = datetime(2026, 11, 24, 1, 2, 3, tzinfo=UTC)
-FILES = [Path("/in/b.dcm"), Path("/in/a.dcm"), Path("/in/sub/c.dcm")]
 
 
 def test_make_run_uid_format() -> None:
-    run_uid = make_run_uid(FILES, now=NOW)
-    assert re.fullmatch(r"[0-9a-f]{6}\d{14}", run_uid)
-    assert run_uid.endswith("20261124010203")
+    run_uid = make_run_uid()
+    assert re.fullmatch(r"\d{14}_[0-9a-f]{6}", run_uid)
+    assert "." not in run_uid and "-" not in run_uid
+
+
+def test_make_run_uid_injected_clock_and_random_source() -> None:
+    run_uid = make_run_uid(now=NOW, rng=random.Random(0))
+    assert run_uid == make_run_uid(now=NOW, rng=random.Random(0))
+    assert run_uid == f"20261124010203_{random.Random(0).getrandbits(24):06x}"
 
 
 def test_make_run_uid_converts_to_utc() -> None:
     same_instant = datetime(
         2026, 11, 24, 11, 2, 3, tzinfo=timezone(timedelta(hours=10))
     )
-    assert make_run_uid(FILES, now=same_instant) == make_run_uid(FILES, now=NOW)
+    assert make_run_uid(now=same_instant, rng=random.Random(0)) == make_run_uid(
+        now=NOW, rng=random.Random(0)
+    )
 
 
 def test_make_run_uid_default_clock() -> None:
     before = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
-    suffix = make_run_uid(FILES)[6:]
+    timestamp = make_run_uid()[:14]
     after = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
-    assert before <= suffix <= after
+    assert before <= timestamp <= after
 
 
-def test_make_run_uid_ignores_order() -> None:
-    assert make_run_uid(FILES, now=NOW) == make_run_uid(FILES[::-1], now=NOW)
+def test_make_run_uids_sort_by_time() -> None:
+    earlier = make_run_uid(now=NOW, rng=random.Random(1))
+    later = make_run_uid(now=NOW + timedelta(seconds=1), rng=random.Random(0))
+    assert earlier < later
 
 
-def test_make_run_uid_relative_and_absolute_paths_match(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    assert make_run_uid([Path("a.dcm")], now=NOW) == make_run_uid(
-        [tmp_path / "a.dcm"], now=NOW
-    )
-
-
-def test_make_run_uid_differs_for_different_files() -> None:
-    assert make_run_uid(FILES, now=NOW)[:6] != make_run_uid(FILES[:2], now=NOW)[:6]
-
-
-def test_make_run_uid_hash() -> None:
-    """Pins the algorithm: SHA-256 over the sorted absolute paths"""
-    crypto = hashlib.sha256()
-    for path in sorted(str(p.absolute()) for p in FILES):
-        crypto.update(path.encode())
-    assert make_run_uid(FILES, now=NOW)[:6] == crypto.hexdigest()[:6]
-
-
-def test_make_run_uid_no_files() -> None:
-    assert make_run_uid([], now=NOW) == (
-        hashlib.sha256().hexdigest()[:6] + "20261124010203"
+def test_make_run_uid_differs_in_the_same_second() -> None:
+    assert make_run_uid(now=NOW, rng=random.Random(0)) != make_run_uid(
+        now=NOW, rng=random.Random(1)
     )
 
 
 def test_make_run_uid_round_trips_through_staged_dirname() -> None:
     """The run UID follows the labels in a staged directory's name, separated by '.'"""
-    run_uid = make_run_uid(FILES, now=NOW)
+    run_uid = make_run_uid(now=NOW)
     labels, parsed = Accession._labels_from_dirname(f"proj.subj.sess.{run_uid}", {})
     assert parsed == run_uid
     assert labels == {"project": "proj", "subject": "subj", "session": "sess"}
@@ -86,7 +74,7 @@ def test_make_run_uid_round_trips_through_staged_dirname() -> None:
 
 # claim_input_files ----------------------------------------------------------------
 
-RUN_UID = "abc12320261124010203"
+RUN_UID = "20261124010203_abc123"
 
 
 def _tree(root: Path, *relpaths: str) -> list[Path]:
@@ -289,7 +277,7 @@ def test_claim_retry_after_crash_part_way(
     clean = claim_input_files(
         _tree(tmp_path / "inbox2", "1.txt", "2.txt", "3.txt", "4.txt"),
         tmp_path / "proc",
-        "def45620261124010203",
+        "20261124010203_def456",
         [tmp_path / "inbox2"],
     )
     assert sorted(p.relative_to(clean.run_dir) for p in clean.files) == sorted(

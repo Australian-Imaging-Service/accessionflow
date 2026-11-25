@@ -267,6 +267,37 @@ def test_collate_recursive_generic_directory_raises(tmp_path: Path) -> None:
     assert not output_dir.exists()
 
 
+def test_collate_makes_a_new_run_uid_on_a_clash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import accessionflow.sources.folder.api.collate_api as folder_collate
+
+    taken, fresh = "20260101000000_aaaaaa", "20260101000000_bbbbbb"
+    uids = iter([taken, fresh])
+    monkeypatch.setattr(folder_collate, "make_run_uid", lambda: next(uids))
+    output_dir = tmp_path / "collated"
+    other_run = output_dir / BUILD_NAME_DEFAULT / taken
+    other_run.mkdir(parents=True)
+    (other_run / "in-progress.txt").write_text("another run's build")
+    empty_input = tmp_path / "empty"
+    empty_input.mkdir()
+
+    collate(
+        input_paths=[str(empty_input)],
+        output_dir=output_dir,
+        datatypes=[DicomSeries],
+        accession_uid=ACCESSION_UID_FIELD,
+        acquisition_id=ACQUISITION_ID_FIELD,
+        resource=RESOURCE_FIELD,
+    )
+
+    # The other run's build directory is untouched, and this run's has been removed
+    assert (other_run / "in-progress.txt").read_text() == "another run's build"
+    assert sorted(p.name for p in (output_dir / BUILD_NAME_DEFAULT).iterdir()) == [
+        taken
+    ]
+
+
 def test_collate_creates_build_dir(tmp_path: Path) -> None:
     output_dir = tmp_path / "collated"  # doesn't exist yet
     empty_input = tmp_path / "empty"

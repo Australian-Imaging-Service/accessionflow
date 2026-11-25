@@ -26,7 +26,7 @@ from accessionflow.api.staging import prepare_build_dir, remove_build_dir
 from accessionflow.helpers.arg_types import IDSpec, PathMetadataRegex
 from accessionflow.model.accession import Accession
 
-RUN_UID = "abc12320261124010203"
+RUN_UID = "20261124010203_abc123"
 
 
 def _accessions(tmp_path: Path) -> list[Accession]:

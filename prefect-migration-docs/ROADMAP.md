@@ -142,9 +142,9 @@ own phase, starting with collate in Phase 1:
 ## Phase 1: Collate, core and folder source
 
 Status: In progress. The step functions (steps 0–19) are done; see
-[`CHANGELOG.md`](CHANGELOG.md). What is left: the next actions,
-[a random run UID](#next-action-a-random-run-uid),
-[the revised flow](#next-action-the-revised-flow) and
+[`CHANGELOG.md`](CHANGELOG.md). The first next action,
+[a random run UID](#next-action-a-random-run-uid), is done too. What is left: the next
+actions [the revised flow](#next-action-the-revised-flow) and
 [moving leftover files to an unprocessed directory](#next-action-leftover-files-to-an-unprocessed-directory),
 then the composites, the option
 converters, moving the folder `collate()` and the CLI onto the steps, the removals, and
@@ -229,14 +229,20 @@ stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
 - `group.py` imports `_datatype_resource_label` and `_DERIVED_ID` from the model, which
   still uses them; they move into `group.py`.
 - The folder `collate()` already calls `check_datatypes` and `plan_recursion` first
-  (discarding the plan), makes its run UID from its input paths rather than the listed
-  files, and builds in `__build__/<run_uid>/`, removed in a `finally`.
+  (discarding the plan), makes a random run UID (`make_run_uid()`) and creates its
+  build directory, `__build__/<run_uid>/`, exclusively, making another UID if it is
+  taken, and removes it in a `finally`. The accessions still get `from_paths`' own run
+  UID, a hash of the paths and the time, until it is removed.
 - `api/collate_api.py::save_accessions_to_dir` imports `warn_if_hardlinks_unavailable`
   from `save.py`, and keeps today's loop with `wait_period` and `unlink_source`.
 
 ### Next action: a random run UID
 
-Status: Planned.
+Status: **Done** (2026-11-25). The UID is `YYYYMMDDHHMMSS_<6 random hex characters>`,
+e.g. `20261125073856_a3f09c`; the underscore makes it easier to read and is safe
+everywhere the UID goes. `prepare_build_dir(output_dir, run_uid, exclusive=False)`
+creates a new run's directory exclusively with `exclusive=True`, and the folder
+`collate()` makes up to five UIDs until one is free. See `CHANGELOG.md`.
 
 **Keep the timestamp and replace the path hash with random characters.** Today
 `make_run_uid` (step 4) is the first 6 hex characters of a SHA-256 over the files' paths,
@@ -405,9 +411,9 @@ Plain-Python sequences of the steps. Their signatures can change.
 - `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 16–17:
   `warn_if_hardlinks_unavailable`, then `for_each_accession(stage_accession)`.
 - `sources/folder/api/collate_api.py::collate(input_files, output_dir, ...)` runs
-  `check_datatypes`, `plan_recursion`, `load_metadata_tables`, `make_run_uid`,
-  `prepare_build_dir`,
-  `claim_input_files`, `collect_accessions` (with the patterns from
+  `check_datatypes`, `plan_recursion`, `load_metadata_tables`, `make_run_uid` and
+  `prepare_build_dir(..., exclusive=True)` (repeated with a new UID while the build
+  directory is taken, as the folder `collate()` already does), `claim_input_files`, `collect_accessions` (with the patterns from
   `merge_path_metadata`), `save_accessions_to_dir`, `finish_claim`, `remove_build_dir`
   (in a `finally`, so that a run that raises doesn't leave an empty build directory)
   and `log_stage_summary`. A `FormatMismatchError` from classification names the

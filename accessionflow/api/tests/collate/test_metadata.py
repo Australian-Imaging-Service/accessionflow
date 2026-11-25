@@ -31,7 +31,7 @@ from accessionflow.helpers.arg_types import (
 from accessionflow.model.accession import Accession
 from accessionflow.sources.folder.api.collate_api import merge_path_metadata
 
-RUN_UID = "abc12320261124010203"
+RUN_UID = "20261124010203_abc123"
 
 
 def _claim(

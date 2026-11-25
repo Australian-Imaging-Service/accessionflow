@@ -2,9 +2,10 @@
 Phase 1)"""
 
 import errno
-import hashlib
 import json
 import os
+import random
+import secrets
 import shutil
 import typing as ty
 from datetime import UTC, datetime
@@ -47,38 +48,38 @@ _MTIME_TOLERANCE_NS = 2_000_000_000
 
 
 def make_run_uid(
-    input_files: ty.Sequence[Path],
     now: datetime | None = None,
+    rng: random.Random | None = None,
 ) -> str:
     """Makes the UID of a collation run, which names its build directory, its claim
     directory and the staged directory of each accession it collates
 
-    The UID is the first 6 hex characters of a SHA-256 hash of the files' absolute
-    paths, followed by the time in UTC as ``YYYYMMDDHHMMSS``. It holds only hex
-    characters and digits, never a ``.``, which separates it from the labels in a
-    staged directory's name.
+    The UID is the time in UTC as ``YYYYMMDDHHMMSS``, an underscore, and 6 random hex
+    characters, e.g. ``20261125073856_a3f09c``. UIDs therefore sort by time, and two
+    runs started in the same second still get different ones. It never holds a ``.``
+    or a ``-``, which separate it from the labels in a staged directory's name.
 
-    Make it once per run. A retry of the run passes the same value on, rather than
+    Make it once per run. A new run creates its build directory exclusively
+    (``prepare_build_dir(..., exclusive=True)``) and makes another UID if that one is
+    taken, so a clash is caught. A retry of the run passes the same UID on, rather than
     making a new one, so that it finds the directories the first attempt made.
 
     Parameters
     ----------
-    input_files : Sequence[Path]
-        the files the run collates. Their order doesn't matter
     now : datetime, optional
         the time of the run, by default the current time. A time with a time zone is
         converted to UTC, and a naive time is taken as local time
+    rng : random.Random, optional
+        the source of the random characters, for tests. By default, ``secrets``
 
     Returns
     -------
     str
         the run UID
     """
-    crypto = hashlib.sha256()
-    for fspath in sorted(str(p.absolute()) for p in input_files):
-        crypto.update(fspath.encode())
     when = datetime.now(UTC) if now is None else now.astimezone(UTC)
-    return crypto.hexdigest()[:6] + when.strftime("%Y%m%d%H%M%S")
+    suffix = secrets.token_hex(3) if rng is None else f"{rng.getrandbits(24):06x}"
+    return f"{when.strftime('%Y%m%d%H%M%S')}_{suffix}"
 
 
 @attrs.frozen(hash=False)

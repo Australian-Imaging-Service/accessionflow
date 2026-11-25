@@ -28,7 +28,7 @@ from accessionflow.model.accession import (
     dicom_image_type_to_resource_label,
 )
 
-RUN_UID = "abc12320261124010203"
+RUN_UID = "20261124010203_abc123"
 
 
 def _filesets(

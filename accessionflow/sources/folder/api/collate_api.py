@@ -132,6 +132,10 @@ def path_metadata_pattern_to_regex(pattern: str) -> str:
     return body + "$"
 
 
+# How many run UIDs a new run tries before giving up, should each be taken already
+_RUN_UID_ATTEMPTS = 5
+
+
 def merge_path_metadata(
     path_metadata: ty.Sequence[PathMetadataPattern] = (),
     path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
@@ -295,9 +299,17 @@ def collate(
     # the plan, Accession.from_paths works it out again for itself
     plan_recursion(datatypes, ignore_datatypes, recursive)
 
-    # Until the CLI passes the listed files, the run UID is made from the input paths
-    run_uid = make_run_uid([Path(p) for p in input_paths])
-    build_dir = prepare_build_dir(output_dir, run_uid)
+    # A new run creates its build directory exclusively, and makes another UID if
+    # another run has already taken it
+    for _ in range(_RUN_UID_ATTEMPTS):
+        run_uid = make_run_uid()
+        try:
+            build_dir = prepare_build_dir(output_dir, run_uid, exclusive=True)
+            break
+        except FileExistsError:
+            logger.debug("Run UID '%s' is taken, making another", run_uid)
+    else:
+        raise RuntimeError(f"Couldn't make an unused run UID in '{output_dir}'")
     try:
         sessions = Accession.from_paths(
             files_path=input_paths,
