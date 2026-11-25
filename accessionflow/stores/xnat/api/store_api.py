@@ -43,6 +43,7 @@ from accessionflow.stores.xnat.remotes import (
     get_xnat_session,
     log_name_only_comparison,
     split_resource_by_modality,
+    staged_file_sizes,
 )
 
 
@@ -565,7 +566,9 @@ def store(
                         # files already there and empty ones for those just
                         # added, and a whole-dict `!=` calls that a mismatch.
                         comparison = compare_resource_with_xnat(
-                            calc_checksums, remote_checksums
+                            calc_checksums,
+                            remote_checksums,
+                            staged_file_sizes(resource.fileset, calc_checksums),
                         )
                         log_name_only_comparison(
                             comparison, resource.path, session.name
