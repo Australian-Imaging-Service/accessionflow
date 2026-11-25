@@ -175,6 +175,14 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-25, Phase 1, step 18 (the next action "leftover files to an unprocessed
+  directory"): `finish_claim` takes an `unprocessed_dir`, and the accessions that
+  failed to stage and the file-sets that were ignored, and moves a run directory with
+  files left in it to `<unprocessed_dir>/<run_uid>/`, recording why each file was left
+  in `unprocessed.json`, instead of keeping it in the processing area. The new
+  `abandon_claim` moves the claim of a run that raised to an error directory, with the
+  error in `error.json`. Tests in `api/tests/collate/test_claim.py`. Nothing calls
+  them yet. CLI unchanged. PR: pending.
 - 2026-11-25, Phase 1, steps 4 and 5 (the next action "a random run UID"):
   `make_run_uid` makes the UTC time, `_` and 6 random hex characters, instead of a hash
   of the input paths and the time, so two runs that list the same files in the same
@@ -444,11 +452,16 @@ Remove what the run leaves in the processing area and the build directory.
 
 | # | Step | Module | From | Notes |
 | --- | --- | --- | --- | --- |
-| 18 | `finish_claim(claimed) -> list[Path]` | `claim.py` | new | After staging: deletes any hidden `.<name>.claiming` file left by a copy across file systems that was stopped part way (its source is still in the input), prunes the empty directories (`prune_empty_dirs`, shared with `remove_build_dir`), and removes the whole run directory, plan included, if no files are left. Otherwise it keeps the run directory with its plan, so `ClaimedFiles.load` still works, and returns, and logs once, the files left: ones `--allow-unrecognised` let through, file-sets of an `--ignore-datatype`, and the files of accessions that failed to stage. Returns `[]` if the run directory doesn't exist |
+| 18 | `finish_claim(claimed, unprocessed_dir, failed=(), ignored=()) -> list[Path]` | `claim.py` | new | After staging: deletes any hidden `.<name>.claiming` file left by a copy across file systems that was stopped part way (its source is still in the input), and prunes the empty directories (`prune_empty_dirs`). If no files are left, removes the run directory. Otherwise writes `unprocessed.json` (`UNPROCESSED_MANIFEST`) into it, giving for each file left its path, its original path and why it was left (`failed`, with the accession and its error, for the files of the `failed` accessions; `ignored`, with its datatype, for the `ignored` file-sets; otherwise `unrecognised`), and moves the whole run directory, plan included, to `<unprocessed_dir>/<run_uid>/`. Returns the files' new paths. Safe to retry. |
 | 19 | `remove_build_dir(build_dir) -> list[Path]` | `api/staging.py` | new | Removes empty subdirectories first (`prune_empty_dirs`), including the empty `__build__` that `Accession.save` leaves, then the run's build directory if no files are left. Otherwise keeps it, logs a warning and returns what is left. `__build__` itself stays, as other runs share it. |
+| – | `abandon_claim(claimed, error_dir, error) -> Path` | `claim.py` | new | For a run that raises after the claim: tidies the run directory as `finish_claim` does, writes the error (type, message and traceback) to `error.json` (`ERROR_MANIFEST`) in it, and moves it to `<error_dir>/<run_uid>/`. The composite calls it in an `except` and re-raises. |
 
 #### Dated entries
 
+- 2026-11-25, Phase 1, step 18:
+  - changed: `finish_claim(claimed, unprocessed_dir, failed=(), ignored=()) -> list[Path]`
+  - added: `abandon_claim(claimed, error_dir, error) -> Path`, `UNPROCESSED_MANIFEST`
+    and `ERROR_MANIFEST`
 - 2026-11-25, Phase 1, steps 4 and 5, changed:
   - `make_run_uid(now=None, rng=None) -> str`, which no longer takes the input files
   - `prepare_build_dir(output_dir, run_uid, exclusive=False) -> Path`
@@ -523,6 +536,12 @@ Remove what the run leaves in the processing area and the build directory.
 
 ### Staging layout
 
+- 2026-11-25, Phase 1: a run directory with files left after staging is moved to
+  `<unprocessed_dir>/<run_uid>/` (its `claimed.json`, an `unprocessed.json` giving why
+  each file was left, and the files under `files/`), and the run directory of a run
+  that raised after the claim to `<error_dir>/<run_uid>/`, with an `error.json`. Not
+  used until the folder `collate()` claims its input, so nothing needs draining. PR:
+  pending.
 - 2026-11-25, Phase 1: the run directories in `__build__/` are named
   `YYYYMMDDHHMMSS_<6 random hex characters>` instead of a path hash followed by the
   time. Staged accession names still use `Accession.from_paths`' run UID until it is

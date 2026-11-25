@@ -1,4 +1,5 @@
 import errno
+import json
 import os
 import pickle
 import random
@@ -13,8 +14,11 @@ import pytest
 from accessionflow.api.collate import (
     CLAIMED_FILES_DIRNAME,
     CLAIMED_MANIFEST,
+    ERROR_MANIFEST,
     PROCESSING_NAME_DEFAULT,
+    UNPROCESSED_MANIFEST,
     ClaimedFiles,
+    abandon_claim,
     claim_input_files,
     finish_claim,
     make_run_uid,
@@ -345,7 +349,18 @@ def test_claim_run_dir_is_absolute(
     ) == (tmp_path / "inbox" / "a.txt")
 
 
-# finish_claim ---------------------------------------------------------------------
+# finish_claim and abandon_claim ---------------------------------------------------
+
+
+def _claim(tmp_path: Path, *relpaths: str) -> tuple[Path, ClaimedFiles]:
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, *relpaths)
+    return inbox, claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+
+
+def _reasons(moved_run_dir: Path) -> dict[str, dict[str, ty.Any]]:
+    entries = json.loads((moved_run_dir / UNPROCESSED_MANIFEST).read_text())
+    return {e["file"]: e for e in entries}
 
 
 def test_finish_claim_removes_run_dir_when_all_staged(tmp_path: Path) -> None:
@@ -355,58 +370,159 @@ def test_finish_claim_removes_run_dir_when_all_staged(tmp_path: Path) -> None:
     claimed = claim_input_files(files, processing, RUN_UID, [inbox])
     for path in claimed.files:
         path.unlink()  # as stage_accession does
-    assert finish_claim(claimed) == []
+    unprocessed = tmp_path / "unprocessed"
+    assert finish_claim(claimed, unprocessed) == []
     assert not claimed.run_dir.exists()
     assert processing.is_dir()
+    assert not unprocessed.exists()
 
 
-def test_finish_claim_keeps_and_reports_leftovers(
+def test_finish_claim_moves_leftovers(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    inbox = tmp_path / "inbox"
-    files = _tree(inbox, "a.txt", "sub/notes.txt", "other/deeper/c.txt")
-    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    inbox, claimed = _claim(tmp_path, "a.txt", "sub/notes.txt", "other/deeper/c.txt")
     notes = claimed.files_dir / "sub" / "notes.txt"
     for path in claimed.files:
         if path != notes:
             path.unlink()
+    unprocessed = tmp_path / "unprocessed"
     with caplog.at_level("WARNING"):
-        assert finish_claim(claimed) == [notes]
-    assert (claimed.run_dir / CLAIMED_MANIFEST).exists()
-    assert ClaimedFiles.load(claimed.run_dir).files == {
-        notes: inbox / "sub" / "notes.txt"
+        moved = finish_claim(claimed, unprocessed)
+    moved_run_dir = unprocessed / RUN_UID
+    assert moved == [moved_run_dir / CLAIMED_FILES_DIRNAME / "sub" / "notes.txt"]
+    assert not claimed.run_dir.exists()
+    assert not (moved_run_dir / CLAIMED_FILES_DIRNAME / "other").exists()  # pruned
+    reloaded = ClaimedFiles.load(moved_run_dir)
+    assert reloaded.original_of(moved[0]) == inbox / "sub" / "notes.txt"
+    assert _reasons(moved_run_dir) == {
+        "files/sub/notes.txt": {
+            "file": "files/sub/notes.txt",
+            "original": str(inbox / "sub" / "notes.txt"),
+            "reason": "unrecognised",
+        }
     }
-    assert not (claimed.files_dir / "other").exists()  # empty directories pruned
     (warning,) = [
         r.getMessage() for r in caplog.records if "weren't staged" in r.getMessage()
     ]
-    assert warning.startswith("Leaving 1 files")
-    assert str(claimed.run_dir) in warning
+    assert "1 unrecognised" in warning and str(moved_run_dir) in warning
+    # Retried once the run directory has been moved
+    assert finish_claim(claimed, unprocessed) == moved
+
+
+def test_finish_claim_records_why_files_were_left(tmp_path: Path) -> None:
+    from fileformats.application import Json
+    from fileformats.generic import DirectoryOf
+    from fileformats.text import Csv
+
+    from accessionflow.api.collate import classify_paths, group_into_accessions
+    from accessionflow.helpers.arg_types import IDSpec
+
+    _, claimed = _claim(
+        tmp_path, "fail/x.json", "fail/y.json", "ignored.csv", "notes.txt"
+    )
+    files_dir = claimed.files_dir
+    (files_dir / "fail" / "x.json").write_text("{}")
+    (files_dir / "fail" / "y.json").write_text("{}")
+    (directory,) = classify_paths([files_dir / "fail"], [DirectoryOf[Json]])
+    directory.metadata["sess"] = "s1"
+    (accession,) = group_into_accessions([directory], [IDSpec("sess")])
+    (csv,) = classify_paths([files_dir / "ignored.csv"], [Csv])
+
+    finish_claim(
+        claimed,
+        tmp_path / "unprocessed",
+        failed=[(accession, "save failed")],
+        ignored=[csv],
+    )
+
+    reasons = _reasons(tmp_path / "unprocessed" / RUN_UID)
+    for name in ("files/fail/x.json", "files/fail/y.json"):
+        assert reasons[name]["reason"] == "failed"
+        assert reasons[name]["accession"] == "s1"
+        assert reasons[name]["error"] == "save failed"
+    assert reasons["files/ignored.csv"]["reason"] == "ignored"
+    assert reasons["files/ignored.csv"]["datatype"] == "text/csv"
+    assert reasons["files/notes.txt"]["reason"] == "unrecognised"
 
 
 def test_finish_claim_removes_partial_copies(tmp_path: Path) -> None:
-    inbox = tmp_path / "inbox"
-    files = _tree(inbox, "a.txt")
-    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    _, claimed = _claim(tmp_path, "a.txt")
     (claimed.files_dir / "a.txt").unlink()
     (claimed.files_dir / ".b.txt.claiming").write_text("a copy stopped part way")
-    assert finish_claim(claimed) == []
+    assert finish_claim(claimed, tmp_path / "unprocessed") == []
     assert not claimed.run_dir.exists()
 
 
 def test_finish_claim_without_run_dir(tmp_path: Path) -> None:
     empty = claim_input_files([], tmp_path / "proc", RUN_UID)
-    assert finish_claim(empty) == []
-    files = _tree(tmp_path / "inbox", "a.txt")
-    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [tmp_path / "inbox"])
+    assert finish_claim(empty, tmp_path / "unprocessed") == []
+    _, claimed = _claim(tmp_path, "a.txt")
     for path in claimed.files:
         path.unlink()
-    assert finish_claim(claimed) == []
-    assert finish_claim(claimed) == []  # again
+    assert finish_claim(claimed, tmp_path / "unprocessed") == []
+    assert finish_claim(claimed, tmp_path / "unprocessed") == []  # again
 
 
-def test_steps_end_to_end_with_a_leftover(tmp_path: Path) -> None:
-    """Claims, collects and stages one accession, leaving the file no datatype took"""
+def test_finish_claim_moves_across_file_systems(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, claimed = _claim(tmp_path, "notes.txt")
+    real_rename = os.rename
+
+    def exdev_for_run_dir(src: ty.Any, dst: ty.Any) -> None:
+        if Path(src) == claimed.run_dir:
+            raise OSError(errno.EXDEV, "Invalid cross-device link")
+        real_rename(src, dst)
+
+    monkeypatch.setattr(os, "rename", exdev_for_run_dir)
+    unprocessed = tmp_path / "unprocessed"
+    (moved,) = finish_claim(claimed, unprocessed)
+    assert moved.read_text() == "notes.txt"
+    assert not claimed.run_dir.exists()
+    assert sorted(p.name for p in unprocessed.iterdir()) == [RUN_UID]  # no .moving
+
+
+def test_finish_claim_retry_after_crash_before_delete(tmp_path: Path) -> None:
+    """A copy across file systems got into place, but the original wasn't deleted"""
+    _, claimed = _claim(tmp_path, "notes.txt")
+    unprocessed = tmp_path / "unprocessed"
+    shutil.copytree(claimed.run_dir, unprocessed / RUN_UID)
+    (moved,) = finish_claim(claimed, unprocessed)
+    assert moved == unprocessed / RUN_UID / CLAIMED_FILES_DIRNAME / "notes.txt"
+    assert not claimed.run_dir.exists()
+
+
+def test_abandon_claim(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, "a.txt", "sub/b.txt")
+    error_dir = tmp_path / "errors"
+    try:
+        raise ValueError("no datatype recognised 'a.txt'")
+    except ValueError as e:
+        moved = abandon_claim(claimed, error_dir, e)
+    assert moved == error_dir / RUN_UID
+    assert not claimed.run_dir.exists()
+    assert (moved / CLAIMED_FILES_DIRNAME / "sub" / "b.txt").read_text() == "sub/b.txt"
+    record = json.loads((moved / ERROR_MANIFEST).read_text())
+    assert record["type"] == "ValueError"
+    assert record["message"] == "no datatype recognised 'a.txt'"
+    assert "Traceback" in record["traceback"]
+    # Again, now it has been moved
+    assert abandon_claim(claimed, error_dir, "again") == moved
+
+
+def test_abandon_claim_with_a_message(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, "a.txt")
+    moved = abandon_claim(claimed, tmp_path / "errors", "stopped by the flow")
+    assert json.loads((moved / ERROR_MANIFEST).read_text()) == {
+        "message": "stopped by the flow"
+    }
+
+
+def test_steps_end_to_end_with_a_leftover(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Claims, collects and stages accessions: one is staged, one fails, and a file
+    no datatype took is left"""
     from fileformats.application import Json
 
     from accessionflow.api.collate import (
@@ -417,14 +533,16 @@ def test_steps_end_to_end_with_a_leftover(tmp_path: Path) -> None:
         plan_recursion,
         stage_accession,
     )
+    from accessionflow.api.collate import save as save_module
     from accessionflow.api.staging import prepare_build_dir, remove_build_dir
     from accessionflow.helpers.arg_types import IDSpec, PathMetadataRegex
     from accessionflow.model.accession import Accession
 
     inbox = tmp_path / "inbox"
-    files = _tree(inbox, "s1/a.json", "s1/b.json", "s1/notes.txt")
-    for path in files[:2]:
-        path.write_text(f'{{"{path.stem}": 1}}')
+    files = _tree(inbox, "s1/a.json", "s1/b.json", "s1/notes.txt", "s2/c.json")
+    for path in files:
+        if path.suffix == ".json":
+            path.write_text(f'{{"{path.stem}": 1}}')
     output_dir = tmp_path / "out"
     build_dir = prepare_build_dir(output_dir, RUN_UID)
     claimed = claim_input_files(
@@ -442,10 +560,23 @@ def test_steps_end_to_end_with_a_leftover(tmp_path: Path) -> None:
         [PathMetadataRegex(r".*/(?P<sess>[^/]+)/(?P<name>[^/]+)\.json$", Json)],
         claimed,
     )
-    (accession,) = group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
-    staged_dir = stage_accession(accession, build_dir, output_dir, claimed)
+    s1, s2 = group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
+    staged_dir = stage_accession(s1, build_dir, output_dir, claimed)
 
-    assert finish_claim(claimed) == [claimed.files_dir / "s1" / "notes.txt"]
+    def failing_save(*args: ty.Any, **kwargs: ty.Any) -> ty.NoReturn:
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(save_module, "save_to_build_dir", failing_save)
+    with pytest.raises(RuntimeError, match="disk full"):
+        stage_accession(s2, build_dir, output_dir, claimed)
+
+    unprocessed = tmp_path / "unprocessed"
+    moved = finish_claim(claimed, unprocessed, failed=[(s2, "disk full")])
+    files_dir = unprocessed / RUN_UID / CLAIMED_FILES_DIRNAME
+    assert moved == [files_dir / "s1" / "notes.txt", files_dir / "s2" / "c.json"]
+    reasons = _reasons(unprocessed / RUN_UID)
+    assert reasons["files/s1/notes.txt"]["reason"] == "unrecognised"
+    assert reasons["files/s2/c.json"]["reason"] == "failed"
     assert remove_build_dir(build_dir) == []
     assert sorted(Accession.load(staged_dir).acquisitions) == ["a", "b"]
-    assert not any(p.exists() for p in files)  # all three were claimed
+    assert not any(p.exists() for p in files)  # all were claimed

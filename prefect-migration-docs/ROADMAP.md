@@ -142,11 +142,11 @@ own phase, starting with collate in Phase 1:
 ## Phase 1: Collate, core and folder source
 
 Status: In progress. The step functions (steps 0–19) are done; see
-[`CHANGELOG.md`](CHANGELOG.md). The first next action,
-[a random run UID](#next-action-a-random-run-uid), is done too. What is left: the next
-actions [the revised flow](#next-action-the-revised-flow) and
-[moving leftover files to an unprocessed directory](#next-action-leftover-files-to-an-unprocessed-directory),
-then the composites, the option
+[`CHANGELOG.md`](CHANGELOG.md). Two next actions are done too:
+[a random run UID](#next-action-a-random-run-uid) and
+[moving leftover files to an unprocessed directory](#next-action-leftover-files-to-an-unprocessed-directory).
+What is left: the next action [the revised flow](#next-action-the-revised-flow), then the
+composites, the option
 converters, moving the folder `collate()` and the CLI onto the steps, the removals, and
 the tests listed below. The revised flow changes the steps after grouping, so the
 composites, CLI and tests below are to be read in its light.
@@ -323,7 +323,7 @@ The order after grouping (step 14) becomes:
 | `warn_if_hardlinks_unavailable` | step 16, now comparing `working_dir` with the target directory | batch |
 | assign: label each accession from its metadata | step 17, `stage_accession` | per accession |
 | move to the target directory, `<project>.<subject>.<session>-<run_uid>/` | new | per accession |
-| finish the run: report and keep what is left in `<working_dir>/<run_uid>/`, or remove it | steps 18 and 19, `finish_claim` and `remove_build_dir` | batch |
+| finish the run: move what is left to the unprocessed directory (`finish_claim`), or to the error directory if the run raised (`abandon_claim`), and remove the run directory | steps 18 and 19, `finish_claim` and `remove_build_dir` | batch |
 
 Steps 0–14 are unchanged, except that `prepare_build_dir` (step 5) and
 `claim_input_files` (step 6) use `<working_dir>/<run_uid>/` instead of the two areas
@@ -359,7 +359,21 @@ To confirm before the design is detailed:
 
 ### Next action: leftover files to an unprocessed directory
 
-Status: Planned.
+Status: **Done** (2026-11-25), with these decisions:
+
+- `finish_claim(claimed, unprocessed_dir, failed=(), ignored=())` moves the whole run
+  directory, with its plan, to `<unprocessed_dir>/<run_uid>/`, after writing
+  `unprocessed.json` into it: for each leftover file, its path, its original path, and
+  why it was left (`failed` with the accession and its error, `ignored` with its
+  datatype, or `unrecognised`). With nothing left, the run directory is removed.
+- A run that raises after the claim moves its claim to an **error directory** instead:
+  the new `abandon_claim(claimed, error_dir, error)` moves the run directory to
+  `<error_dir>/<run_uid>/`, with the error in `error.json`. The composite calls it in
+  an `except` and re-raises.
+- Both move with a rename on one file system, and across file systems with a copy to a
+  hidden name, a rename into place and a delete, safe to retry.
+
+See `CHANGELOG.md`. The plan as it was written:
 
 **Part of `finish_claim` (step 18) is to move any files that are left to an unprocessed
 directory, which is given as a parameter.** Today it keeps the run directory, with its
@@ -414,9 +428,13 @@ Plain-Python sequences of the steps. Their signatures can change.
   `check_datatypes`, `plan_recursion`, `load_metadata_tables`, `make_run_uid` and
   `prepare_build_dir(..., exclusive=True)` (repeated with a new UID while the build
   directory is taken, as the folder `collate()` already does), `claim_input_files`, `collect_accessions` (with the patterns from
-  `merge_path_metadata`), `save_accessions_to_dir`, `finish_claim`, `remove_build_dir`
-  (in a `finally`, so that a run that raises doesn't leave an empty build directory)
-  and `log_stage_summary`. A `FormatMismatchError` from classification names the
+  `merge_path_metadata`), `save_accessions_to_dir`,
+  `finish_claim(claimed, unprocessed_dir, failed, ignored)` (with the accessions that
+  failed to stage and their errors, and the file-sets `drop_ignored_filesets` dropped),
+  `remove_build_dir` (in a `finally`, so that a run that raises doesn't leave an empty
+  build directory) and `log_stage_summary`. Everything after the claim runs in a `try`
+  whose `except` calls `abandon_claim(claimed, error_dir, e)` and re-raises, so a run
+  that fails moves its claim to the error directory. A `FormatMismatchError` from classification names the
   claimed paths, so the composite adds their original paths to it (`original_of`,
   with `add_note`). Compared with today, it takes `input_files: list[Path]` and loses `wait_period`, `unlink_source`,
   `recursive`'s directory listing and `exclude_paths`. `recursive` stays, for directory
@@ -447,6 +465,10 @@ variables. The body of `collate_cmd` becomes:
    for t in metadata_tables])` and then `collate(...)`
    with the files it listed and the arguments built by the option converters. Listing
    again on every run picks up the files that arrived since the last one.
+
+New options supply the unprocessed and error directories that `finish_claim` and
+`abandon_claim` move run directories to. Their names and defaults are settled with the
+revised flow's `working_dir`.
 
 These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
 `MIGRATING.md`:
@@ -684,9 +706,9 @@ Status: Planned.
   that runs on the staging directory after collate?
 - ~~What happens to the run directories that `finish_claim` leaves in
   `__processing__`?~~ Decided: their files are moved to an unprocessed directory given
-  as a parameter (see
+  as a parameter, and a run that raises after the claim moves its claim to an error
+  directory (see
   [Next action: leftover files to an unprocessed directory](#next-action-leftover-files-to-an-unprocessed-directory)).
-  Still open there: whether a run that raises after the claim goes the same way.
 - Two runs at the same time now build in separate directories, but if both stage the
   same accession, `move_into_place` still merges them in the output directory. Is that
   acceptable, or does staging need a lock per accession?

@@ -7,20 +7,26 @@ import os
 import random
 import secrets
 import shutil
+import traceback
 import typing as ty
 from datetime import UTC, datetime
 from pathlib import Path
 
 import attrs
+from fileformats.core import FileSet, to_mime
 
 from accessionflow.api.staging import check_run_uid, prune_empty_dirs
 from accessionflow.helpers.logging import logger
+from accessionflow.model.accession import Accession
 
 __all__ = [
     "CLAIMED_FILES_DIRNAME",
     "CLAIMED_MANIFEST",
+    "ERROR_MANIFEST",
     "PROCESSING_NAME_DEFAULT",
+    "UNPROCESSED_MANIFEST",
     "ClaimedFiles",
+    "abandon_claim",
     "claim_input_files",
     "finish_claim",
     "make_run_uid",
@@ -37,6 +43,15 @@ CLAIMED_MANIFEST = "claimed.json"
 # The subdirectory of the run directory the files are claimed into, kept apart from
 # the plan so that no input file can clash with it
 CLAIMED_FILES_DIRNAME = "files"
+
+# Written into a run directory that is moved to the unprocessed directory, giving why
+# each file was left, and into one moved to the error directory, giving the error
+UNPROCESSED_MANIFEST = "unprocessed.json"
+ERROR_MANIFEST = "error.json"
+
+# Appended to the hidden name a run directory is copied to across file systems, before
+# it is renamed into place
+_MOVING_SUFFIX = ".moving"
 
 # Appended to the hidden name a file is copied to across file systems, before it is
 # renamed into place
@@ -258,50 +273,186 @@ def claim_input_files(
     return claimed
 
 
-def finish_claim(claimed: ClaimedFiles) -> list[Path]:
-    """Finishes a run's claim once its accessions have been staged: removes the run
-    directory from the processing area if no claimed files are left in it, or else keeps
-    it, with its plan, and reports what is left.
+def finish_claim(
+    claimed: ClaimedFiles,
+    unprocessed_dir: Path,
+    failed: ty.Sequence[tuple[Accession, str]] = (),
+    ignored: ty.Sequence[FileSet] = (),
+) -> list[Path]:
+    """Finishes a run's claim once its accessions have been staged. If no claimed files
+    are left, the run directory is removed. Otherwise the whole run directory, with its
+    plan, is moved to ``unprocessed_dir / run_uid``, after recording why each file was
+    left in its ``unprocessed.json`` (`UNPROCESSED_MANIFEST`):
 
-    Files can be left for several reasons: files that no datatype recognised but
-    ``--allow-unrecognised`` let through, file-sets of an ``--ignore-datatype``, and the
-    files of accessions that failed to stage. What to do with them is an open question
-    in the roadmap. Empty directories are removed in either case, and so is a hidden
-    temporary file left by a copy across file systems that was stopped part way, whose
-    source is still in the input.
+    - ``failed``: it belongs to an accession that failed to stage, given with the
+      accession's UID and the error
+    - ``ignored``: it belongs to a file-set of an ``--ignore-datatype``, given with its
+      MIME-like datatype
+    - ``unrecognised``: no datatype recognised it, and ``--allow-unrecognised`` let it
+      through
+
+    Empty directories are removed first, and so is a hidden temporary file left by a
+    copy across file systems that was stopped part way, whose source is still in the
+    input. It can be retried: once the run directory has been moved, a second call
+    returns the files it moved.
 
     Parameters
     ----------
     claimed : ClaimedFiles
         the run's claimed files, from `claim_input_files`
+    unprocessed_dir : Path
+        where a run directory with files left in it is moved to
+    failed : Sequence[tuple[Accession, str]], optional
+        the accessions that failed to stage, each with its error message
+    ignored : Sequence[FileSet], optional
+        the file-sets of ignored datatypes, dropped by `drop_ignored_filesets`
 
     Returns
     -------
     list[Path]
-        the files left in the run directory, sorted. Empty if it was removed, or never
-        created
+        the files left, at their paths in the unprocessed directory, sorted. Empty if
+        none were left
     """
     run_dir = claimed.run_dir
+    dest = Path(unprocessed_dir) / run_dir.name
     if not run_dir.exists():
+        return _files_in(dest / CLAIMED_FILES_DIRNAME)
+    leftovers = _tidy_run_dir(claimed)
+    if not leftovers:
+        shutil.rmtree(run_dir)
         return []
+    reasons = _leftover_reasons(claimed, leftovers, failed, ignored)
+    (run_dir / UNPROCESSED_MANIFEST).write_text(json.dumps(reasons, indent=2))
+    moved_dir = _move_run_dir(run_dir, Path(unprocessed_dir))
+    counts: dict[str, int] = {}
+    for entry in reasons:
+        counts[entry["reason"]] = counts.get(entry["reason"], 0) + 1
+    logger.warning(
+        "Moved %s files that weren't staged (%s) to '%s'",
+        len(leftovers),
+        ", ".join(f"{n} {reason}" for reason, n in sorted(counts.items())),
+        moved_dir,
+    )
+    return _files_in(moved_dir / CLAIMED_FILES_DIRNAME)
+
+
+def abandon_claim(
+    claimed: ClaimedFiles, error_dir: Path, error: BaseException | str
+) -> Path:
+    """Moves the claim of a run that failed after the claim, e.g. on a file no datatype
+    recognised, to ``error_dir / run_uid``, with the error recorded in its
+    ``error.json`` (`ERROR_MANIFEST`), so its files can be dealt with and the
+    processing area doesn't keep them. Call it when the run raises, then re-raise.
+
+    Parameters
+    ----------
+    claimed : ClaimedFiles
+        the run's claimed files, from `claim_input_files`
+    error_dir : Path
+        where the run directory is moved to
+    error : BaseException or str
+        the error the run failed with
+
+    Returns
+    -------
+    Path
+        the run directory's new path, or where it would have been if the run claimed
+        nothing
+    """
+    run_dir = claimed.run_dir
+    dest = Path(error_dir) / run_dir.name
+    if not run_dir.exists():
+        return dest
+    _tidy_run_dir(claimed)
+    record: dict[str, ty.Any] = {"message": str(error)}
+    if isinstance(error, BaseException):
+        record["type"] = type(error).__name__
+        record["traceback"] = "".join(traceback.format_exception(error))
+    (run_dir / ERROR_MANIFEST).write_text(json.dumps(record, indent=2))
+    moved_dir = _move_run_dir(run_dir, Path(error_dir))
+    logger.error("Moved the claim of failed run '%s' to '%s'", run_dir.name, moved_dir)
+    return moved_dir
+
+
+def _tidy_run_dir(claimed: ClaimedFiles) -> list[Path]:
+    """Deletes partial copies and empty directories, and returns the files left"""
     files_dir = claimed.files_dir
-    if files_dir.exists():
-        for tmp in files_dir.rglob(f".*{_COPY_SUFFIX}"):
-            tmp.unlink()
-        prune_empty_dirs(files_dir)
-        leftovers = sorted(p for p in files_dir.rglob("*") if not p.is_dir())
-    else:
-        leftovers = []
-    if leftovers:
-        logger.warning(
-            "Leaving %s files that weren't staged in '%s' (e.g. '%s')",
-            len(leftovers),
-            run_dir,
-            leftovers[0].relative_to(files_dir),
+    if not files_dir.exists():
+        return []
+    for tmp in files_dir.rglob(f".*{_COPY_SUFFIX}"):
+        tmp.unlink()
+    prune_empty_dirs(files_dir)
+    return _files_in(files_dir)
+
+
+def _files_in(directory: Path) -> list[Path]:
+    return sorted(p for p in directory.rglob("*") if not p.is_dir())
+
+
+def _leftover_reasons(
+    claimed: ClaimedFiles,
+    leftovers: ty.Sequence[Path],
+    failed: ty.Sequence[tuple[Accession, str]],
+    ignored: ty.Sequence[FileSet],
+) -> list[dict[str, ty.Any]]:
+    """Why each file was left: failed, ignored or unrecognised"""
+    failed_paths = [
+        (Path(p).absolute(), accession.uid, error)
+        for accession, error in failed
+        for resource in accession.resources
+        for p in resource.fileset.fspaths
+    ]
+    ignored_paths = [
+        (Path(p).absolute(), to_mime(type(fileset), official=False))
+        for fileset in ignored
+        for p in fileset.fspaths
+    ]
+    reasons = []
+    for fspath in leftovers:
+        entry: dict[str, ty.Any] = {
+            "file": fspath.relative_to(claimed.run_dir).as_posix(),
+            "original": str(claimed.original_of(fspath)),
+        }
+        failure = next(
+            ((uid, err) for p, uid, err in failed_paths if fspath.is_relative_to(p)),
+            None,
         )
-        return leftovers
-    shutil.rmtree(run_dir)
-    return []
+        datatype = next(
+            (dt for p, dt in ignored_paths if fspath.is_relative_to(p)), None
+        )
+        if failure is not None:
+            entry.update(reason="failed", accession=failure[0], error=failure[1])
+        elif datatype is not None:
+            entry.update(reason="ignored", datatype=datatype)
+        else:
+            entry["reason"] = "unrecognised"
+        reasons.append(entry)
+    return reasons
+
+
+def _move_run_dir(run_dir: Path, dest_parent: Path) -> Path:
+    """Moves a run directory into ``dest_parent``: with a rename on one file system,
+    or across file systems by copying it to a hidden name, renaming that into place
+    and deleting the original. Safe to retry after a failure part way"""
+    dest = dest_parent / run_dir.name
+    dest_parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        # An earlier attempt got it into place but stopped before deleting the original
+        if run_dir.exists():
+            shutil.rmtree(run_dir)
+        return dest
+    try:
+        os.rename(run_dir, dest)
+    except OSError as e:
+        if e.errno != errno.EXDEV:
+            raise
+        tmp = dest_parent / f".{run_dir.name}{_MOVING_SUFFIX}"
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        shutil.copytree(run_dir, tmp, symlinks=True)
+        os.replace(tmp, dest)
+        shutil.rmtree(run_dir)
+    return dest
 
 
 def _make_plan(
