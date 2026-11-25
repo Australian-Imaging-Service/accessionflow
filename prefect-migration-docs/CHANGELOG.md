@@ -482,6 +482,217 @@ Remove what the run leaves in the processing area and the build directory.
 | 20 | `remove_build_dir(build_dir) -> list[Path]` | `api/staging.py` | new | Removes empty subdirectories first (`prune_empty_dirs`), including the empty `__build__` that `Accession.save` leaves, then the run's build directory if no files are left. Otherwise keeps it, logs a warning and returns what is left. `__build__` itself stays, as other runs share it. |
 | – | `abandon_claim(claimed, error_dir, error) -> Path` | `claim.py` | new | For a run that raises after the claim: tidies the run directory as `finish_claim` does, writes the error (type, message and traceback) to `error.json` (`ERROR_MANIFEST`) in it, and moves it to `<error_dir>/<run_uid>/`. The composite calls it in an `except` and re-raises. |
 
+#### Phase 1 design records
+
+The design changes made to Phase 1 after its steps were first planned, moved from
+`ROADMAP.md` when they were done (2026-11-25). Each gives the decisions taken, then the
+plan as it was written. They also settled the roadmap's open question about the run
+directories `finish_claim` used to leave in `__processing__`: their files go to an
+unprocessed directory, and a run that raises after the claim goes to an error
+directory.
+
+##### a random run UID
+
+Status: **Done** (2026-11-25). The UID is `YYYYMMDDHHMMSS_<6 random hex characters>`,
+e.g. `20261125073856_a3f09c`; the underscore makes it easier to read and is safe
+everywhere the UID goes. `prepare_build_dir(output_dir, run_uid, exclusive=False)`
+creates a new run's directory exclusively with `exclusive=True`, and the folder
+`collate()` makes up to five UIDs until one is free. See `CHANGELOG.md`.
+
+**Keep the timestamp and replace the path hash with random characters.** Today
+`make_run_uid` (step 4) is the first 6 hex characters of a SHA-256 over the files' paths,
+then the UTC time to the second. The timestamp is worth keeping: run directories sort
+by time, and a staged accession's name (`<labels>.<run_uid>`) shows when it was
+collated. The hash adds little:
+
+- It's too short to identify or check the file list, and the timestamp already makes
+  every run's UID different, so it doesn't make the UID reproducible either. A retry
+  has to be passed the original UID whichever way it is made.
+- **Two runs that list the same files in the same second get the same UID.** This is
+  the race the claim exists for, e.g. two workers polling one input directory. The
+  second run would find the first's `claimed.json`, take itself for a retry, use the
+  first's plan, count the files the first moved as already claimed, and both would
+  process the same files in the same run and build directories. With a random part,
+  they get separate run directories, and each file's atomic rename goes to exactly one
+  of them.
+- It costs about 3 µs a file (3 s for a million files), only to build and sort the
+  path strings.
+
+A random name checked for existence before it is created would still race: two runs
+can both see it free. The directory is instead created exclusively, so a clash is
+caught rather than only unlikely.
+
+Changes:
+
+- **`make_run_uid(now=None, rng=None) -> str`** returns the UTC time as
+  `YYYYMMDDHHMMSS` followed by random hex characters (e.g. `secrets.token_hex(3)`, 6
+  characters, or more). It no longer takes the input files. The random source can be
+  injected for tests, as the clock can (principle 5). The UID still holds no `.`, so it
+  still parses back from staged directory names (`_labels_from_dirname`).
+- **The run's directories are created exclusively.** The first directory a run
+  creates, its build directory (`prepare_build_dir`, step 5), uses `mkdir` without
+  `exist_ok`, and the run makes a new UID if that raises `FileExistsError`. A retry
+  passes its UID on and skips the creation (e.g. an `exist_ok`/`retry` argument), and
+  the claim keeps reading an existing `claimed.json` as a retry, which a real retry
+  relies on.
+- **The interim call in the folder `collate()`** (`make_run_uid` on its input paths)
+  becomes `make_run_uid()`.
+- **Tests:**
+  - the format: time first, then the random part, with no `.`
+  - an injected clock and random source give a fixed UID
+  - two calls in the same second differ
+  - an exclusive-create clash gives a fresh UID
+  - the round trip through `_labels_from_dirname`
+  - the pinned-hash, file-order and relative-path tests in
+    `api/tests/collate/test_claim.py` go
+- **Records:** the step 4 rows of the CHANGELOG reference, a Step API entry for the
+  changed signature, and a Staging layout entry for the new run-directory names (data
+  already staged doesn't need draining: old and new UIDs both parse).
+
+##### the revised flow
+
+Status: **Done** (2026-11-25), with these decisions:
+
+- The run directory, `<working_dir>/<run_uid>/`, holds only the claimed input
+  (`claimed.json` and `files/`); `claim_input_files` takes `working_dir` (renamed from
+  `processing_dir`). Accessions are built in `<output_dir>/__build__/<run_uid>/`, on
+  the target's file system, so the final rename is atomic.
+- `output_dir` is the target directory.
+- Step 17, `assign_labels`, labels each accession from its metadata (`Accession.label`)
+  and raises `LabelsNotAssignedError` instead of using placeholder labels, so an
+  accession that can't be labelled is passed to `finish_claim` as failed and its files
+  go to the unprocessed directory.
+- Step 18, `move_to_target`, replaces `stage_accession`: it saves the labelled
+  accession, moves it to `<output_dir>/<labels>_<run_uid>/` and deletes its claimed
+  files, with the same retry marker.
+- Labelled directories are named `<labels>_<run_uid>` by every stage
+  (`Accession.staging_dirname`). The run UID contains `_` itself, so it is recognised by
+  its whole pattern at the end of the name (`helpers/run_uid.py`, `split_run_uid`);
+  `_` also avoids the legacy `-` delimiter. A run UID that isn't recognisable keeps
+  `.`. Old `<labels>.<run_uid>` names still load.
+- The `label` command is retired once every source labels in collate (see the CLI
+  section and Phase 5).
+
+The plan as it was written:
+
+The collate flow changes in four ways:
+
+1. **Each run works in `<working_dir>/<run_uid>/`.** `working_dir` is a new parameter
+   of the collate API. It replaces the run's two areas under the output directory,
+   `__processing__/<run_uid>/` (the claimed input) and `__build__/<run_uid>/` (the
+   scratch for saving), with one directory per run.
+2. **`stage_accession` (step 17) comes out of the flow.** Accessions are no longer
+   saved to the output directory under a pre-label name (`_.<uid>`) for a separate
+   `label` stage to pick up.
+3. **An assign step takes its place.** It assigns each accession its labels,
+   `project.subject.session`, from its metadata. This is the job the `label` stage
+   does today (`api/label_api.py::label`, `Accession.label` at
+   `model/accession.py:1088`), brought into collate.
+4. **A new step after the assign step moves each accession's files to the target
+   directory** for the next process, in a directory named
+   `<project>.<subject>.<session>-<run_uid>`.
+
+The order after grouping (step 14) becomes:
+
+| Step | Replaces | Kind |
+| --- | --- | --- |
+| `inject_accession_tables` | step 15, unchanged | batch |
+| `warn_if_hardlinks_unavailable` | step 16, now comparing `working_dir` with the target directory | batch |
+| assign: label each accession from its metadata | step 17, `stage_accession` | per accession |
+| move to the target directory, `<project>.<subject>.<session>-<run_uid>/` | new | per accession |
+| finish the run: move what is left to the unprocessed directory (`finish_claim`), or to the error directory if the run raised (`abandon_claim`), and remove the run directory | steps 18 and 19, `finish_claim` and `remove_build_dir` | batch |
+
+Steps 0–14 are unchanged, except that `prepare_build_dir` (step 5) and
+`claim_input_files` (step 6) use `<working_dir>/<run_uid>/` instead of the two areas
+under the output directory.
+
+To confirm before the design is detailed:
+
+- **The layout inside `<working_dir>/<run_uid>/`:** e.g. `claimed.json`, `claimed/`
+  for the claimed input and `build/` for saving, so that the input, which is the only
+  copy until it has been moved on, stays apart from disposable scratch.
+- **Labelling options:** which options supply the label fields, the constant labels
+  and the acquisition description. Today they belong to each store's `label` command
+  (`--label`, store type), and would be new options on `collate folder`. Adding options
+  keeps the CLI backwards compatible (principle 11).
+- **Accessions whose labels can't be assigned** (a field missing from the metadata):
+  today the `label` stage saves them to `__invalid__`. Are they left in the run
+  directory for `finish`, or moved to an invalid area of the target directory?
+- **What the move step moves:** the claimed files themselves, renamed into the target
+  layout (one rename per file, no copy), or the accession saved into `build/` and then
+  renamed into place, as `stage_accession` does, with its manifests and metadata files.
+  Retrying the move needs the same care as `stage_accession`'s marker.
+- **The directory name:** `<project>.<subject>.<session>-<run_uid>` separates the run
+  UID with `-`, where today's staged names use `.` (`staging_dirname`,
+  `_labels_from_dirname`). Labels can contain `-`, so the name has to be split at the
+  last `-`, and the run UID must never contain one; the parser and `staging_dirname`
+  change to match.
+- **The `label` stage and Phase 5:** with labelling in collate, does the `label` command
+  stay for other sources (e.g. Orthanc), or is it retired? Phase 5 is replanned
+  accordingly, and the store commands that read the staged directories (`store xnat`,
+  `store folder`) must accept the new names.
+- **The output directory parameter:** whether `output_dir` becomes the target
+  directory, or a separate target parameter is added.
+
+##### leftover files to an unprocessed directory
+
+Status: **Done** (2026-11-25), with these decisions:
+
+- `finish_claim(claimed, unprocessed_dir, failed=(), ignored=())` moves the whole run
+  directory, with its plan, to `<unprocessed_dir>/<run_uid>/`, after writing
+  `unprocessed.json` into it: for each leftover file, its path, its original path, and
+  why it was left (`failed` with the accession and its error, `ignored` with its
+  datatype, or `unrecognised`). With nothing left, the run directory is removed.
+- A run that raises after the claim moves its claim to an **error directory** instead:
+  the new `abandon_claim(claimed, error_dir, error)` moves the run directory to
+  `<error_dir>/<run_uid>/`, with the error in `error.json`. The composite calls it in
+  an `except` and re-raises.
+- Both move with a rename on one file system, and across file systems with a copy to a
+  hidden name, a rename into place and a delete, safe to retry.
+
+The plan as it was written:
+
+**Part of `finish_claim` (step 18) is to move any files that are left to an unprocessed
+directory, which is given as a parameter.** Today it keeps the run directory, with its
+plan, and reports the files left in it. They are files that no datatype recognised but
+`--allow-unrecognised` let through, file-sets of an `--ignore-datatype`, and the files of
+accessions that failed to stage, and they are the only copies, since the claim moved
+them out of the input. Moving them to one known place, outside the processing area,
+makes them easy to find and deal with, and lets the run directory always be removed.
+This answers the open question about what happens to the run directories that
+`finish_claim` leaves.
+
+Changes:
+
+- **A new `unprocessed_dir` parameter** for `finish_claim`, and for the collate API and
+  the composites that call it. It becomes the "finish the run" step of
+  the revised flow.
+- **`finish_claim` moves each leftover file** into `unprocessed_dir` after deleting any
+  `.claiming` temporary files and pruning the empty directories, then removes the run
+  directory. It returns the files' new paths and logs one warning, giving their count
+  and where they went.
+- **The move is safe to retry** (principle 9): a file already moved is skipped, and the
+  run directory is only removed once every leftover has been moved. Across file systems
+  the move is a copy, a check and a delete, as in the claim.
+
+To confirm:
+
+- **The layout in `unprocessed_dir`:** e.g. `<unprocessed_dir>/<run_uid>/`, keeping each
+  file's path relative to the source roots, so that files from different runs, and
+  repeated names, don't collide and can be traced back.
+- **Whether the plan (`claimed.json`) goes with them**, so that each file's original
+  path is kept.
+- **Whether the reason a file was left is recorded** (unrecognised, ignored, or failed
+  to stage, with the error), e.g. in a manifest next to the files. `finish_claim` can
+  only tell the first two apart from the third if the composite passes it the errors
+  from staging.
+- **A run that raises after the claim** (e.g. a `FormatMismatchError` for an
+  unrecognised file) never reaches `finish_claim`. Should the composite call it in a
+  `finally`, as it does `remove_build_dir`, so that its files are moved to
+  `unprocessed_dir` too?
+- **The CLI option** that supplies it (e.g. `--unprocessed-dir`), its default, and how it
+  fits with `working_dir` in the revised flow.
+
 #### Dated entries
 
 - 2026-11-25, Phase 1, steps 6, 17 and 18:
