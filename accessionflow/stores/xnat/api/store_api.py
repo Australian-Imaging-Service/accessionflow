@@ -17,7 +17,7 @@ from tqdm import tqdm
 from xnat.exceptions import XNATResponseError
 
 from accessionflow.exceptions import IncompleteCheckumsException, SessionIdentityRefused
-from accessionflow.helpers.arg_types import StoreCredentials
+from accessionflow.helpers.arg_types import ClashSpec, StoreCredentials
 from accessionflow.helpers.logging import logger
 from accessionflow.helpers.metadata import Metadata
 from accessionflow.helpers.remotes import (
@@ -42,6 +42,7 @@ from accessionflow.stores.xnat.remotes import (
     get_xnat_session,
     log_name_only_comparison,
     split_resource_by_modality,
+    staged_file_sizes,
 )
 
 
@@ -124,6 +125,7 @@ def store(
     modality: ty.Optional[str] = None,
     date_field: str | None = None,
     skip_uid_check: bool = False,
+    on_resource_clash: ty.Sequence[ClashSpec] = (),
 ) -> list[str]:
     """Upload sorted sessions in the given staging directory to XNAT
 
@@ -168,7 +170,20 @@ def store(
     date_field: str, optional
         Session metadata field to use as the XNAT session date when creating a
         session. Existing XNAT sessions are not modified.
+    on_resource_clash : Sequence[ClashSpec], optional
+        what to do when a resource exists on XNAT and is not the same as the
+        staged one, by datatype. "merge" uploads the files that XNAT does not
+        have, when that is enough. "error" changes nothing on XNAT and reports
+        the session as not uploaded, until the resource is deleted on XNAT. The
+        first spec whose scope covers the resource applies. A resource that no
+        spec covers gets "error". With no specs, all resources get "merge".
     """
+    for spec in on_resource_clash:
+        if spec.policy not in ("merge", "error"):
+            raise ValueError(
+                "The store stage supports the --on-resource-clash policies 'merge' "
+                f"and 'error', not '{spec.policy}'"
+            )
 
     errors = []
 
@@ -432,7 +447,9 @@ def store(
                     # session from the headers (see `split_resource_by_modality`)
                     for part in split_resource_by_modality(resource):
                         try:
-                            xresource, only_files = get_xnat_resource(part, xsession)
+                            xresource, only_files = get_xnat_resource(
+                                part, xsession, on_resource_clash=on_resource_clash
+                            )
                         except IncompleteCheckumsException as e:
                             # Exists on XNAT but is short and cannot be repaired by
                             # uploading. Record it so the session does not report as
@@ -562,7 +579,9 @@ def store(
                         # files already there and empty ones for those just
                         # added, and a whole-dict `!=` calls that a mismatch.
                         comparison = compare_resource_with_xnat(
-                            calc_checksums, remote_checksums
+                            calc_checksums,
+                            remote_checksums,
+                            staged_file_sizes(resource.fileset, calc_checksums),
                         )
                         log_name_only_comparison(
                             comparison, resource.path, session.name

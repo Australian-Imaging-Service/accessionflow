@@ -7,6 +7,7 @@ import re
 import threading
 import typing as ty
 from collections import defaultdict
+from pathlib import Path
 from urllib.parse import quote
 
 import attrs
@@ -21,6 +22,7 @@ from accessionflow.exceptions import (
     UnknownStudyIdentity,
     UnsupportedModalityError,
 )
+from accessionflow.helpers.arg_types import ClashSpec
 from accessionflow.helpers.logging import logger
 from accessionflow.helpers.remotes import (
     LocalSessionListing,
@@ -30,7 +32,7 @@ from accessionflow.helpers.remotes import (
     SessionOnlyListing,
     read_grouping_uid,
 )
-from accessionflow.model.accession import Accession
+from accessionflow.model.accession import Accession, _fileset_in_scope
 from accessionflow.model.acquisition import Acquisition
 from accessionflow.model.resource import Resource
 
@@ -482,18 +484,30 @@ def _xnat_scan_class_from_session(xsession: ty.Any) -> ty.Any:
 def _files_held_in(
     local_checksums: ty.Mapping[str, str],
     xnat_checksums_list: ty.Iterable[ty.Mapping[str, str]],
+    local_sizes: ty.Mapping[str, int] | None = None,
 ) -> bool:
     """Whether every staged file is held, by name and checksum, somewhere in the
-    given XNAT resources. As in compare_resource_with_xnat, a file XNAT has not
-    yet calculated a digest for ('') is matched by name only."""
-    held: dict[str, set[str]] = defaultdict(set)
+    given XNAT resources. A file XNAT has not yet calculated a digest for ('') is
+    matched by name, and by size when both sizes are known (see
+    compare_resource_with_xnat)."""
+    sizes = local_sizes or {}
+    held: dict[str, list[tuple[str, int | None]]] = defaultdict(list)
     for xnat_checksums in xnat_checksums_list:
+        xnat_sizes: ty.Mapping[str, int] = getattr(xnat_checksums, "sizes", {})
         for name, digest in xnat_checksums.items():
-            held[name].add(digest)
-    return all(
-        name in held and (checksum in held[name] or "" in held[name])
-        for name, checksum in local_checksums.items()
-    )
+            held[name].append((digest, xnat_sizes.get(name)))
+
+    def is_held(name: str, checksum: str) -> bool:
+        return any(
+            digest == checksum
+            or (
+                not digest
+                and (size is None or name not in sizes or size == sizes[name])
+            )
+            for digest, size in held.get(name, ())
+        )
+
+    return all(is_held(n, c) for n, c in local_checksums.items())
 
 
 @attrs.define
@@ -533,15 +547,19 @@ class ResourceComparison:
 def compare_resource_with_xnat(
     local_checksums: ty.Mapping[str, str],
     xnat_checksums: ty.Mapping[str, str],
+    local_sizes: ty.Mapping[str, int] | None = None,
 ) -> ResourceComparison:
     """Compare a staged resource's manifest against XNAT's file listing.
 
     XNAT leaves `digest` empty until a catalog refresh populates it, so files
     uploaded but not yet refreshed report ''. Comparing content in that state
     would call a healthy resource corrupt, so a file with no digest is compared
-    by NAME only and recorded in `without_checksums`. `comparable` means at
-    least one remote digest exists, not that every file was verified by content.
-    api/check_store_api.py guards the same way.
+    by NAME, and by SIZE when both sizes are known (`local_sizes`, and the
+    `sizes` of an XnatChecksums), and recorded in `without_checksums`. Some
+    XNAT instances never calculate digests, and a package made again with a
+    late series keeps its name, so a name alone cannot show that it changed.
+    `comparable` means at least one remote digest exists, not that every file
+    was verified by content. api/check_store_api.py guards the same way.
     """
     local_names = set(local_checksums)
     xnat_names = set(xnat_checksums)
@@ -553,6 +571,16 @@ def compare_resource_with_xnat(
             for n in local_names & xnat_names
             if xnat_checksums[n] and xnat_checksums[n] != local_checksums[n]
         }
+    xnat_sizes: ty.Mapping[str, int] = getattr(xnat_checksums, "sizes", {})
+    sizes = local_sizes or {}
+    differing |= {
+        n
+        for n in local_names & xnat_names
+        if not xnat_checksums[n]
+        and n in sizes
+        and n in xnat_sizes
+        and sizes[n] != xnat_sizes[n]
+    }
     return ResourceComparison(
         missing=local_names - xnat_names,
         extra=xnat_names - local_names,
@@ -570,8 +598,8 @@ def log_name_only_comparison(
     """Keep per-resource detail at DEBUG; checksum support is reported once."""
     if comparison.without_checksums:
         logger.debug(
-            "'%s' in '%s' has %d file(s) compared by file name only: XNAT lists them "
-            "without checksums",
+            "'%s' in '%s' has %d file(s) compared by name and, where known, size: "
+            "XNAT lists them without checksums",
             resource,
             session,
             len(comparison.without_checksums),
@@ -593,7 +621,8 @@ def _report_xnat_checksum_support(checksums: ty.Mapping[str, str]) -> None:
             _xnat_has_checksums = any(checksums.values())
             if not _xnat_has_checksums:
                 logger.warning(
-                    "XNAT returns no file checksums; files are compared by name only"
+                    "XNAT returns no file checksums; files are compared by name, and "
+                    "by size when both sizes are known"
                 )
 
 
@@ -662,8 +691,48 @@ def split_resource_by_modality(resource: Resource) -> ty.List[Resource]:
     ]
 
 
+def resource_clash_policy(specs: ty.Sequence[ClashSpec], resource: Resource) -> str:
+    """The --on-resource-clash policy of a staged resource that is not the same as
+    its copy on XNAT. The first spec whose scope covers the resource's datatype
+    applies. With no specs, the policy is "merge". A resource that no spec covers
+    gets "error", so that a person decides.
+    """
+    if not specs:
+        return "merge"
+    for spec in specs:
+        if _fileset_in_scope(resource.fileset, spec.scope):
+            return spec.policy
+    return "error"
+
+
+def _clash_message(name: str, where: str, comparison: ResourceComparison) -> str:
+    return (
+        f"'{name}' resource in '{where}' on XNAT is not the same as the staged one "
+        f"({len(comparison.missing)} missing, {len(comparison.extra)} unexpected and "
+        f"{len(comparison.differing)} different file(s)), and --on-resource-clash is "
+        "'error' for its datatype. Delete the resource on XNAT to have it uploaded "
+        "afresh."
+    )
+
+
+def staged_file_sizes(fileset: ty.Any, names: ty.Iterable[str]) -> dict[str, int]:
+    """The sizes of staged files, by their paths relative to the fileset's parent,
+    as the checksums give them. A name with no file there gets no size."""
+    parent = getattr(fileset, "parent", None)
+    if parent is None:
+        return {}
+    sizes = {}
+    for name in names:
+        path = Path(parent) / name
+        if path.is_file():
+            sizes[name] = path.stat().st_size
+    return sizes
+
+
 def get_xnat_resource(
-    resource: Resource, xsession: ty.Any
+    resource: Resource,
+    xsession: ty.Any,
+    on_resource_clash: ty.Sequence[ClashSpec] = (),
 ) -> tuple[ty.Any, ty.Optional[ty.Set[str]]]:
     """Get the XNAT resource object for the given resource
 
@@ -677,6 +746,11 @@ def get_xnat_resource(
         the resource to upload
     xsession : ty.Any
         the XNAT session object
+    on_resource_clash : Sequence[ClashSpec]
+        what to do when the resource exists on XNAT and is not the same as the
+        staged one (see resource_clash_policy). "merge" uploads the files that
+        XNAT does not have, when that is enough. "error" raises, and changes
+        nothing on XNAT.
 
     Returns
     -------
@@ -705,10 +779,13 @@ def get_xnat_resource(
             # nothing to do. The caller reads None as "already uploaded", so
             # returning it for a short resource loses the data silently.
             comparison = compare_resource_with_xnat(
-                resource.checksums, get_xnat_checksums(xresource)
+                resource.checksums,
+                get_xnat_checksums(xresource),
+                staged_file_sizes(resource.fileset, resource.checksums or {}),
             )
             log_name_only_comparison(comparison, resource.path, xsession.label)
-            if comparison.repairable:
+            policy = resource_clash_policy(on_resource_clash, resource)
+            if comparison.repairable and policy == "merge":
                 logger.warning(
                     "'%s' session resource exists on XNAT but is missing %d of "
                     "%d file(s) held in the staged session. Uploading the "
@@ -730,7 +807,16 @@ def get_xnat_resource(
                     sorted(comparison.missing),
                     sorted(comparison.extra),
                     sorted(comparison.differing),
+                    extra={
+                        "event": "xnat_resource_clash",
+                        "resource": resource.path,
+                        "policy": policy,
+                    },
                 )
+                if policy == "error":
+                    raise IncompleteCheckumsException(
+                        _clash_message(resource_name, xsession.label, comparison)
+                    )
                 if comparison.missing:
                     raise IncompleteCheckumsException(
                         f"'{resource_name}' session resource exists on XNAT but "
@@ -833,9 +919,14 @@ def get_xnat_resource(
         pass
     else:
         xnat_checksums = get_xnat_checksums(xresource)
-        comparison = compare_resource_with_xnat(resource.checksums, xnat_checksums)
+        comparison = compare_resource_with_xnat(
+            resource.checksums,
+            xnat_checksums,
+            staged_file_sizes(resource.fileset, resource.checksums or {}),
+        )
         log_name_only_comparison(comparison, resource.path, resource.acquisition.path)
-        if comparison.repairable:
+        policy = resource_clash_policy(on_resource_clash, resource)
+        if comparison.repairable and policy == "merge":
             # We hold files XNAT does not and nothing else is wrong, so hand
             # back the shortfall. Not the whole resource: XNAT would reject or
             # duplicate the files it already holds.
@@ -862,7 +953,18 @@ def get_xnat_resource(
                 sorted(comparison.missing),
                 sorted(comparison.extra),
                 sorted(comparison.differing),
+                extra={
+                    "event": "xnat_resource_clash",
+                    "resource": resource.path,
+                    "policy": policy,
+                },
             )
+            if policy == "error":
+                # An operator decides: for a package (e.g. a zip made again
+                # with a late series), an upload cannot merge the two copies.
+                raise IncompleteCheckumsException(
+                    _clash_message(resource_name, resource.acquisition.path, comparison)
+                )
             if comparison.missing:
                 # Missing alone is repaired above, so XNAT also holds files we
                 # do not or a shared file differs. An upload can only add, so it
@@ -918,7 +1020,17 @@ def get_xnat_resource(
     return xresource, None
 
 
-def get_xnat_checksums(xresource: ty.Any) -> dict[str, str]:
+class XnatChecksums(dict[str, str]):
+    """The digests of the files of a resource on XNAT, by path. ``sizes`` holds the
+    file sizes from the same listing, so that a file with no digest can still be
+    compared by size."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.sizes: dict[str, int] = {}
+
+
+def get_xnat_checksums(xresource: ty.Any) -> XnatChecksums:
     """
     Downloads the MD5 digests associated with the files in a resource.
 
@@ -929,8 +1041,8 @@ def get_xnat_checksums(xresource: ty.Any) -> dict[str, str]:
 
     Returns
     -------
-    dict[str, str]
-        the checksums calculated by XNAT
+    XnatChecksums
+        the checksums calculated by XNAT, and the file sizes in ``sizes``
     """
     return get_xnat_checksums_at(
         xresource.xnat_session, xresource.uri + "/files", xresource.id
@@ -939,7 +1051,7 @@ def get_xnat_checksums(xresource: ty.Any) -> dict[str, str]:
 
 def get_xnat_checksums_at(
     connection: xnat.XNATSession, files_uri: str, resource_id: ty.Any = None
-) -> dict[str, str]:
+) -> XnatChecksums:
     """get_xnat_checksums() for a resource given by the URI of its file listing.
 
     Parameters
@@ -953,8 +1065,8 @@ def get_xnat_checksums_at(
 
     Returns
     -------
-    dict[str, str]
-        the checksums calculated by XNAT
+    XnatChecksums
+        the checksums calculated by XNAT, and the file sizes in ``sizes``
     """
     result = connection.get(files_uri)
     if result.status_code != 200:
@@ -964,7 +1076,7 @@ def get_xnat_checksums_at(
                 files_uri if resource_id is None else resource_id
             )
         )
-    checksums: dict[str, str] = {}
+    checksums = XnatChecksums()
     for row in result.json()["ResultSet"]["Result"]:
         # Name is only the basename. URI retains the path inside the resource,
         # and its resource identifier may be numeric even when we queried by label.
@@ -990,6 +1102,8 @@ def get_xnat_checksums_at(
                 f"XNAT file listing repeats resource-relative path {path!r}"
             )
         checksums[path] = row["digest"]
+        if str(row.get("Size", "")).isdigit():
+            checksums.sizes[path] = int(row["Size"])
     _report_xnat_checksum_support(checksums)
     return checksums
 
@@ -1141,9 +1255,9 @@ class XnatSessionListing(SessionListing):
             )
             return False
 
-        xnat_checksums_cache: dict[str, dict[str, str]] = {}
+        xnat_checksums_cache: dict[str, XnatChecksums] = {}
 
-        def xnat_checksums(files_uri: str) -> dict[str, str]:
+        def xnat_checksums(files_uri: str) -> XnatChecksums:
             if files_uri not in xnat_checksums_cache:
                 xnat_checksums_cache[files_uri] = get_xnat_checksums_at(
                     connection, files_uri
@@ -1158,7 +1272,9 @@ class XnatSessionListing(SessionListing):
                 if not local_checksums:
                     continue
                 comparison = compare_resource_with_xnat(
-                    local_checksums, xnat_checksums(xresource)
+                    local_checksums,
+                    xnat_checksums(xresource),
+                    self.resource_file_sizes(resource_path),
                 )
                 if not comparison.complete:
                     logger.info(
@@ -1174,8 +1290,8 @@ class XnatSessionListing(SessionListing):
                     return False
                 continue
             # Upload can store a staged resource under a different scan ID or
-            # label than its staged path. So look for its files, by
-            # name and checksum, across every resource in the matching scans.
+            # label than its staged path. So look for its files, by name and
+            # checksum (or size), across every resource in the matching scans.
             if local_checksums and "/" in resource_path:
                 scan_id = resource_path.split("/", 1)[0].split(".", 1)[0]
                 candidates = [
@@ -1185,7 +1301,9 @@ class XnatSessionListing(SessionListing):
                     for xr in xrs
                 ]
                 if candidates and _files_held_in(
-                    local_checksums, [xnat_checksums(xr) for xr in candidates]
+                    local_checksums,
+                    [xnat_checksums(xr) for xr in candidates],
+                    self.resource_file_sizes(resource_path),
                 ):
                     continue
             logger.info(

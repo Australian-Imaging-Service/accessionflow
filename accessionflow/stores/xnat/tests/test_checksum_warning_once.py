@@ -9,7 +9,10 @@ import pytest
 
 from accessionflow.stores.xnat import remotes
 
-WARNING = "XNAT returns no file checksums; files are compared by name only"
+WARNING = (
+    "XNAT returns no file checksums; files are compared by name, and by size "
+    "when both sizes are known"
+)
 
 
 @pytest.fixture(autouse=True)
