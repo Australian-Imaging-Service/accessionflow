@@ -183,6 +183,18 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-25, Phase 1, composites step C1: `accessionflow.api.staging.for_each_accession`
+  returns `list[tuple[T, str]]`, each accession the step failed on with its error
+  message (traceback included), instead of the messages alone, so that the failed
+  accessions can be passed to `finish_claim`. The messages are unchanged, and are what
+  `log_stage_summary` is given. Tests in `api/tests/test_staging.py`. Nothing outside
+  its tests used it. CLI unchanged. PR: pending.
+- 2026-11-25, Phase 1 design, `ROADMAP.md` only: the Composites section is planned as
+  five steps: C1, `for_each_accession` returns the failed items with their errors; C2,
+  `collect_accessions` (steps 7–15), returning the accessions and the ignored
+  file-sets; C3, `deliver_accessions` (steps 16–18); C4, the folder composite
+  `collate_files`, built alongside today's `collate()` until the CLI moves onto it; and
+  C5, porting the `from_paths` tests. No code changes. PR: pending.
 - 2026-11-25, Phase 1 (the next action "the revised flow"):
   - `move_to_target` (step 18) replaces `stage_accession`: it delivers a labelled
     accession to `<output_dir>/<labels>_<run_uid>/`. `finish_claim` and
@@ -695,6 +707,8 @@ To confirm:
 
 #### Dated entries
 
+- 2026-11-25, Phase 1, composites step C1, changed in `accessionflow.api.staging`:
+  - `for_each_accession(accessions, step, desc, raise_errors=False, name_of=...) -> list[tuple[T, str]]`
 - 2026-11-25, Phase 1, steps 6, 17 and 18:
   - added: `assign_labels(accession, label_fields, acquisition_field=None, constant_labels=None, store_type=None) -> Accession`
   - added: `move_to_target(accession, build_dir, output_dir, claimed, copy_mode=..., collation_map=None, conversion_map=None) -> Path`

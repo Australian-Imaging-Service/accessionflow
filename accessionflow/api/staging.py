@@ -188,7 +188,7 @@ def for_each_accession(
     desc: str,
     raise_errors: bool = False,
     name_of: ty.Callable[[T], str] = _default_name,
-) -> list[str]:
+) -> list[tuple[T, str]]:
     """Runs a per-accession step on each accession in turn. A failure of one accession
     is either raised, or logged so that the remaining accessions are still processed.
 
@@ -209,10 +209,12 @@ def for_each_accession(
 
     Returns
     -------
-    list[str]
-        the error messages, one per accession the step failed on
+    list[tuple[T, str]]
+        each accession the step failed on, with its error message (which gives the
+        traceback too), in order. Pass the messages to `log_stage_summary`, and the
+        failed accessions and their messages to `finish_claim`
     """
-    errors: list[str] = []
+    failures: list[tuple[T, str]] = []
     for accession in tqdm(accessions, desc):
         try:
             step(accession)
@@ -224,5 +226,5 @@ def for_each_accession(
                 f"{traceback.format_exc()}\n"
             )
             logger.error(msg)
-            errors.append(msg)
-    return errors
+            failures.append((accession, msg))
+    return failures

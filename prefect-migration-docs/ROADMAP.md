@@ -146,9 +146,9 @@ Status: In progress. The step functions (steps 0–20) are done; see
 there under "Phase 1 design records": a random run UID, the revised flow (labelling and
 delivery to `<labels>_<run_uid>`), and moving leftover files to an unprocessed
 directory.
-What is left: the composites, the option converters, moving the folder `collate()` and
-the CLI onto the steps (with the label options and the new directories), the removals,
-and the tests listed below.
+What is left: the [composites](#composites), in steps C1–C5, then the option converters,
+moving the folder `collate()` and the CLI onto the steps (with the label options and
+the new directories), the removals, and the tests listed below.
 
 The current call chain is:
 
@@ -244,30 +244,107 @@ stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
 
 ### Composites
 
-Plain-Python sequences of the steps. Their signatures can change.
+Status: Planned. Plain-Python sequences of the steps, which the CLI runs; the flows
+repository wraps the same steps in the same order (principle 10). Their signatures can
+change. They are built in five steps, each one PR that keeps the suite green and adds
+its own `CHANGELOG.md` entry. The folder `collate()` keeps its many callers (the CLI and
+about 20 tests, all with `input_paths=...`) until the CLI step, so the new composite is
+built alongside it, and the name `save_accessions_to_dir` stays with the old function in
+`api/collate_api.py` until the removals step.
 
-- `accessionflow.api.collate.collect_accessions(claimed, ...)` runs steps 7–15:
-  expand, classify, add metadata, group.
-- `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 16–18:
-  `warn_if_hardlinks_unavailable`, then, for each accession, `assign_labels` and
-  `move_to_target`, collecting the accessions that fail (including
-  `LabelsNotAssignedError`) with their errors for `finish_claim`.
-- `sources/folder/api/collate_api.py::collate(input_files, output_dir, ...)` runs
-  `check_datatypes`, `plan_recursion`, `load_metadata_tables`, `make_run_uid` and
-  `prepare_build_dir(..., exclusive=True)` (repeated with a new UID while the build
-  directory is taken, as the folder `collate()` already does), `claim_input_files`, `collect_accessions` (with the patterns from
-  `merge_path_metadata`), `save_accessions_to_dir`,
-  `finish_claim(claimed, unprocessed_dir, failed, ignored)` (with the accessions that
-  failed to stage and their errors, and the file-sets `drop_ignored_filesets` dropped),
-  `remove_build_dir` (in a `finally`, so that a run that raises doesn't leave an empty
-  build directory) and `log_stage_summary`. Everything after the claim runs in a `try`
-  whose `except` calls `abandon_claim(claimed, error_dir, e)` and re-raises, so a run
-  that fails moves its claim to the error directory. A `FormatMismatchError` from classification names the
-  claimed paths, so the composite adds their original paths to it (`original_of`,
-  with `add_note`). Compared with today, it takes `input_files: list[Path]` and loses `wait_period`, `unlink_source`,
-  `recursive`'s directory listing and `exclude_paths`. `recursive` stays, for directory
-  datatypes. `path_metadata_pattern_to_regex` and `merge_path_metadata` stay in the
-  folder plugin.
+**C1. Collect the failures, not only their messages.** **Done (2026-11-25).**
+
+- `for_each_accession(accessions, step, desc, raise_errors=False, name_of=...)`
+  (`api/staging.py`) returns `list[tuple[T, str]]`, each failed item with its error
+  message, instead of `list[str]`, because `finish_claim` needs the failed accessions.
+  `log_stage_summary` is given the messages. Nothing but its tests calls it yet; they
+  are updated in `api/tests/test_staging.py`.
+
+**C2. `collect_accessions`, steps 7–15**, in a new `accessionflow/api/collate/composites.py`:
+
+```python
+collect_accessions(
+    claimed, datatypes, recursion, *, recursive=False, allow_unrecognised=(),
+    dont_read_metadata=(), path_metadata_regex=(), metadata_tables=(),
+    accession_uid_field, acquisition_id_field=(), resource_field=(),
+    on_resource_clash="error", run_uid=None,
+) -> CollectedAccessions
+```
+
+- Runs `expand_claimed_paths`, `classify_paths`, `drop_ignored_filesets`,
+  `disable_metadata_reading`, `apply_path_metadata` (with `claimed`),
+  `tag_fileset_types`, `inject_fileset_tables`, `group_into_accessions` and
+  `inject_accession_tables`.
+- `CollectedAccessions` is a frozen attrs record that pickles: the `accessions`, and the
+  `ignored` file-sets (the classified file-sets `drop_ignored_filesets` dropped), which
+  `finish_claim` needs.
+- A `FormatMismatchError` from classification names the claimed paths, so a note
+  (`add_note`) lists the unrecognised files' original paths (`claimed.original_of`).
+- Tests: the steps-so-far tests in `api/tests/collate/` become `collect_accessions`
+  tests, and a new one checks the original-path note.
+
+**C3. `deliver_accessions`, steps 16–18**, in `composites.py`:
+
+```python
+deliver_accessions(
+    accessions, build_dir, output_dir, claimed, label_fields, *,
+    acquisition_field=None, constant_labels=None, store_type=None,
+    copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None,
+    raise_errors=False,
+) -> list[tuple[Accession, str]]
+```
+
+- `warn_if_hardlinks_unavailable`, then `for_each_accession` over `assign_labels`
+  followed by `move_to_target`.
+- Returns the accessions that failed, with their errors, including
+  `LabelsNotAssignedError`, ready for `finish_claim`.
+- Tests: one accession delivered, one that can't be labelled, one whose save fails, and
+  `raise_errors=True` raising the first failure.
+
+**C4. The new folder composite, `collate_files`**, in
+`sources/folder/api/collate_api.py`, alongside today's `collate()`:
+
+```python
+collate_files(
+    input_files: list[Path], output_dir, working_dir, unprocessed_dir, error_dir,
+    label_fields, *, datatypes=..., source_roots=None,
+    <the collect and deliver options>, raise_errors=False,
+) -> list[str]
+```
+
+- Runs `check_datatypes`, `plan_recursion` and `load_metadata_tables`; then
+  `make_run_uid` with `prepare_build_dir(output_dir, run_uid, exclusive=True)`,
+  repeated while the UID is taken; then
+  `claim_input_files(input_files, working_dir, run_uid, source_roots)`.
+- Then, in a `try`: `collect_accessions` (with the patterns from
+  `merge_path_metadata`), `deliver_accessions`, and
+  `finish_claim(claimed, unprocessed_dir, failed, collected.ignored)`. Its `except`
+  calls `abandon_claim(claimed, error_dir, e)` and re-raises; its `finally` calls
+  `remove_build_dir(build_dir)`.
+- Logs the outcome with `log_stage_summary` and returns the error messages, as the CLI
+  expects.
+- Tests, through `collate_files` on small JSON trees:
+  - a run that delivers, with a leftover moved to `unprocessed_dir`
+  - a run that raises (an unrecognised file), whose claim goes to `error_dir`
+  - the **race test** (see [Tests](#tests)): files added to the input directory during
+    a run stay there for the next run
+  - a clash of run UIDs
+  - `source_roots` set to the input directories, so the top-level entries match
+    today's
+
+**C5. Port the `from_paths` tests**, the regression net, before anything is removed:
+
+- The 15 calls in `model/tests/test_accession.py` and the 2 in
+  `api/tests/test_collate.py` claim the same input and run `collect_accessions`,
+  keeping their assertions.
+- The DICOM-based tests of the folder `collate()` in `api/tests/test_collate.py` get
+  `collate_files` counterparts for what changes: labelling, the delivered names and the
+  unprocessed directory.
+
+After C5, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
+`collate_files`, and the removals step deletes `from_paths`, the old `collate()` and
+`api/collate_api.py`, and renames `collate_files` to `collate` (see
+[Removed](#removed)).
 
 ### Option converters
 
@@ -346,6 +423,9 @@ These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
   `docs/source/reference/api.rst:17`. References to `Accession.from_paths` are updated
   in `docs/source/reference/api.rst:55` and `docs/source/developer/data_model.rst:19`.
   `MIGRATING.md:293` is updated in Phase 10.
+- The old folder `collate(input_paths, ...)`. `collate_files` (composites step C4) is
+  renamed `collate`, and the tests that call the old one with `input_paths=...` move
+  to it or are dropped where C5 has ported them.
 
 ### Staging layout
 
@@ -367,9 +447,10 @@ staged doesn't need draining.
   snapshot to their commands.
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
-  The claim's part is already tested; this is the end-to-end test, through the folder
-  `collate()`.
-- **Ported tests**, keeping their assertions as the regression net:
+  The claim's part is already tested; this is the end-to-end test, through
+  `collate_files` (composites step C4).
+- **Ported tests** (composites step C5), keeping their assertions as the regression
+  net:
   - the 15 calls to `Accession.from_paths` in `model/tests/test_accession.py` and the 2
     in `api/tests/test_collate.py`, which list and claim the files, then call
     `collect_accessions`

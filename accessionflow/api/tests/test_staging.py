@@ -118,20 +118,25 @@ def test_for_each_accession_collects_errors_and_continues() -> None:
             raise ValueError(f"bad {accession.uid}")
         done.append(accession.uid)
 
-    errors = for_each_accession(accessions, step, "Testing")
+    failures = for_each_accession(accessions, step, "Testing")
     assert done == ["3"]
-    assert len(errors) == 2
+    # The failed accessions themselves, with their messages
+    assert [item for item, _ in failures] == accessions[:2]
+    assert all(item is a for (item, _), a in zip(failures, accessions))
+    messages = [message for _, message in failures]
     # Named by name, or by UID when it has no name
-    assert errors[0].startswith("Skipping 'a' due to an error: \"bad 1\"")
-    assert errors[1].startswith("Skipping '2' due to an error: \"bad 2\"")
+    assert messages[0].startswith("Skipping 'a' due to an error: \"bad 1\"")
+    assert messages[1].startswith("Skipping '2' due to an error: \"bad 2\"")
+    assert "Traceback" in messages[0]
 
 
 def test_for_each_accession_name_of() -> None:
     def step(accession: str) -> None:
         raise ValueError("bad")
 
-    errors = for_each_accession(["x"], step, "Testing", name_of=str.upper)
-    assert errors[0].startswith("Skipping 'X'")
+    ((item, message),) = for_each_accession(["x"], step, "Testing", name_of=str.upper)
+    assert item == "x"
+    assert message.startswith("Skipping 'X'")
 
 
 def test_for_each_accession_raises_errors() -> None:
