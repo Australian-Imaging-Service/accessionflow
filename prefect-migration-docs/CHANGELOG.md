@@ -23,6 +23,14 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-25, Phase 1, step 17 (the next action "the revised flow"),
+  `accessionflow/api/collate/assign.py`: `assign_labels`, which labels each accession
+  from its metadata and raises `LabelsNotAssignedError` (new in
+  `accessionflow/exceptions.py`) if a label field is missing. With
+  `accessionflow/helpers/run_uid.py`: `RUN_UID_RE`, `RUN_UID_SEPARATOR` and
+  `split_run_uid`, which recognise the run UID at the end of a directory name. Tests in
+  `api/tests/collate/test_assign.py` and `helpers/tests/test_run_uid.py`. CLI
+  unchanged. PR: pending.
 - 2026-11-24, Phase 0, documents: created `prefect-migration-docs/` with `ROADMAP.md`
   and `CHANGELOG.md`. The roadmap sets out the design principles for step functions,
   the phases of the migration, and the decomposition of the collate stage (core and
@@ -175,6 +183,21 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-25, Phase 1 (the next action "the revised flow"):
+  - `move_to_target` (step 18) replaces `stage_accession`: it delivers a labelled
+    accession to `<output_dir>/<labels>_<run_uid>/`. `finish_claim` and
+    `remove_build_dir` become steps 19 and 20.
+  - `Accession.staging_dirname` joins a recognisable run UID with `_` instead of `.`,
+    so every stage that saves a labelled accession (label, deidentify, annotate,
+    package) names it `<labels>_<run_uid>`. A run UID that isn't recognisable keeps
+    `.`. `Accession._labels_from_dirname` and `SessionListing.ids` find the run UID by
+    its whole pattern at the end of the name, and still read `<labels>.<run_uid>` and
+    the legacy `-`-delimited names.
+  - `claim_input_files` takes `working_dir`, renamed from `processing_dir`.
+
+  Tests in `api/tests/collate/test_save.py`, `api/tests/collate/test_claim.py` and
+  `model/tests/test_labels.py`. CLI options unchanged; labelled output directories are
+  named `<labels>_<run_uid>` instead of `<labels>.<run_uid>`. PR: pending.
 - 2026-11-25, Phase 1, step 18 (the next action "leftover files to an unprocessed
   directory"): `finish_claim` takes an `unprocessed_dir`, and the accessions that
   failed to stage and the file-sets that were ignored, and moves a run directory with
@@ -316,6 +339,8 @@ contract, so each entry says "CLI unchanged".
 
 ### Removed
 
+- 2026-11-25, Phase 1: `accessionflow.api.collate.stage_accession`. Use
+  `assign_labels` and then `move_to_target`. PR: pending.
 - 2026-11-24, Phase 1, step 16:
   `accessionflow.api.collate_api.warn_if_hardlinks_unavailable`. Use
   `accessionflow.api.collate.warn_if_hardlinks_unavailable`. PR: pending.
@@ -348,10 +373,10 @@ taken from, and what it does.
 | Determine the file-sets | 7 `expand_claimed_paths`, 8 `classify_paths`, 10 `drop_ignored_filesets` |
 | Apply metadata | 9 `disable_metadata_reading`, 11 `apply_path_metadata`, 12 `tag_fileset_types`, 13 `inject_fileset_tables` |
 | Form accessions | 14 `group_into_accessions`, 15 `inject_accession_tables` |
-| Stage accessions | 16 `warn_if_hardlinks_unavailable`, 17 `stage_accession` |
-| Clean up | 18 `finish_claim`, 19 `remove_build_dir` |
+| Assign and deliver | 16 `warn_if_hardlinks_unavailable`, 17 `assign_labels`, 18 `move_to_target` |
+| Clean up | 19 `finish_claim`, 20 `remove_build_dir` |
 
-Steps 1–16, 18 and 19 run once per collation; step 17 runs once per accession. Within
+Steps 1–16, 19 and 20 run once per collation; steps 17 and 18 run once per accession. Within
 the groups, `drop_ignored_filesets` (10) is listed with the file-set steps and
 `disable_metadata_reading` (9) with the metadata steps; the two are independent (neither
 reads metadata), so either order gives the same result. The existence check in
@@ -432,14 +457,15 @@ source uses it too. Until `from_paths` is removed, `group.py` imports
 `_datatype_resource_label` and `_DERIVED_ID` from the model, which still uses them; they
 move into `group.py` with the removal.
 
-##### Stage accessions
+##### Assign and deliver
 
-Save each accession and move it into the output directory. `stage_accession` is the per-accession unit.
+Label each accession and deliver it to the target directory as `<labels>_<run_uid>`. `assign_labels` and `move_to_target` are the per-accession unit. Until 2026-11-25 step 17 was `stage_accession`, which delivered unlabelled accessions as `_.<uid>` for the `label` stage.
 
 | # | Step | Module | From | Notes |
 | --- | --- | --- | --- | --- |
 | 16 | `warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map=None) -> list[Path]` | `save.py` | L118-169 | Moved here from `api/collate_api.py`, which imports it. Same checks and warning, now also returning one file of each resource that can't be hard-linked. The output directory it names is worked out from the build directory (`<output_dir>/__build__/<run_uid>`), or is the build directory itself if it isn't in a `__build__` directory. Once collate claims its input, it compares the processing area, not the source, with the build directory, so it only warns if the processing area is put elsewhere |
-| 17 | `stage_accession(accession, build_dir, output_dir, claimed, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None) -> Path` | `save.py` | L83-106 | **The per-accession unit**: `save_to_build_dir`, then `move_into_place`, then `remove_claimed_files`. Raises on failure; a failure before the move leaves the output untouched and the files in the processing area. Once the move succeeds it writes a marker, `build_dir/<staging_dirname>.staged` (`STAGED_MARKER_SUFFIX`), so a retry after a failed delete skips the save and the move (which would clash with the acquisitions already in place) and only deletes; a crash in the instant between the move and the marker still makes the retry fail on the move, without losing data |
+| 17 | `assign_labels(accession, label_fields, acquisition_field=None, constant_labels=None, store_type=None) -> Accession` | `assign.py` | `api/label_api.py`, `Accession.label` | Labels the accession from its metadata, e.g. XNAT's project, subject and session, with constant labels, an acquisition description and the store type. Raises `LabelsNotAssignedError` (an `AccessionParseError`) naming the missing fields, instead of using placeholder labels, so the accession is passed to `finish_claim` as failed. Changes the accession in place and returns it. |
+| 18 | `move_to_target(accession, build_dir, output_dir, claimed, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None) -> Path` | `save.py` | `api/collate_api.py:83-106` | Delivers a labelled accession to `<output_dir>/<labels>_<run_uid>/` (`Accession.staging_dirname`): `save_to_build_dir`, then `move_into_place`, then `remove_claimed_files`. Raises `ValueError` if the accession isn't labelled. Raises on failure; a failure before the move leaves the target untouched and the files in the processing area. Once the move succeeds it writes a marker, `build_dir/<dirname>.staged` (`STAGED_MARKER_SUFFIX`), so a retry after a failed delete skips the save and the move and only deletes; a crash in the instant between the move and the marker still makes the retry fail on the move, without losing data. Replaces `stage_accession`. |
 | – | `save_to_build_dir(accession, build_dir, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None) -> Path` | `save.py` | L87-97 | Removes the accession's scratch directory (`build_dir/<staging_dirname>`) left by an earlier attempt, then `Accession.save`s it there (principle 9). Doesn't touch the run's shared `build_dir/__build__` |
 | – | `remove_claimed_files(accession, claimed) -> list[Path]` | `save.py` | L100-106 | Deletes the accession's files from the processing area (a directory datatype's directory with `rmtree`), skipping any already gone, so it can be retried. Refuses, before deleting anything, if any file isn't in `claimed.files_dir`, so it never deletes from a live input. Always run, replacing the optional `unlink_source`. Empty directories are left for `finish_claim` |
 
@@ -452,12 +478,18 @@ Remove what the run leaves in the processing area and the build directory.
 
 | # | Step | Module | From | Notes |
 | --- | --- | --- | --- | --- |
-| 18 | `finish_claim(claimed, unprocessed_dir, failed=(), ignored=()) -> list[Path]` | `claim.py` | new | After staging: deletes any hidden `.<name>.claiming` file left by a copy across file systems that was stopped part way (its source is still in the input), and prunes the empty directories (`prune_empty_dirs`). If no files are left, removes the run directory. Otherwise writes `unprocessed.json` (`UNPROCESSED_MANIFEST`) into it, giving for each file left its path, its original path and why it was left (`failed`, with the accession and its error, for the files of the `failed` accessions; `ignored`, with its datatype, for the `ignored` file-sets; otherwise `unrecognised`), and moves the whole run directory, plan included, to `<unprocessed_dir>/<run_uid>/`. Returns the files' new paths. Safe to retry. |
-| 19 | `remove_build_dir(build_dir) -> list[Path]` | `api/staging.py` | new | Removes empty subdirectories first (`prune_empty_dirs`), including the empty `__build__` that `Accession.save` leaves, then the run's build directory if no files are left. Otherwise keeps it, logs a warning and returns what is left. `__build__` itself stays, as other runs share it. |
+| 19 | `finish_claim(claimed, unprocessed_dir, failed=(), ignored=()) -> list[Path]` | `claim.py` | new | After staging: deletes any hidden `.<name>.claiming` file left by a copy across file systems that was stopped part way (its source is still in the input), and prunes the empty directories (`prune_empty_dirs`). If no files are left, removes the run directory. Otherwise writes `unprocessed.json` (`UNPROCESSED_MANIFEST`) into it, giving for each file left its path, its original path and why it was left (`failed`, with the accession and its error, for the files of the `failed` accessions; `ignored`, with its datatype, for the `ignored` file-sets; otherwise `unrecognised`), and moves the whole run directory, plan included, to `<unprocessed_dir>/<run_uid>/`. Returns the files' new paths. Safe to retry. |
+| 20 | `remove_build_dir(build_dir) -> list[Path]` | `api/staging.py` | new | Removes empty subdirectories first (`prune_empty_dirs`), including the empty `__build__` that `Accession.save` leaves, then the run's build directory if no files are left. Otherwise keeps it, logs a warning and returns what is left. `__build__` itself stays, as other runs share it. |
 | – | `abandon_claim(claimed, error_dir, error) -> Path` | `claim.py` | new | For a run that raises after the claim: tidies the run directory as `finish_claim` does, writes the error (type, message and traceback) to `error.json` (`ERROR_MANIFEST`) in it, and moves it to `<error_dir>/<run_uid>/`. The composite calls it in an `except` and re-raises. |
 
 #### Dated entries
 
+- 2026-11-25, Phase 1, steps 6, 17 and 18:
+  - added: `assign_labels(accession, label_fields, acquisition_field=None, constant_labels=None, store_type=None) -> Accession`
+  - added: `move_to_target(accession, build_dir, output_dir, claimed, copy_mode=..., collation_map=None, conversion_map=None) -> Path`
+  - removed: `stage_accession`
+  - changed: `claim_input_files(input_files, working_dir, run_uid, source_roots=None)`,
+    with `working_dir` renamed from `processing_dir`
 - 2026-11-25, Phase 1, step 18:
   - changed: `finish_claim(claimed, unprocessed_dir, failed=(), ignored=()) -> list[Path]`
   - added: `abandon_claim(claimed, error_dir, error) -> Path`, `UNPROCESSED_MANIFEST`
@@ -536,6 +568,10 @@ Remove what the run leaves in the processing area and the build directory.
 
 ### Staging layout
 
+- 2026-11-25, Phase 1: labelled accession directories are named `<labels>_<run_uid>`
+  instead of `<labels>.<run_uid>`, by every stage that saves one. Directories named the
+  old way still load (both run-UID forms and the legacy `-` delimiter), so nothing
+  needs draining. PR: pending.
 - 2026-11-25, Phase 1: a run directory with files left after staging is moved to
   `<unprocessed_dir>/<run_uid>/` (its `claimed.json`, an `unprocessed.json` giving why
   each file was left, and the files under `files/`), and the run directory of a run

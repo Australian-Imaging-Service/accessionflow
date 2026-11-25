@@ -55,6 +55,11 @@ from accessionflow.helpers.arg_types import (
 from accessionflow.helpers.fields import Fields
 from accessionflow.helpers.glob2re import glob_to_regex
 from accessionflow.helpers.metadata import Metadata
+from accessionflow.helpers.run_uid import (
+    RUN_UID_RE,
+    RUN_UID_SEPARATOR,
+    split_run_uid,
+)
 
 from .acquisition import Acquisition
 from .resource import Resource
@@ -1728,7 +1733,10 @@ class Accession:
             return self.staging_relpath[0]
         session_dirname = self.name
         if self.run_uid:
-            session_dirname += f".{self.run_uid}"
+            # A run UID that can be recognised is joined with '_'; any other (e.g. one
+            # loaded from an old directory) with '.', so the name always parses back
+            separator = RUN_UID_SEPARATOR if RUN_UID_RE.fullmatch(self.run_uid) else "."
+            session_dirname += f"{separator}{self.run_uid}"
         return session_dirname
 
     # The label levels of accessions staged before the levels were named by the data
@@ -1741,10 +1749,20 @@ class Accession:
     ) -> tuple[dict[str, str], str | None]:
         """The labels (and run UID, if present) of a labelled accession's directory
         name, which holds the labels' values joined by '.' followed by an optional run
-        UID. The level names are taken from the accession's saved metadata, or are
-        XNAT's project/subject/session for accessions staged before they were saved"""
+        UID, joined by '_' (or, in names written before, by '.'). The level names are
+        taken from the accession's saved metadata, or are XNAT's
+        project/subject/session for accessions staged before they were saved"""
         saved = metadata.get(cls.LABELS_METADATA_KEY)
         levels = list(saved) if saved else list(cls.LEGACY_LABEL_LEVELS)
+        dirname, run_uid = split_run_uid(dirname)
+        if run_uid is not None:
+            parts = dirname.split(".")
+            if len(parts) != len(levels):
+                raise AccessionParseError(
+                    f"Expected the name of '{dirname}_{run_uid}' to hold the {levels} "
+                    "labels joined by '.', followed by '_' and a run UID"
+                )
+            return dict(zip(levels, parts)), run_uid
         if "." in dirname or saved:
             parts = dirname.split(".")
         else:

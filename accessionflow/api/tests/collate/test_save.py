@@ -10,14 +10,15 @@ from fileformats.generic import DirectoryOf
 from accessionflow.api.collate import (
     ClaimedFiles,
     apply_path_metadata,
+    assign_labels,
     claim_input_files,
     classify_paths,
     expand_claimed_paths,
     group_into_accessions,
+    move_to_target,
     plan_recursion,
     remove_claimed_files,
     save_to_build_dir,
-    stage_accession,
     tag_fileset_types,
     warn_if_hardlinks_unavailable,
 )
@@ -50,7 +51,9 @@ def _claim_and_group(tmp_path: Path) -> tuple[ClaimedFiles, list[Accession]]:
         [PathMetadataRegex(r".*/(?P<sess>[^/]+)/(?P<name>[^/]+)\.json$", Json)],
         claimed,
     )
-    return claimed, group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
+    return claimed, group_into_accessions(
+        filesets, [IDSpec("sess")], [IDSpec("name")], run_uid=RUN_UID
+    )
 
 
 @pytest.fixture
@@ -225,26 +228,48 @@ def test_remove_claimed_files_refuses_unclaimed_files(tmp_path: Path) -> None:
     assert (live / "a.json").exists()
 
 
-# stage_accession ------------------------------------------------------------------
+# move_to_target -------------------------------------------------------------------
+
+LABEL_FIELDS = {"project": "project", "subject": "sess", "session": "sess"}
+TARGET_NAME = f"PROJ.s1.s1_{RUN_UID}"
 
 
-def test_stage_accession(tmp_path: Path) -> None:
+def _labelled(tmp_path: Path) -> tuple[ClaimedFiles, Accession]:
     claimed, (accession,) = _claim_and_group(tmp_path)
+    assign_labels(accession, LABEL_FIELDS, constant_labels={"project": "PROJ"})
+    return claimed, accession
+
+
+def test_move_to_target(tmp_path: Path) -> None:
+    claimed, accession = _labelled(tmp_path)
     output_dir = tmp_path / "out"
     build_dir = prepare_build_dir(output_dir, RUN_UID)
-    staged_dir = stage_accession(accession, build_dir, output_dir, claimed)
-    assert staged_dir == output_dir / f"{Accession.PRE_LABEL_PREFIX}s1"
-    assert sorted(Accession.load(staged_dir).acquisitions) == ["a", "b", "c"]
+    target_dir = move_to_target(accession, build_dir, output_dir, claimed)
+    assert target_dir == output_dir / TARGET_NAME
+    delivered = Accession.load(target_dir)
+    assert delivered.labels == {"project": "PROJ", "subject": "s1", "session": "s1"}
+    assert delivered.run_uid == RUN_UID
+    assert sorted(delivered.acquisitions) == ["a", "b", "c"]
     assert not any(p.exists() for p in claimed.files)
     assert not list(build_dir.glob(f"*{save_module.STAGED_MARKER_SUFFIX}"))
     assert remove_build_dir(build_dir) == []
     assert not build_dir.exists()
 
 
-def test_stage_accession_retry_after_failed_delete(
+def test_move_to_target_needs_labels(tmp_path: Path) -> None:
+    claimed, (accession,) = _claim_and_group(tmp_path)
+    output_dir = tmp_path / "out"
+    with pytest.raises(ValueError, match="must be labelled"):
+        move_to_target(
+            accession, prepare_build_dir(output_dir, RUN_UID), output_dir, claimed
+        )
+    assert all(p.exists() for p in claimed.files)
+
+
+def test_move_to_target_retry_after_failed_delete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    claimed, (accession,) = _claim_and_group(tmp_path)
+    claimed, accession = _labelled(tmp_path)
     output_dir = tmp_path / "out"
     build_dir = prepare_build_dir(output_dir, RUN_UID)
     real_remove = save_module.remove_claimed_files
@@ -258,25 +283,23 @@ def test_stage_accession_retry_after_failed_delete(
 
     monkeypatch.setattr(save_module, "remove_claimed_files", fail_once)
     with pytest.raises(RuntimeError, match="crash while deleting"):
-        stage_accession(accession, build_dir, output_dir, claimed)
-    staged_dir = output_dir / f"{Accession.PRE_LABEL_PREFIX}s1"
-    assert staged_dir.is_dir()
-    marker = (
-        build_dir / f"{accession.staging_dirname()}{save_module.STAGED_MARKER_SUFFIX}"
-    )
+        move_to_target(accession, build_dir, output_dir, claimed)
+    target_dir = output_dir / TARGET_NAME
+    assert target_dir.is_dir()
+    marker = build_dir / f"{TARGET_NAME}{save_module.STAGED_MARKER_SUFFIX}"
     assert marker.exists()
 
-    # The retry skips the save and the move, which would clash with the staged scans
-    assert stage_accession(accession, build_dir, output_dir, claimed) == staged_dir
+    # The retry skips the save and the move, which would clash with the moved scans
+    assert move_to_target(accession, build_dir, output_dir, claimed) == target_dir
     assert not any(p.exists() for p in claimed.files)
     assert not marker.exists()
-    assert sorted(Accession.load(staged_dir).acquisitions) == ["a", "b", "c"]
+    assert sorted(Accession.load(target_dir).acquisitions) == ["a", "b", "c"]
 
 
-def test_stage_accession_failed_move_keeps_claimed_files(
+def test_move_to_target_failed_move_keeps_claimed_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    claimed, (accession,) = _claim_and_group(tmp_path)
+    claimed, accession = _labelled(tmp_path)
     output_dir = tmp_path / "out"
     build_dir = prepare_build_dir(output_dir, RUN_UID)
 
@@ -285,6 +308,6 @@ def test_stage_accession_failed_move_keeps_claimed_files(
 
     monkeypatch.setattr(save_module, "move_into_place", failing_move)
     with pytest.raises(RuntimeError, match="move failed"):
-        stage_accession(accession, build_dir, output_dir, claimed)
+        move_to_target(accession, build_dir, output_dir, claimed)
     assert all(p.exists() for p in claimed.files)
     assert not list(build_dir.glob(f"*{save_module.STAGED_MARKER_SUFFIX}"))

@@ -18,11 +18,11 @@ __all__ = [
     "STAGED_MARKER_SUFFIX",
     "remove_claimed_files",
     "save_to_build_dir",
-    "stage_accession",
+    "move_to_target",
     "warn_if_hardlinks_unavailable",
 ]
 
-# Appended to an accession's directory name for the marker that `stage_accession` writes
+# Appended to an accession's directory name for the marker that `move_to_target` writes
 # in the run's build directory once the accession has been moved into place
 STAGED_MARKER_SUFFIX = ".staged"
 
@@ -195,7 +195,7 @@ def remove_claimed_files(accession: Accession, claimed: ClaimedFiles) -> list[Pa
     return removed
 
 
-def stage_accession(
+def move_to_target(
     accession: Accession,
     build_dir: Path,
     output_dir: Path,
@@ -206,12 +206,13 @@ def stage_accession(
         dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None
     ) = None,
 ) -> Path:
-    """Stages one accession: saves it into the build directory (`save_to_build_dir`),
-    moves it into place in the output directory (`move_into_place`), and deletes its
-    claimed files (`remove_claimed_files`). The unit of work a flow maps over the
-    accessions.
+    """Delivers one labelled accession to the target directory, as
+    ``<labels>_<run_uid>`` (`Accession.staging_dirname`): saves it into the build
+    directory (`save_to_build_dir`), moves it into place (`move_into_place`), and
+    deletes its claimed files (`remove_claimed_files`). With `assign_labels`, the unit
+    of work a flow maps over the accessions.
 
-    It raises if any part fails. A failure before the move leaves the output directory
+    It raises if any part fails. A failure before the move leaves the target directory
     untouched and the accession's files in the processing area. Once the move has
     succeeded, a marker (``<accession dir>.staged``) is written in the build directory,
     so that a retry after a failure in the delete skips the save and the move and only
@@ -222,11 +223,11 @@ def stage_accession(
     Parameters
     ----------
     accession : Accession
-        the accession to stage
+        the accession to deliver, labelled by `assign_labels`
     build_dir : Path
         the run's build directory, from `prepare_build_dir`
     output_dir : Path
-        the staging directory the accession is moved into
+        the target directory the accession is moved into
     claimed : ClaimedFiles
         the run's claimed files, from `claim_input_files`
     copy_mode : FileSet.CopyMode, optional
@@ -239,15 +240,26 @@ def stage_accession(
     Returns
     -------
     Path
-        the accession's directory in the output directory
+        the accession's directory in the target directory
+
+    Raises
+    ------
+    ValueError
+        if the accession hasn't been labelled
     """
-    marker = build_dir / f"{accession.staging_dirname()}{STAGED_MARKER_SUFFIX}"
+    if accession.name is None:
+        raise ValueError(
+            f"Accession '{accession.uid}' must be labelled (assign_labels) before it "
+            "is moved to the target directory"
+        )
+    dirname = accession.staging_dirname()
+    marker = build_dir / f"{dirname}{STAGED_MARKER_SUFFIX}"
     if not marker.exists():
         saved_dir = save_to_build_dir(
             accession, build_dir, copy_mode, collation_map, conversion_map
         )
-        move_into_place(saved_dir, output_dir, accession.staging_relpath)
+        move_into_place(saved_dir, output_dir, [dirname])
         marker.touch()
     remove_claimed_files(accession, claimed)
     marker.unlink(missing_ok=True)
-    return output_dir.joinpath(*accession.staging_relpath)
+    return output_dir / dirname

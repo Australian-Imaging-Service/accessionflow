@@ -176,12 +176,12 @@ class ClaimedFiles:
 
 def claim_input_files(
     input_files: ty.Sequence[Path],
-    processing_dir: Path,
+    working_dir: Path,
     run_uid: str,
     source_roots: ty.Sequence[Path] | None = None,
 ) -> ClaimedFiles:
     """Moves the files to collate into the run's own directory in the processing area,
-    ``processing_dir / run_uid / files``, so that the rest of the run works on a fixed set of
+    ``working_dir / run_uid / files``, so that the rest of the run works on a fixed set of
     files while the input directory keeps changing. A file that arrives after the files
     were listed stays where it is, for the next run.
 
@@ -210,9 +210,9 @@ def claim_input_files(
     input_files : Sequence[Path]
         the files to claim, e.g. from `list_input_files`. Ignored on a retry, which uses
         the saved plan
-    processing_dir : Path
-        the processing area, by default ``<output_dir>/__processing__``
-        (`PROCESSING_NAME_DEFAULT`)
+    working_dir : Path
+        the directory the run's own directory is made in, ``working_dir / run_uid``,
+        e.g. ``<output_dir>/__processing__`` (`PROCESSING_NAME_DEFAULT`)
     run_uid : str
         the run's UID, from `make_run_uid`, which names its directory
     source_roots : Sequence[Path], optional
@@ -232,7 +232,7 @@ def claim_input_files(
         roots, or the roots have no common directory. Nothing is moved
     """
     check_run_uid(run_uid, "claim directory")
-    run_dir = Path(processing_dir).absolute() / run_uid
+    run_dir = Path(working_dir).absolute() / run_uid
     if (run_dir / CLAIMED_MANIFEST).exists():
         plan = _read_plan(run_dir)
         planned = {entry["original"] for entry in plan["files"]}

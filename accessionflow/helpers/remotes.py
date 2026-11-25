@@ -27,6 +27,7 @@ from tqdm import tqdm
 from accessionflow.exceptions import (
     SessionIdentityRefused,
 )
+from accessionflow.helpers.run_uid import split_run_uid
 from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
 
@@ -107,11 +108,14 @@ class SessionListing(metaclass=abc.ABCMeta):
     def ids(self) -> list[str]:
         """The labels of the session, from its directory name. A store plugin's
         listing names them, e.g. as XNAT's project, subject and session IDs"""
-        if "." in self.name:
-            ids = self.name.split(".")
+        name, run_uid = split_run_uid(self.name)
+        if run_uid is not None:
+            return name.split(".")
+        if "." in name:
+            ids = name.split(".")
         else:
             # For backwards compatibility
-            ids = self.name.split("-")[:3]
+            ids = name.split("-")[:3]
         return ids
 
     @property

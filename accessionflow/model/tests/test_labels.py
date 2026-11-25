@@ -80,6 +80,39 @@ def test_run_uid_follows_any_number_of_levels(tmp_path: Path) -> None:
     assert reloaded.run_uid == "abc123"
 
 
+@pytest.mark.parametrize(
+    "run_uid, dirname",
+    [
+        ("20261125073856_a3f09c", "a.b.c.d_20261125073856_a3f09c"),
+        ("abc12320261124010203", "a.b.c.d_abc12320261124010203"),
+    ],
+)
+def test_run_uid_is_joined_with_an_underscore(
+    tmp_path: Path, run_uid: str, dirname: str
+) -> None:
+    """A recognisable run UID is joined with '_', and the name parses back, even with
+    '_' and '-' in the labels"""
+    accession = _accession(tmp_path, A="a", B="b", C="c", D="d")
+    accession.label({"l1": "A", "l2": "B", "l3": "C", "l4": "D"})
+    accession.run_uid = run_uid
+    assert accession.staging_dirname() == dirname
+    _, saved_dir = accession.save(tmp_path / "out", copy_mode=FileSet.CopyMode.copy)
+    reloaded = Accession.load(saved_dir)
+    assert reloaded.labels == {"l1": "a", "l2": "b", "l3": "c", "l4": "d"}
+    assert reloaded.run_uid == run_uid
+
+
+def test_run_uid_with_underscores_and_hyphens_in_labels(tmp_path: Path) -> None:
+    accession = _accession(tmp_path, A="p-1", B="s_2", C="S1_scan")
+    accession.label({"project": "A", "subject": "B", "session": "C"})
+    accession.run_uid = "20261125073856_a3f09c"
+    _, saved_dir = accession.save(tmp_path / "out", copy_mode=FileSet.CopyMode.copy)
+    assert saved_dir.name == "p-1.s_2.S1_scan_20261125073856_a3f09c"
+    reloaded = Accession.load(saved_dir)
+    assert reloaded.labels == {"project": "p-1", "subject": "s_2", "session": "S1_scan"}
+    assert reloaded.run_uid == "20261125073856_a3f09c"
+
+
 def test_legacy_staging_dir_is_read_as_xnat_levels(tmp_path: Path) -> None:
     """Accessions staged before the labels' level names were saved are XNAT's"""
     accession = _accession(tmp_path, StudyID="PROJ", PatientID="SUBJ", Acc="SESS")

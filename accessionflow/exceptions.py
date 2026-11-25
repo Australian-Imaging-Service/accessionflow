@@ -16,6 +16,11 @@ class OrthancStudyChangedError(StagingError):
 class AccessionParseError(StagingError): ...
 
 
+class LabelsNotAssignedError(AccessionParseError):
+    """An accession's labels couldn't be assigned, as fields they are made from are
+    missing from its metadata"""
+
+
 class UploadError(AccessionFlowError): ...
 
 

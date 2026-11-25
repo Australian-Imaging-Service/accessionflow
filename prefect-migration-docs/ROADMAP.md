@@ -141,15 +141,14 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. The step functions (steps 0–19) are done; see
-[`CHANGELOG.md`](CHANGELOG.md). Two next actions are done too:
-[a random run UID](#next-action-a-random-run-uid) and
+Status: In progress. The step functions (steps 0–20) are done; see
+[`CHANGELOG.md`](CHANGELOG.md). The three next actions are done too:
+[a random run UID](#next-action-a-random-run-uid),
+[the revised flow](#next-action-the-revised-flow) and
 [moving leftover files to an unprocessed directory](#next-action-leftover-files-to-an-unprocessed-directory).
-What is left: the next action [the revised flow](#next-action-the-revised-flow), then the
-composites, the option
-converters, moving the folder `collate()` and the CLI onto the steps, the removals, and
-the tests listed below. The revised flow changes the steps after grouping, so the
-composites, CLI and tests below are to be read in its light.
+What is left: the composites, the option converters, moving the folder `collate()` and
+the CLI onto the steps (with the label options and the new directories), the removals,
+and the tests listed below.
 
 The current call chain is:
 
@@ -207,13 +206,14 @@ The order, which the composites follow:
 | 14 | `group_into_accessions` | `group.py` | batch |
 | 15 | `inject_accession_tables` | `metadata.py` | batch |
 | 16 | `warn_if_hardlinks_unavailable` | `save.py` | batch |
-| 17 | `stage_accession` | `save.py` | **per accession** |
-| 18 | `finish_claim` | `claim.py` | batch |
-| 19 | `remove_build_dir` | `api/staging.py` | batch |
+| 17 | `assign_labels` | `assign.py` | **per accession** |
+| 18 | `move_to_target` | `save.py` | **per accession** |
+| 19 | `finish_claim` | `claim.py` | batch |
+| 20 | `remove_build_dir` | `api/staging.py` | batch |
 
-Modules are in `accessionflow/api/collate/` unless shown otherwise. Steps 1–16, 18 and 19
-run once per collation. Step 17 runs once per accession, and is the unit that a flow maps
-over. Steps 1–3 only read and check the arguments, so they run before any step that
+Modules are in `accessionflow/api/collate/` unless shown otherwise. Steps 1–16, 19 and 20
+run once per collation. Steps 17 and 18 run once per accession, and are the unit that a
+flow maps over. Steps 1–3 only read and check the arguments, so they run before any step that
 changes the file system (principle 12).
 
 ### Interim state
@@ -235,6 +235,12 @@ stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
   UID, a hash of the paths and the time, until it is removed.
 - `api/collate_api.py::save_accessions_to_dir` imports `warn_if_hardlinks_unavailable`
   from `save.py`, and keeps today's loop with `wait_period` and `unlink_source`.
+- The folder `collate()` still saves unlabelled accessions as `_.<uid>` for the `label`
+  stage, which still labels them; `assign_labels` and `move_to_target` take over when
+  the folder `collate()` moves onto the steps.
+- `helpers/run_uid.py`'s `RUN_UID_RE` also matches `from_paths`' old run-UID form
+  (a hash, then the time), so that the labelled names the `label` stage writes from
+  those accessions are joined with `_` and parse back.
 
 ### Next action: a random run UID
 
@@ -296,7 +302,29 @@ Changes:
 
 ### Next action: the revised flow
 
-Status: Planned.
+Status: **Done** (2026-11-25), with these decisions:
+
+- The run directory, `<working_dir>/<run_uid>/`, holds only the claimed input
+  (`claimed.json` and `files/`); `claim_input_files` takes `working_dir` (renamed from
+  `processing_dir`). Accessions are built in `<output_dir>/__build__/<run_uid>/`, on
+  the target's file system, so the final rename is atomic.
+- `output_dir` is the target directory.
+- Step 17, `assign_labels`, labels each accession from its metadata (`Accession.label`)
+  and raises `LabelsNotAssignedError` instead of using placeholder labels, so an
+  accession that can't be labelled is passed to `finish_claim` as failed and its files
+  go to the unprocessed directory.
+- Step 18, `move_to_target`, replaces `stage_accession`: it saves the labelled
+  accession, moves it to `<output_dir>/<labels>_<run_uid>/` and deletes its claimed
+  files, with the same retry marker.
+- Labelled directories are named `<labels>_<run_uid>` by every stage
+  (`Accession.staging_dirname`). The run UID contains `_` itself, so it is recognised by
+  its whole pattern at the end of the name (`helpers/run_uid.py`, `split_run_uid`);
+  `_` also avoids the legacy `-` delimiter. A run UID that isn't recognisable keeps
+  `.`. Old `<labels>.<run_uid>` names still load.
+- The `label` command is retired once every source labels in collate (see the CLI
+  section and Phase 5).
+
+See `CHANGELOG.md`. The plan as it was written:
 
 The collate flow changes in four ways:
 
@@ -422,8 +450,10 @@ Plain-Python sequences of the steps. Their signatures can change.
 
 - `accessionflow.api.collate.collect_accessions(claimed, ...)` runs steps 7–15:
   expand, classify, add metadata, group.
-- `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 16–17:
-  `warn_if_hardlinks_unavailable`, then `for_each_accession(stage_accession)`.
+- `accessionflow.api.collate.save_accessions_to_dir(...)` runs steps 16–18:
+  `warn_if_hardlinks_unavailable`, then, for each accession, `assign_labels` and
+  `move_to_target`, collecting the accessions that fail (including
+  `LabelsNotAssignedError`) with their errors for `finish_claim`.
 - `sources/folder/api/collate_api.py::collate(input_files, output_dir, ...)` runs
   `check_datatypes`, `plan_recursion`, `load_metadata_tables`, `make_run_uid` and
   `prepare_build_dir(..., exclusive=True)` (repeated with a new UID while the build
@@ -466,9 +496,19 @@ variables. The body of `collate_cmd` becomes:
    with the files it listed and the arguments built by the option converters. Listing
    again on every run picks up the files that arrived since the last one.
 
-New options supply the unprocessed and error directories that `finish_claim` and
-`abandon_claim` move run directories to. Their names and defaults are settled with the
-revised flow's `working_dir`.
+New options:
+
+- `--working-dir`, `--unprocessed-dir` and `--error-dir`, for the run directories, and
+  the directories `finish_claim` and `abandon_claim` move them to. The working
+  directory defaults to `<output_dir>/__processing__`; the other defaults are settled
+  with the CLI step.
+- **The label options**, as `assign_labels` needs them: the label fields (one per
+  level), the constant labels, the acquisition field and the store type. Today each
+  store's `label` command generates its own options from the store's levels (e.g.
+  XNAT's project, subject and session), so `collate folder` needs to know the target
+  store, e.g. by a store choice that brings in that store's label options.
+- The `label` command stays accepted but is deprecated (principle 11) once every
+  source labels in collate: the Orthanc source does in Phase 3.
 
 These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
 `MIGRATING.md`:
@@ -565,12 +605,13 @@ Status: Planned.
   fails is fixed here, not worked around in the flows repository.
 - **Retry tests**: running `claim_input_files` again with the same `run_uid` after it
   stopped part way claims the remaining files and nothing twice, and running
-  `stage_accession` again after a failure part way through a save gives the same output
+  `move_to_target` again after a failure part way through a save gives the same output
   as a clean run.
 - Document that the flows repository chooses the files to collate (e.g. with
   `list_input_files`), and passes them to the collate API as `list[Path]`.
 - Document the step order and per-accession unit for the flows repository (the table in
-  Phase 1): the batch steps once, then one task per accession for `stage_accession`.
+  Phase 1): the batch steps once, then one task per accession for `assign_labels` and
+  `move_to_target`.
 - Release, with a **Step API** changelog entry that names the new functions.
 
 The tasks, flows, deployments and schedules are out of scope: they belong to the flows
@@ -630,7 +671,10 @@ attached source files. The second loop then goes away.
 
 ## Phase 5: Label
 
-Status: Planned. Outline.
+Status: Planned. Outline. **To be replanned:** labelling has moved into collate
+(`assign_labels`, Phase 1), so the `label` command is deprecated once every source
+labels in collate, and kept until then (the Orthanc source, Phase 3). The split below
+applies only if `label` is still needed by then.
 
 The current entry point is `api/label_api.py::label()` (L65-333), called by each store's
 `label` command (`stores/xnat/cli/label_cli.py`, `stores/folder/cli/label_cli.py`).

@@ -1,6 +1,7 @@
 """The collate stage, split into step functions (see
 ``prefect-migration-docs/ROADMAP.md``, Phase 1)"""
 
+from .assign import assign_labels
 from .claim import (
     CLAIMED_FILES_DIRNAME,
     CLAIMED_MANIFEST,
@@ -38,9 +39,9 @@ from .metadata import (
 )
 from .save import (
     STAGED_MARKER_SUFFIX,
+    move_to_target,
     remove_claimed_files,
     save_to_build_dir,
-    stage_accession,
     warn_if_hardlinks_unavailable,
 )
 
@@ -56,6 +57,7 @@ __all__ = [
     "claim_input_files",
     "RecursionPlan",
     "acquisition_id_for",
+    "assign_labels",
     "apply_path_metadata",
     "check_datatypes",
     "clash_hint_for",
@@ -70,11 +72,11 @@ __all__ = [
     "list_input_files",
     "load_metadata_tables",
     "make_run_uid",
+    "move_to_target",
     "plan_recursion",
     "remove_claimed_files",
     "resource_label_for",
     "save_to_build_dir",
-    "stage_accession",
     "tag_fileset_types",
     "warn_if_hardlinks_unavailable",
 ]
