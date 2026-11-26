@@ -286,11 +286,11 @@ def test_collate_recursive_generic_directory_raises(tmp_path: Path) -> None:
 def test_collate_makes_a_new_run_uid_on_a_clash(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import accessionflow.sources.folder.api.collate_api as folder_collate
+    import accessionflow.api.collate.claim as claim_module
 
     taken, fresh = "20260101000000_aaaaaa", "20260101000000_bbbbbb"
     uids = iter([taken, fresh])
-    monkeypatch.setattr(folder_collate, "make_run_uid", lambda: next(uids))
+    monkeypatch.setattr(claim_module, "make_run_uid", lambda: next(uids))
     output_dir = tmp_path / "collated"
     other_run = output_dir / BUILD_NAME_DEFAULT / taken
     other_run.mkdir(parents=True)

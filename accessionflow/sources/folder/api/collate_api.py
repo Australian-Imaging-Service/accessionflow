@@ -84,8 +84,8 @@ def collate_files(
 
     1. Checks the arguments before anything is changed: `check_datatypes`,
        `plan_recursion`, `load_metadata_tables` and `merge_path_metadata`.
-    2. Makes the run's UID (`make_run_uid`) and its build directory
-       (`prepare_build_dir`), with another UID if one is taken.
+    2. Makes the run's UID and its build directory (`create_run_directory`), with
+       another UID if one is taken.
     3. Claims the files into ``<working_dir>/<run_uid>/`` (`claim_input_files`). A
        file that arrives after they were listed stays in the input, for the next run.
     4. Turns the claimed files into file-sets (`build_filesets`), adds their
