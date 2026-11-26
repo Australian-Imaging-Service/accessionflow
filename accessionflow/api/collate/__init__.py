@@ -11,6 +11,7 @@ from .claim import (
     ClaimedFiles,
     abandon_claim,
     claim_input_files,
+    create_run_directory,
     finish_claim,
     make_run_uid,
 )
@@ -23,11 +24,23 @@ from .classify import (
     expand_claimed_paths,
     plan_recursion,
 )
+from .combine import (
+    COMBINED_FROM_KEY,
+    RunAccessionGroup,
+    abandon_group,
+    check_primary_label,
+    combine_accessions,
+    deliver_combined,
+    list_run_accessions,
+    remove_run_accessions,
+    select_quiet_groups,
+)
 from .composites import (
     ClassifiedFilesets,
     apply_fileset_metadata,
     build_accessions,
     build_filesets,
+    combine_run_accessions,
     move_accessions,
 )
 from .discover import list_input_files
@@ -67,6 +80,7 @@ __all__ = [
     "ClaimedFiles",
     "ClassifiedFilesets",
     "claim_input_files",
+    "create_run_directory",
     "RecursionPlan",
     "acquisition_id_for",
     "assign_labels",
@@ -93,4 +107,14 @@ __all__ = [
     "save_to_build_dir",
     "tag_fileset_types",
     "warn_if_hardlinks_unavailable",
+    "COMBINED_FROM_KEY",
+    "RunAccessionGroup",
+    "abandon_group",
+    "check_primary_label",
+    "combine_accessions",
+    "deliver_combined",
+    "list_run_accessions",
+    "remove_run_accessions",
+    "select_quiet_groups",
+    "combine_run_accessions",
 ]

@@ -14,16 +14,16 @@ from accessionflow.api.collate import (
     build_filesets,
     check_datatypes,
     claim_input_files,
+    create_run_directory,
     finish_claim,
     load_metadata_tables,
-    make_run_uid,
     merge_path_metadata,
     move_accessions,
     plan_recursion,
 )
 from accessionflow.api.collate.claim import CLAIMED_MANIFEST
 from accessionflow.api.collate_api import save_accessions_to_dir
-from accessionflow.api.staging import prepare_build_dir, remove_build_dir
+from accessionflow.api.staging import remove_build_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -45,27 +45,6 @@ DEFAULT_ACQUISITION_ID_FIELD: tuple[IDSpec, ...] = (
 )
 DEFAULT_RESOURCE_FIELD: tuple[IDSpec, ...] = ()
 _DEFAULT_DATATYPES: tuple[type[FileSet], ...] = (DicomSeries,)
-
-# How many run UIDs a new run tries before giving up, should each be taken already
-_RUN_UID_ATTEMPTS = 5
-
-
-def _create_run_directory(output_dir: Path) -> tuple[str, Path]:
-    """Makes the run's UID and creates its build directory exclusively, making another
-    UID if another run has already taken it
-
-    Raises
-    ------
-    RuntimeError
-        if every one of ``_RUN_UID_ATTEMPTS`` UIDs is taken
-    """
-    for _ in range(_RUN_UID_ATTEMPTS):
-        run_uid = make_run_uid()
-        try:
-            return run_uid, prepare_build_dir(output_dir, run_uid, exclusive=True)
-        except FileExistsError:
-            logger.debug("Run UID '%s' is taken, making another", run_uid)
-    raise RuntimeError(f"Couldn't make an unused run UID in '{output_dir}'")
 
 
 def collate_files(
@@ -201,7 +180,7 @@ def collate_files(
     tables = load_metadata_tables(metadata_tables)
     regexes = merge_path_metadata(path_metadata, path_metadata_regex)
 
-    run_uid, build_dir = _create_run_directory(output_dir)
+    run_uid, build_dir = create_run_directory(output_dir)
     claimed: ClaimedFiles | None = None
     try:
         claimed = claim_input_files(input_files, working_dir, run_uid, source_roots)
@@ -406,7 +385,7 @@ def collate(
     # the plan, Accession.from_paths works it out again for itself
     plan_recursion(datatypes, ignore_datatypes, recursive)
 
-    _, build_dir = _create_run_directory(output_dir)
+    _, build_dir = create_run_directory(output_dir)
     try:
         sessions = Accession.from_paths(
             files_path=input_paths,

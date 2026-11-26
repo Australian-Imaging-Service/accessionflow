@@ -69,15 +69,39 @@ def test_label_with_named_levels(
     assert reloaded.run_uid is None
 
 
-def test_run_uid_follows_any_number_of_levels(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "suffix, dirname",
+    [
+        # a primary label (as the combiner gives) is joined with '_'
+        ("abc123", "a.b.c.d_abc123"),
+        # any other suffix is joined with '.', as before
+        ("abc_123", "a.b.c.d.abc_123"),
+    ],
+)
+def test_suffix_follows_any_number_of_levels(
+    tmp_path: Path, suffix: str, dirname: str
+) -> None:
     accession = _accession(tmp_path, A="a", B="b", C="c", D="d")
     accession.label({"l1": "A", "l2": "B", "l3": "C", "l4": "D"})
-    accession.run_uid = "abc123"
-    assert accession.staging_dirname() == "a.b.c.d.abc123"
+    accession.run_uid = suffix
+    assert accession.staging_dirname() == dirname
     _, saved_dir = accession.save(tmp_path / "out", copy_mode=FileSet.CopyMode.copy)
     reloaded = Accession.load(saved_dir)
     assert reloaded.labels == {"l1": "a", "l2": "b", "l3": "c", "l4": "d"}
-    assert reloaded.run_uid == "abc123"
+    assert reloaded.run_uid == suffix
+
+
+def test_primary_label_with_underscore_in_labels(tmp_path: Path) -> None:
+    """A combined accession's name, <labels>_<primary_label>, parses back from the
+    saved labels, even when a label contains '_' itself"""
+    accession = _accession(tmp_path, A="p", B="s_2", C="S1_scan")
+    accession.label({"project": "A", "subject": "B", "session": "C"})
+    accession.run_uid = "combined"
+    _, saved_dir = accession.save(tmp_path / "out", copy_mode=FileSet.CopyMode.copy)
+    assert saved_dir.name == "p.s_2.S1_scan_combined"
+    reloaded = Accession.load(saved_dir)
+    assert reloaded.labels == {"project": "p", "subject": "s_2", "session": "S1_scan"}
+    assert reloaded.run_uid == "combined"
 
 
 @pytest.mark.parametrize(

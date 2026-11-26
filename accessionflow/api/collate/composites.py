@@ -2,13 +2,14 @@
 (see ``prefect-migration-docs/ROADMAP.md``, Phase 1, Composites)"""
 
 import typing as ty
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 
-from accessionflow.api.staging import for_each_accession
+from accessionflow.api.staging import for_each_accession, remove_build_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -19,13 +20,23 @@ from accessionflow.helpers.arg_types import (
 from accessionflow.model.accession import Accession
 
 from .assign import assign_labels
-from .claim import ClaimedFiles
+from .claim import ClaimedFiles, create_run_directory
 from .classify import (
     RecursionPlan,
     classify_paths,
     disable_metadata_reading,
     drop_ignored_filesets,
     expand_claimed_paths,
+)
+from .combine import (
+    RunAccessionGroup,
+    abandon_group,
+    check_primary_label,
+    combine_accessions,
+    deliver_combined,
+    list_run_accessions,
+    remove_run_accessions,
+    select_quiet_groups,
 )
 from .group import group_into_accessions
 from .metadata import (
@@ -41,6 +52,7 @@ __all__ = [
     "apply_fileset_metadata",
     "build_accessions",
     "build_filesets",
+    "combine_run_accessions",
     "move_accessions",
 ]
 
@@ -285,6 +297,100 @@ def move_accessions(
     return for_each_accession(
         accessions, deliver, "Delivering accessions", raise_errors=raise_errors
     )
+
+
+def combine_run_accessions(
+    runs_dir: Path,
+    output_dir: Path,
+    error_dir: Path,
+    quiet_period: timedelta,
+    primary_label: str,
+    *,
+    on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
+    copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
+    now: datetime | None = None,
+    raise_errors: bool = False,
+) -> list[str]:
+    """Combines the run accessions of each session that has had no new run accession
+    for the quiet period into one accession, ``<labels>_<primary_label>``, in the
+    output directory (see ``prefect-migration-docs/ROADMAP.md``, Phase 1, Combine)
+
+    1. Checks the arguments (`check_primary_label`) before anything is changed.
+    2. Lists the run accessions, grouped by their labels (`list_run_accessions`), and
+       selects the quiet groups (`select_quiet_groups`). If none is quiet, nothing is
+       created.
+    3. Makes the combine run's UID and build directory (`create_run_directory`).
+    4. For each quiet group: `combine_accessions`, `deliver_combined` and
+       `remove_run_accessions`. A group that fails has its run accessions moved to
+       ``<error_dir>/<labels>_<run_uid>/`` (`abandon_group`).
+    5. Removes the build directory (`remove_build_dir`).
+
+    Errors are returned rather than logged: the caller summarises them.
+
+    Parameters
+    ----------
+    runs_dir : Path
+        the run-accessions directory, which collate delivers to
+    output_dir : Path
+        the directory the combined accessions are delivered to
+    error_dir : Path
+        the directory the run accessions of a group that fails are moved to
+    quiet_period : timedelta
+        how long a group must have had no new run accession before it is combined
+    primary_label : str
+        the suffix of the combined accessions' names, e.g. 'combined'
+    on_resource_clash : OnResourceClash | Sequence[ClashSpec], optional
+        what to do when two run accessions have a different resource in the same
+        acquisition under the same name, by default "error"
+    copy_mode : FileSet.CopyMode, optional
+        how the files are saved, by default hard-linked if possible, otherwise copied
+    now : datetime, optional
+        the current time, by default now, for tests
+    raise_errors : bool, optional
+        whether a group that fails raises, after its run accessions are moved to the
+        error directory, instead of being skipped
+
+    Returns
+    -------
+    list[str]
+        the error message of each group that wasn't combined. Empty if all were
+
+    Raises
+    ------
+    ValueError
+        if ``primary_label`` or ``quiet_period`` is invalid. Nothing has been changed
+    """
+    check_primary_label(primary_label)
+    if quiet_period < timedelta(0):
+        raise ValueError(f"The quiet period can't be negative ({quiet_period})")
+    groups = select_quiet_groups(list_run_accessions(runs_dir), quiet_period, now)
+    if not groups:
+        return []
+    run_uid, build_dir = create_run_directory(output_dir)
+
+    def combine(group: RunAccessionGroup) -> Path:
+        try:
+            accession = combine_accessions(group, on_resource_clash)
+            delivered = deliver_combined(
+                accession, group, build_dir, output_dir, primary_label, copy_mode
+            )
+            remove_run_accessions(group)
+        except Exception as e:
+            abandon_group(group, error_dir, e, run_uid)
+            raise
+        return delivered
+
+    try:
+        failures = for_each_accession(
+            groups,
+            combine,
+            "Combining run accessions",
+            raise_errors=raise_errors,
+            name_of=lambda group: group.name,
+        )
+    finally:
+        remove_build_dir(build_dir)
+    return [message for _, message in failures]
 
 
 def _note_original_paths(

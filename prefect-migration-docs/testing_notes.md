@@ -172,6 +172,9 @@ same tests, and `git stash pop`.
   `move_accessions`) and
   `sources/folder/tests/test_collate_files.py` (`collate_files`), which holds the
   end-to-end race test: files that arrive during a run wait for the next.
+- **The combiner (Phase 1)**: `api/tests/collate/test_combine.py`, which makes real run
+  accessions with `collate_files` on small JSON trees, with `claim.make_run_uid`
+  patched to fix each run's time, and passes `now` to the combiner.
 - **`from_paths` parity (Phase 1, C5)**: the tests in `model/tests/test_accession.py`
   and `api/tests/test_collate.py` that took a `collect` fixture run twice, as
   `[from_paths]` and `[steps]`, so the slow PET raw-data ones take twice as long. The

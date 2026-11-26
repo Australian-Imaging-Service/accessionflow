@@ -156,9 +156,9 @@ Collate is now split into two parts:
 2. **The accession combiner** ([Combine](#combine)), a separate action. When a
    project.subject.session has had no new run accession for a given time, it combines
    that session's run accessions into a single accession and writes it to the output
-   directory. This is planned.
+   directory. This is done ([Combine](#combine)).
 
-What is left: the combiner, the option converters, moving the CLI onto `collate_files`
+What is left: the option converters, moving the CLI onto `collate_files`
 and the combiner (with the label options and the new directories), the removals, and
 the tests listed below.
 
@@ -279,65 +279,89 @@ Next, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
 
 ### Combine
 
-Status: Planned. The accession combiner, the second part of collate. Names and
-signatures are provisional, and are settled when it is reviewed.
+Status: **Done** (2026-11-26). The accession combiner, the second part of collate, in
+`accessionflow/api/collate/combine.py` (steps) and `api/collate/composites.py` (the
+composite). Wiring it into `collate folder`, with `--wait-period` as the quiet period,
+is part of the [CLI](#cli) step.
 
 **Run accessions** are what `collate_files` delivers: one accession per
 project.subject.session per run, named `<labels>_<run_uid>`. The `output_dir` given to
-`collate_files` becomes the run-accessions directory. Since every run's accessions have
+`collate_files` is the run-accessions directory. Since every run's accessions have
 their own names, collate never merges two runs' data. Only the combiner does.
 
-**The quiet period.** A project.subject.session is combined once its newest run
-accession is older than the quiet period. The age is taken from the time in the run
-UID (`split_run_uid`, `helpers/run_uid.py`), not from file modification times. So it
-doesn't depend on the file system, and a retried delivery doesn't reset it.
+**The quiet period.** A session's run accessions are combined once the newest of them
+is older than the quiet period. The age comes from the time in the run UID
+(`run_uid_time`, `helpers/run_uid.py`), not from file times, so a retried delivery
+doesn't reset it.
 
-**The combined accession** is named `<labels>_<primary_label>`. `primary_label` is a
-parameter of the combiner, and replaces the run UID.
+**The combined accession** is named `<labels>_<primary_label>`. The caller gives
+`primary_label` as a fixed string (e.g. `combined`): letters, digits and `-`, and not
+in the form of a run UID. Its metadata records the run accessions it was combined from
+(`__combined_from__`).
 
-**Clashes.** When two run accessions have the same acquisition and resource, the
-`on_resource_clash` policies (`error`, `avoid`, `merge`, `overwrite`, optionally per
-datatype) decide, as an option of the combiner.
+**Names.** A name such as `P.S.sess_combined` can't be told from a session label
+`sess_combined` by the name alone, so the name is read with the labels every accession
+saves in its metadata (`__labels__`):
 
-The steps, in order:
+- `split_name_suffix` (`helpers/run_uid.py`) splits off a run UID or a primary label.
+- `Accession._labels_from_dirname` and `SessionListing.ids` (local and S3) use the
+  saved labels. Names without them parse as before.
+- `staging_dirname` joins a suffix that is a run UID or a valid primary label with `_`.
+  Any other suffix is joined with `.`, as before.
+
+**Merging.**
+
+- **Resources:** every run accession's resources are added, oldest first, with
+  `Accession.add_resource`. An identical resource (the same checksums) is kept once,
+  and any other clash follows `on_resource_clash`.
+- **Metadata:** the metadata each level holds of its own (e.g. from a metadata table)
+  is carried over. Values collated from the level below are collated again. A key that
+  two run accessions give different values is an error, as are different store types
+  or fields.
+
+**The steps:**
 
 | # | Step | Kind |
 | --- | --- | --- |
-| 1 | `list_run_accessions(runs_dir)`: groups the run-accession directories by their labels | batch |
-| 2 | `select_quiet_groups(groups, quiet_period, now=None)`: the groups with no run accession newer than the quiet period | batch |
-| 3 | `prepare_build_dir` (`api/staging.py`) | batch |
-| 4 | `combine_accessions(run_dirs, on_resource_clash, ...)`: loads them (`Accession.load`) and merges their acquisitions and resources under the clash policy | **per group** |
-| 5 | `deliver_combined(accession, build_dir, output_dir, primary_label)`: saves it into the build directory and moves it into place as `<labels>_<primary_label>`, as `move_to_target` does | **per group** |
-| 6 | `remove_run_accessions(run_dirs)`: removes the run accessions that were combined | **per group** |
+| – | `check_primary_label(primary_label)` | checks the arguments |
+| 1 | `list_run_accessions(runs_dir) -> list[RunAccessionGroup]`: groups the run accessions by their labels, oldest first | batch |
+| 2 | `select_quiet_groups(groups, quiet_period, now=None)` | batch |
+| 3 | `create_run_directory(output_dir)` (`claim.py`, shared with `collate_files`) | batch |
+| 4 | `combine_accessions(group, on_resource_clash="error") -> Accession` | **per group** |
+| 5 | `deliver_combined(accession, group, build_dir, output_dir, primary_label, copy_mode=...) -> Path` | **per group** |
+| 6 | `remove_run_accessions(group)` | **per group** |
+| – | `abandon_group(group, error_dir, error, run_uid) -> Path`, for a group that fails | **per group** |
 | 7 | `remove_build_dir` (`api/staging.py`) | batch |
 
-Steps 4–6 run once per group, through `for_each_accession`, and are the unit a flow
-maps over.
+- `RunAccessionGroup(name, run_dirs, newest)` is a frozen attrs record that pickles,
+  and is the unit a flow maps over.
+- **An existing combined accession is an error.** `deliver_combined` never changes an
+  accession already in the output directory, so the group goes to the error directory.
+  The exception is a retry: when the existing accession's `__combined_from__` names
+  the same run accessions, an earlier attempt delivered it and crashed before
+  `remove_run_accessions`. It is kept, and only the run accessions are removed.
+- `abandon_group` moves the group's run accessions to `<error_dir>/<labels>_<run_uid>/`,
+  where `run_uid` is the combine run's. It writes an `error.json` like `abandon_claim`
+  (`write_error_record`).
 
-**The composite** `combine_run_accessions(runs_dir, output_dir, error_dir, quiet_period,
-primary_label, *, on_resource_clash="error", raise_errors=False) -> list[str]` follows
-the pattern of `collate_files`: checks, then a build directory, then the steps.
+**The composite** is `combine_run_accessions(runs_dir, output_dir, error_dir,
+quiet_period, primary_label, *, on_resource_clash="error", copy_mode=...,
+now=None, raise_errors=False) -> list[str]`.
 
-- A group that fails (e.g. a clash that the policy makes an error) has its run
-  accessions moved to `<error_dir>/<labels>/`, with a record of the error, as
-  `abandon_claim` does for a claim.
+- It checks the arguments, then lists and selects the groups. If none is quiet, it
+  creates nothing.
+- Otherwise it makes a build directory and runs steps 4–6 per group through
+  `for_each_accession`, abandoning a group that fails. It removes the build directory
+  in a `finally`.
 - It returns the error messages for the caller to log.
-- The flows repository can run it as its own flow, on its own schedule.
 
 **Races.** A run accession delivered while the combiner runs is either newer than the
-quiet period, so its group isn't quiet, or it arrived after the listing, so it is left
-for the next combine.
+quiet period, so its group isn't selected, or it arrived after the listing, so it is
+left for the next combine.
 
-**Tests** (planned):
-
-- grouping by labels
-- quiet and not-quiet groups, with an injected `now`
-- merging under each clash policy
-- delivery as `<labels>_<primary_label>`, with the run accessions removed
-- a failed group moved to the error directory
-- a run accession that arrives during a combine
-- through `collate folder`: the run accessions are delivered at once, and the combined
-  accession only after the quiet period
+**Tests:** `api/tests/collate/test_combine.py`, which makes run accessions with
+`collate_files` on small JSON trees. The name handling is tested in
+`helpers/tests/test_run_uid.py` and `model/tests/test_labels.py`.
 
 ### Option converters
 
@@ -627,13 +651,14 @@ Status: Planned.
   publishes the collate step API?
 - Two runs at the same time now build in separate directories and deliver run
   accessions with their own names, so collate never merges. Two combiners running at
-  the same time could still combine the same group. Does the combiner need a lock per
-  group, or is one combiner at a time a requirement?
-- If `<labels>_<primary_label>` already exists in the output directory (data that
-  arrived after a combine), does the combiner merge into it, raise and leave the group
-  in place, or write under another name?
-- Is `primary_label` fixed for a run of the combiner (e.g. a constant), or worked out
-  per group (e.g. from metadata, or from the newest run UID)?
+  the same time could still combine the same group. Neither can overwrite the other's
+  combined accession (the rename into place fails if it exists), but the second would
+  move the group to the error directory. Is one combiner at a time a requirement, as
+  `collate folder` gives, or does the combiner need a lock per group?
+- Data for a session that arrives after it was combined now fails, because
+  `<labels>_<primary_label>` exists, and goes to the error directory. Is that the
+  workflow wanted, or should late data be delivered another way (e.g. a second
+  combined accession)?
 - Should the processing area's location be configurable (a new optional CLI option
   such as `--processing-dir`), for input directories on a different file system from
   the staging directory?

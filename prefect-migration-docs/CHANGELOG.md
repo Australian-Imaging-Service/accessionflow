@@ -23,6 +23,23 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-26, Phase 1, Combine: the accession combiner, in
+  `accessionflow/api/collate/combine.py` and `api/collate/composites.py`.
+  `combine_run_accessions` takes each session whose run accessions (`<labels>_<run_uid>`,
+  delivered by `collate_files`) have had no new one for a quiet period, and combines
+  them into one accession, `<labels>_<primary_label>`, in the output directory.
+  - **Steps:** `check_primary_label`, `list_run_accessions`, `select_quiet_groups`,
+    `combine_accessions`, `deliver_combined`, `remove_run_accessions` and
+    `abandon_group`, with the record `RunAccessionGroup`.
+  - **Merging:** resource clashes follow `on_resource_clash`, and conflicting own
+    metadata, fields or store types are errors.
+  - **Existing accession:** one already in the output directory is never changed; the
+    group goes to `<error_dir>/<labels>_<run_uid>/`, unless it is the group's own,
+    delivered by a crashed attempt.
+  - **Tests:** `api/tests/collate/test_combine.py`.
+
+  Nothing calls it yet. The CLI step runs it from `collate folder`. CLI unchanged. PR:
+  pending.
 - 2026-11-26, Phase 1, composites step C5, tests only: the regression net for removing
   `Accession.from_paths` and the old folder `collate()`.
   - `api/tests/collate/from_paths_port.py`: `collect_like_from_paths`, which takes
@@ -231,6 +248,25 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1, Combine:
+  - **Names that end in a primary label** (`<labels>_<primary_label>`) are read with
+    the labels saved in the accession's metadata (`__labels__`), as the name alone
+    can't tell the primary label from a label with `_` in it.
+    - `helpers/run_uid.py` gains `PRIMARY_LABEL_RE`, `split_name_suffix` and
+      `run_uid_time`.
+    - `Accession._labels_from_dirname` uses `split_name_suffix`.
+    - `SessionListing.ids` returns the saved labels when there are any (new
+      `saved_labels`). The S3 listing downloads its metadata once and keeps it, for
+      both `saved_labels` and `grouping_uid`.
+  - **`Accession.staging_dirname`** now joins any suffix that is a valid primary label
+    with `_`, not only a run UID. A suffix like `abc123`, which used to give
+    `a.b.c.d.abc123`, now gives `a.b.c.d_abc123`. Both load, because the saved labels
+    are used.
+  - **`create_run_directory`** (was the folder source's `_create_run_directory`) is in
+    `api/collate/claim.py`, shared by `collate_files` and the combiner. With it,
+    `RUN_UID_ATTEMPTS` and `write_error_record`, which `abandon_claim` now uses.
+
+  CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1, `accessionflow/api/collate/composites.py`: the composites are
   restructured, one per stage of a run, following the groups of the step reference.
   - `build_filesets` (steps 7–9) runs `expand_claimed_paths`, `classify_paths` and
@@ -1015,6 +1051,18 @@ Status: **Done** (2026-11-26). The regression net, before anything is removed.
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, Combine, added in `accessionflow.api.collate`:
+  - `check_primary_label(primary_label) -> None`
+  - `list_run_accessions(runs_dir) -> list[RunAccessionGroup]`
+  - `select_quiet_groups(groups, quiet_period, now=None) -> list[RunAccessionGroup]`
+  - `combine_accessions(group, on_resource_clash="error") -> Accession`
+  - `deliver_combined(accession, group, build_dir, output_dir, primary_label, copy_mode=hardlink_or_copy) -> Path`
+  - `remove_run_accessions(group) -> None`
+  - `abandon_group(group, error_dir, error, run_uid) -> Path`
+  - `combine_run_accessions(runs_dir, output_dir, error_dir, quiet_period, primary_label, *, on_resource_clash="error", copy_mode=hardlink_or_copy, now=None, raise_errors=False) -> list[str]`
+  - `RunAccessionGroup(name, run_dirs, newest)`, `COMBINED_FROM_KEY`
+  - moved: `create_run_directory(output_dir) -> tuple[str, Path]`; added:
+    `write_error_record(directory, error) -> Path`, `RUN_UID_ATTEMPTS`
 - 2026-11-26, Phase 1, the composites restructured, in `accessionflow.api.collate`:
   - added: `build_filesets(claimed, datatypes, recursion, *, recursive=False, allow_unrecognised=()) -> ClassifiedFilesets`
   - added: `apply_fileset_metadata(filesets, claimed, *, dont_read_metadata=(), path_metadata_regex=(), metadata_tables=()) -> list[FileSet]`
@@ -1122,6 +1170,12 @@ Status: **Done** (2026-11-26). The regression net, before anything is removed.
 
 ### Staging layout
 
+- 2026-11-26, Phase 1, Combine: a combined accession is named
+  `<labels>_<primary_label>` (e.g. `P.S.V1_combined`). Its `__METADATA__.json` records
+  its run accessions under `__combined_from__`. The run accessions of a group that
+  couldn't be combined go to `<error_dir>/<labels>_<run_uid>/` with an `error.json`.
+  Not used until `collate folder` runs the combiner, so nothing needs draining. PR:
+  pending.
 - 2026-11-25, Phase 1: labelled accession directories are named `<labels>_<run_uid>`
   instead of `<labels>.<run_uid>`, by every stage that saves one. Directories named the
   old way still load (both run-UID forms and the legacy `-` delimiter), so nothing

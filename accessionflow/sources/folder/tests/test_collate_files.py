@@ -236,7 +236,7 @@ def test_run_uid_clash_makes_another(
     taken, free = "20261126010203_aaaaaa", "20261126010203_bbbbbb"
     (dirs.output / BUILD_NAME_DEFAULT / taken).mkdir(parents=True)
     uids = iter([taken, free])
-    monkeypatch.setattr(collate_api, "make_run_uid", lambda: next(uids))
+    monkeypatch.setattr(claim_module, "make_run_uid", lambda: next(uids))
     assert _run(dirs, metadata_tables=[_visit_table(tmp_path, "s1")]) == []
     assert _delivered(dirs) == [f"P.s1.v1_{free}"]
 
@@ -247,7 +247,7 @@ def test_every_run_uid_taken(
     _write(dirs.inbox, {"s1/a.json": "{}"})
     taken = "20261126010203_aaaaaa"
     (dirs.output / BUILD_NAME_DEFAULT / taken).mkdir(parents=True)
-    monkeypatch.setattr(collate_api, "make_run_uid", lambda: taken)
+    monkeypatch.setattr(claim_module, "make_run_uid", lambda: taken)
     with pytest.raises(RuntimeError, match="unused run UID"):
         _run(dirs, metadata_tables=[_visit_table(tmp_path, "s1")])
     assert (dirs.inbox / "s1" / "a.json").exists()

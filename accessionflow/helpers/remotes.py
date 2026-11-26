@@ -97,6 +97,17 @@ class SessionListing(metaclass=abc.ABCMeta):
         return None if self.skip_uid_check else self.grouping_uid
 
     @property
+    def saved_labels(self) -> dict[str, str] | None:
+        """The labels saved in the session's metadata (``__labels__``), or None for a
+        session staged before they were saved"""
+        try:
+            metadata = json.loads((self.cache_path / Metadata.FNAME).read_text())
+        except FileNotFoundError:
+            return None
+        saved = metadata.get(Accession.LABELS_METADATA_KEY)
+        return dict(saved) if saved else None
+
+    @property
     def grouping_uid(self) -> str | None:
         try:
             metadata = json.loads((self.cache_path / Metadata.FNAME).read_text())
@@ -106,8 +117,13 @@ class SessionListing(metaclass=abc.ABCMeta):
 
     @property
     def ids(self) -> list[str]:
-        """The labels of the session, from its directory name. A store plugin's
-        listing names them, e.g. as XNAT's project, subject and session IDs"""
+        """The labels of the session. A store plugin's listing names them, e.g. as
+        XNAT's project, subject and session IDs. They are read from the labels saved in
+        the session's metadata, if it has them, as the directory name alone can't tell a
+        combined accession's primary label (``<labels>_<primary_label>``) from a label
+        that contains '_'. Otherwise, they are read from the directory name"""
+        if saved := self.saved_labels:
+            return list(saved.values())
         name, run_uid = split_run_uid(self.name)
         if run_uid is not None:
             return name.split(".")
@@ -207,6 +223,9 @@ class S3SessionListing(SessionListing):
     skip_uid_check: bool = attrs.field(default=False, kw_only=True)
     _downloaded: bool = attrs.field(default=False, init=False)
     _download_lock: threading.Lock = attrs.field(factory=threading.Lock, init=False)
+    # The session's metadata, downloaded once by _saved_metadata ([] until then, as
+    # None means it has none)
+    _metadata: ty.Any = attrs.field(factory=list, init=False)
 
     @property
     def cache_path(self) -> Path:
@@ -251,8 +270,14 @@ class S3SessionListing(SessionListing):
                 )
             )
 
-    @property
-    def grouping_uid(self) -> str | None:
+    def _saved_metadata(self) -> dict[str, ty.Any] | None:
+        """The session's saved metadata, downloaded from the bucket once (without the
+        rest of the session), or None if it has none"""
+        if self._metadata == []:
+            self._metadata = self._download_metadata()
+        return self._metadata  # type: ignore[no-any-return]
+
+    def _download_metadata(self) -> dict[str, ty.Any] | None:
         metadata_objects = [
             obj for parts, obj in self.objects if parts == [Metadata.FNAME]
         ]
@@ -264,7 +289,20 @@ class S3SessionListing(SessionListing):
             )
         with io.BytesIO() as stream:
             self.bucket.download_fileobj(metadata_objects[0].key, stream)
-            return read_grouping_uid(json.loads(stream.getvalue()))
+            return json.loads(stream.getvalue())  # type: ignore[no-any-return]
+
+    @property
+    def saved_labels(self) -> dict[str, str] | None:
+        """The labels saved in the session's metadata (``__labels__``), read from the
+        bucket, or None for a session staged before they were saved"""
+        metadata = self._saved_metadata()
+        saved = metadata.get(Accession.LABELS_METADATA_KEY) if metadata else None
+        return dict(saved) if saved else None
+
+    @property
+    def grouping_uid(self) -> str | None:
+        metadata = self._saved_metadata()
+        return None if metadata is None else read_grouping_uid(metadata)
 
     @property
     def resource_paths(self) -> set[str]:

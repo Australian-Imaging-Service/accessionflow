@@ -15,7 +15,11 @@ from pathlib import Path
 import attrs
 from fileformats.core import FileSet, to_mime
 
-from accessionflow.api.staging import check_run_uid, prune_empty_dirs
+from accessionflow.api.staging import (
+    check_run_uid,
+    prepare_build_dir,
+    prune_empty_dirs,
+)
 from accessionflow.helpers.logging import logger
 from accessionflow.model.accession import Accession
 
@@ -30,6 +34,9 @@ __all__ = [
     "claim_input_files",
     "finish_claim",
     "make_run_uid",
+    "RUN_UID_ATTEMPTS",
+    "create_run_directory",
+    "write_error_record",
 ]
 
 # The subdirectory of the output directory that the files of each run are claimed
@@ -172,6 +179,58 @@ class ClaimedFiles:
             roots=tuple(Path(r) for r in plan["roots"]),
             files=files,
         )
+
+
+# How many run UIDs a new run tries before giving up, should each be taken already
+RUN_UID_ATTEMPTS = 5
+
+
+def create_run_directory(output_dir: Path) -> tuple[str, Path]:
+    """Makes a new run's UID (`make_run_uid`) and creates its build directory
+    exclusively (`prepare_build_dir`), making another UID if another run has already
+    taken it. Used by the collate and combine composites
+
+    Parameters
+    ----------
+    output_dir : Path
+        the directory the run delivers to, which holds the build directories
+
+    Returns
+    -------
+    tuple[str, Path]
+        the run's UID, and its build directory
+
+    Raises
+    ------
+    RuntimeError
+        if every one of `RUN_UID_ATTEMPTS` UIDs is taken
+    """
+    for _ in range(RUN_UID_ATTEMPTS):
+        run_uid = make_run_uid()
+        try:
+            return run_uid, prepare_build_dir(output_dir, run_uid, exclusive=True)
+        except FileExistsError:
+            logger.debug("Run UID '%s' is taken, making another", run_uid)
+    raise RuntimeError(f"Couldn't make an unused run UID in '{output_dir}'")
+
+
+def write_error_record(directory: Path, error: BaseException | str) -> Path:
+    """Writes the record of why a run failed (`ERROR_MANIFEST`) into the directory
+    that is moved to the error directory, with the error's type and traceback if it is
+    an exception
+
+    Returns
+    -------
+    Path
+        the record
+    """
+    record: dict[str, ty.Any] = {"message": str(error)}
+    if isinstance(error, BaseException):
+        record["type"] = type(error).__name__
+        record["traceback"] = "".join(traceback.format_exception(error))
+    path = Path(directory) / ERROR_MANIFEST
+    path.write_text(json.dumps(record, indent=2))
+    return path
 
 
 def claim_input_files(
@@ -364,11 +423,7 @@ def abandon_claim(
     if not run_dir.exists():
         return dest
     _tidy_run_dir(claimed)
-    record: dict[str, ty.Any] = {"message": str(error)}
-    if isinstance(error, BaseException):
-        record["type"] = type(error).__name__
-        record["traceback"] = "".join(traceback.format_exception(error))
-    (run_dir / ERROR_MANIFEST).write_text(json.dumps(record, indent=2))
+    write_error_record(run_dir, error)
     moved_dir = _move_run_dir(run_dir, Path(error_dir))
     logger.error("Moved the claim of failed run '%s' to '%s'", run_dir.name, moved_dir)
     return moved_dir
