@@ -179,7 +179,7 @@ def test_package_keeps_fields(tmp_path: Path) -> None:
         input_dir=tmp_path / "input",
         output_dir=tmp_path / "output",
         source_datatype=MyFormat,
-        output_resources={"COPY": (MyFormat, {})},
+        output_resources={"COPY": (MyFormat, MyFormat, {}, None)},
     )
     assert errors == []
     out = Accession.load(tmp_path / "output" / "PROJECT.SUBJECT.SESSION")

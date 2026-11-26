@@ -195,6 +195,23 @@ def _union_members(datatype: ty.Any) -> tuple[type, ...]:
     return (datatype,)
 
 
+def parse_source_spec(
+    value: str, source: ty.Type[FileSet] | types.UnionType
+) -> tuple[ty.Type[FileSet] | types.UnionType, re.Pattern[str] | None]:
+    """Parse a source datatype and optional path regex, validating both."""
+    datatype_str, separator, pattern_str = value.partition(":")
+    datatype = datatype_converter(datatype_str)
+    pattern = None
+    if separator:
+        if not pattern_str:
+            raise ValueError(f"Source spec {value!r} has an empty path regex")
+        try:
+            pattern = re.compile(pattern_str)
+        except re.error as e:
+            raise ValueError(f"Invalid path regex in source spec {value!r}: {e}") from e
+    return datatype, pattern
+
+
 def parse_target_spec(
     value: str | tuple[ty.Type[FileSet], dict[str, ty.Any]],
     source: ty.Type[FileSet] | types.UnionType,
@@ -329,13 +346,24 @@ class OutputResource(MultiCliTyped):
     independently.
     """
 
-    label: str
+    source_spec: str
     target_spec: str
+    label: str
 
     def resolve(
         self, source: ty.Type[FileSet] | types.UnionType
-    ) -> tuple[ty.Type[FileSet], dict[str, ty.Any]]:
-        return parse_target_spec(self.target_spec, source)
+    ) -> tuple[
+        ty.Type[FileSet] | types.UnionType,
+        ty.Type[FileSet] | None,
+        dict[str, ty.Any],
+        re.Pattern[str] | None,
+    ]:
+        source_datatype, pattern = parse_source_spec(self.source_spec, source)
+        # None marks a passthrough output; it is not a conversion target.
+        if self.target_spec == "copy":
+            return source_datatype, None, {}, pattern
+        target_datatype, options = parse_target_spec(self.target_spec, source_datatype)
+        return source_datatype, target_datatype, options, pattern
 
 
 @attrs.define
