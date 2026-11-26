@@ -33,6 +33,7 @@ from .claim import write_error_record
 
 __all__ = [
     "COMBINED_FROM_KEY",
+    "RUNS_NAME_DEFAULT",
     "RunAccessionGroup",
     "abandon_group",
     "check_primary_label",
@@ -45,6 +46,11 @@ __all__ = [
 
 # The metadata key a combined accession records the names of its run accessions under
 COMBINED_FROM_KEY = "__combined_from__"
+
+# The subdirectory of the output directory that the CLI delivers the run accessions to
+# by default, for the combiner. Later stages don't see it, because list_session_dirs
+# skips directories whose names start with '__'
+RUNS_NAME_DEFAULT = "__runs__"
 
 
 @attrs.frozen
@@ -198,6 +204,8 @@ def combine_accessions(
         resource clash is an error under ``on_resource_clash``
     """
     run_accessions = [Accession.load(d) for d in group.run_dirs]
+    for accession in run_accessions:
+        _use_saved_metadata(accession)
     oldest = run_accessions[0]
     combined = oldest.new_empty()
     combined.run_uid = None
@@ -251,6 +259,21 @@ def combine_accessions(
     combined.metadata.update(accession_metadata)
     combined.metadata.update({COMBINED_FROM_KEY: [d.name for d in group.run_dirs]})
     return combined
+
+
+def _use_saved_metadata(accession: Accession) -> None:
+    """Stops the files of a loaded run accession being read for metadata, so that its
+    resources' metadata is what collate saved. That already holds what was read from
+    the files (``Metadata.save`` reads them first), unless their datatype was in
+    ``dont_read_metadata``: reading them again would add the fields that it left out,
+    and could replace saved values, e.g. from the paths, with the files' own"""
+    resources = [
+        resource
+        for acquisition in accession.acquisitions.values()
+        for resource in acquisition.resources.values()
+    ] + list(accession.session_resources.values())
+    for resource in resources:
+        resource.fileset.metadata.read_disabled = True
 
 
 def deliver_combined(

@@ -1,0 +1,1001 @@
+{
+  "collate folder": {
+    "input_paths": {
+      "kind": "Argument",
+      "opts": [
+        "input_paths"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": -1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_INPUT_PATHS",
+      "required": false,
+      "hidden": false
+    },
+    "output_dir": {
+      "kind": "Argument",
+      "opts": [
+        "output_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_OUTPUT_DIR",
+      "required": true,
+      "hidden": false
+    },
+    "--accession": {
+      "kind": "Option",
+      "opts": [
+        "--accession"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[IDSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [
+        "IDSpec(specifier='StudyInstanceUID', datatype=<class 'fileformats.medimage.dicom.DicomCollection'>)"
+      ],
+      "envvar": "ACFLOW_ACCESSION",
+      "required": false,
+      "hidden": false
+    },
+    "--accession-uid": {
+      "kind": "Option",
+      "opts": [
+        "--accession-uid"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[IDSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ACCESSION_UID",
+      "required": false,
+      "hidden": true
+    },
+    "--acquisition": {
+      "kind": "Option",
+      "opts": [
+        "--acquisition"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[IDSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [
+        "IDSpec(specifier='SeriesNumber', datatype=<class 'fileformats.medimage.dicom.DicomCollection'>)"
+      ],
+      "envvar": "ACFLOW_ACQUISITION",
+      "required": false,
+      "hidden": false
+    },
+    "--acquisition-id": {
+      "kind": "Option",
+      "opts": [
+        "--acquisition-id"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[IDSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ACQUISITION_ID",
+      "required": false,
+      "hidden": true
+    },
+    "--resource": {
+      "kind": "Option",
+      "opts": [
+        "--resource"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[IDSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_RESOURCE",
+      "required": false,
+      "hidden": false
+    },
+    "--datatype": {
+      "kind": "Option",
+      "opts": [
+        "--datatype"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[MimeType]",
+      "nargs": 1,
+      "multiple": true,
+      "default": [
+        "medimage/dicom-series"
+      ],
+      "envvar": "ACFLOW_DATATYPES",
+      "required": false,
+      "hidden": false
+    },
+    "--path-metadata-regex": {
+      "kind": "Option",
+      "opts": [
+        "--path-metadata-regex"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[PathMetadataRegex]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_PATH_METADATA_REGEX",
+      "required": false,
+      "hidden": false
+    },
+    "--path-metadata": {
+      "kind": "Option",
+      "opts": [
+        "--path-metadata"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[PathMetadataPattern]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_PATH_METADATA",
+      "required": false,
+      "hidden": false
+    },
+    "--on-resource-clash": {
+      "kind": "Option",
+      "opts": [
+        "--on-resource-clash"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[ClashSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ON_RESOURCE_CLASH",
+      "required": false,
+      "hidden": false
+    },
+    "--allow-unrecognised": {
+      "kind": "Option",
+      "opts": [
+        "--allow-unrecognised",
+        "--allow-unrecognized"
+      ],
+      "secondary_opts": [],
+      "type": "SemicolonListType",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ALLOW_UNRECOGNISED",
+      "required": false,
+      "hidden": false
+    },
+    "--exclude-path": {
+      "kind": "Option",
+      "opts": [
+        "--exclude-path"
+      ],
+      "secondary_opts": [],
+      "type": "SemicolonListType",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_EXCLUDE_PATH",
+      "required": false,
+      "hidden": false
+    },
+    "--ignore-datatype": {
+      "kind": "Option",
+      "opts": [
+        "--ignore-datatype"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[MimeType]",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_IGNORE_DATATYPE",
+      "required": false,
+      "hidden": false
+    },
+    "--dont-read-metadata": {
+      "kind": "Option",
+      "opts": [
+        "--dont-read-metadata"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[MimeType]",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_DONT_READ_METADATA",
+      "required": false,
+      "hidden": false
+    },
+    "--recursive": {
+      "kind": "Option",
+      "opts": [
+        "--recursive"
+      ],
+      "secondary_opts": [
+        "--not-recursive"
+      ],
+      "type": "BoolParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": false,
+      "envvar": "ACFLOW_RECURSIVE",
+      "required": false,
+      "hidden": false
+    },
+    "--unlink-source": {
+      "kind": "Option",
+      "opts": [
+        "--unlink-source"
+      ],
+      "secondary_opts": [],
+      "type": [
+        "Choice",
+        [
+          "all",
+          "keep-metadata"
+        ]
+      ],
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_UNLINK_SOURCE",
+      "required": false,
+      "hidden": false
+    },
+    "--collate-resources": {
+      "kind": "Option",
+      "opts": [
+        "--collate-resources"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[CollationSpec]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_COLLATE_RESOURCES",
+      "required": false,
+      "hidden": false
+    },
+    "--metadata-table": {
+      "kind": "Option",
+      "opts": [
+        "--metadata-table"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[MetadataTable]",
+      "nargs": 3,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_METADATA_TABLES",
+      "required": false,
+      "hidden": false
+    },
+    "--loop": {
+      "kind": "Option",
+      "opts": [
+        "--loop"
+      ],
+      "secondary_opts": [],
+      "type": "IntParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": -1,
+      "envvar": "ACFLOW_LOOP",
+      "required": false,
+      "hidden": false
+    },
+    "--wait-period": {
+      "kind": "Option",
+      "opts": [
+        "--wait-period"
+      ],
+      "secondary_opts": [],
+      "type": "IntRange",
+      "nargs": 1,
+      "multiple": false,
+      "default": 0,
+      "envvar": "ACFLOW_WAIT_PERIOD",
+      "required": false,
+      "hidden": false
+    },
+    "--copy-mode": {
+      "kind": "Option",
+      "opts": [
+        "--copy-mode"
+      ],
+      "secondary_opts": [],
+      "type": "CopyModeParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "CopyMode.hardlink_or_copy",
+      "envvar": "ACFLOW_COPY_MODE",
+      "required": false,
+      "hidden": false
+    },
+    "--convert": {
+      "kind": "Option",
+      "opts": [
+        "--convert"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[Convert]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_CONVERT",
+      "required": false,
+      "hidden": false
+    },
+    "--logger": {
+      "kind": "Option",
+      "opts": [
+        "--logger"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[LoggerConfig]",
+      "nargs": 3,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--additional-logger": {
+      "kind": "Option",
+      "opts": [
+        "--additional-logger"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ADDITIONAL_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--raise-errors": {
+      "kind": "Option",
+      "opts": [
+        "--raise-errors"
+      ],
+      "secondary_opts": [
+        "--dont-raise-errors"
+      ],
+      "type": "BoolParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": false,
+      "envvar": null,
+      "required": false,
+      "hidden": false
+    }
+  },
+  "collate orthanc": {
+    "url": {
+      "kind": "Argument",
+      "opts": [
+        "url"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_ORTHANC_URL",
+      "required": true,
+      "hidden": false
+    },
+    "store_dir": {
+      "kind": "Argument",
+      "opts": [
+        "store_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_ORTHANC_STORE_DIR",
+      "required": true,
+      "hidden": false
+    },
+    "output_dir": {
+      "kind": "Argument",
+      "opts": [
+        "output_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": null,
+      "required": true,
+      "hidden": false
+    },
+    "user": {
+      "kind": "Argument",
+      "opts": [
+        "user"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_ORTHANC_USER",
+      "required": true,
+      "hidden": false
+    },
+    "password": {
+      "kind": "Argument",
+      "opts": [
+        "password"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_ORTHANC_PASSWORD",
+      "required": true,
+      "hidden": false
+    },
+    "--to-process-label": {
+      "kind": "Option",
+      "opts": [
+        "--to-process-label"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_ORTHANC_TO_PROCESS",
+      "required": false,
+      "hidden": false
+    },
+    "--processed-label": {
+      "kind": "Option",
+      "opts": [
+        "--processed-label"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_ORTHANC_PROCESSED",
+      "required": false,
+      "hidden": false
+    },
+    "--unlink-source": {
+      "kind": "Option",
+      "opts": [
+        "--unlink-source"
+      ],
+      "secondary_opts": [],
+      "type": [
+        "Choice",
+        [
+          "all",
+          "keep-metadata"
+        ]
+      ],
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_UNLINK_SOURCE",
+      "required": false,
+      "hidden": false
+    },
+    "--loop": {
+      "kind": "Option",
+      "opts": [
+        "--loop"
+      ],
+      "secondary_opts": [],
+      "type": "IntParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": -1,
+      "envvar": "ACFLOW_LOOP",
+      "required": false,
+      "hidden": false
+    },
+    "--wait-period": {
+      "kind": "Option",
+      "opts": [
+        "--wait-period"
+      ],
+      "secondary_opts": [],
+      "type": "IntRange",
+      "nargs": 1,
+      "multiple": false,
+      "default": 0,
+      "envvar": "ACFLOW_WAIT_PERIOD",
+      "required": false,
+      "hidden": false
+    },
+    "--copy-mode": {
+      "kind": "Option",
+      "opts": [
+        "--copy-mode"
+      ],
+      "secondary_opts": [],
+      "type": "CopyModeParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "CopyMode.hardlink_or_copy",
+      "envvar": "ACFLOW_COPY_MODE",
+      "required": false,
+      "hidden": false
+    },
+    "--convert": {
+      "kind": "Option",
+      "opts": [
+        "--convert"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[Convert]",
+      "nargs": 2,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_CONVERT",
+      "required": false,
+      "hidden": false
+    },
+    "--logger": {
+      "kind": "Option",
+      "opts": [
+        "--logger"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[LoggerConfig]",
+      "nargs": 3,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--additional-logger": {
+      "kind": "Option",
+      "opts": [
+        "--additional-logger"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ADDITIONAL_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--raise-errors": {
+      "kind": "Option",
+      "opts": [
+        "--raise-errors"
+      ],
+      "secondary_opts": [
+        "--dont-raise-errors"
+      ],
+      "type": "BoolParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": false,
+      "envvar": null,
+      "required": false,
+      "hidden": false
+    }
+  },
+  "label xnat": {
+    "input_dir": {
+      "kind": "Argument",
+      "opts": [
+        "input_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_INPUT_DIR",
+      "required": true,
+      "hidden": false
+    },
+    "output_dir": {
+      "kind": "Argument",
+      "opts": [
+        "output_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_OUTPUT_DIR",
+      "required": true,
+      "hidden": false
+    },
+    "--project": {
+      "kind": "Option",
+      "opts": [
+        "--project"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "StudyComments",
+      "envvar": "ACFLOW_PROJECT",
+      "required": false,
+      "hidden": false
+    },
+    "--subject": {
+      "kind": "Option",
+      "opts": [
+        "--subject"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "PatientID",
+      "envvar": "ACFLOW_SUBJECT",
+      "required": false,
+      "hidden": false
+    },
+    "--session": {
+      "kind": "Option",
+      "opts": [
+        "--session"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "AccessionNumber",
+      "envvar": "ACFLOW_SESSION",
+      "required": false,
+      "hidden": false
+    },
+    "--scan": {
+      "kind": "Option",
+      "opts": [
+        "--scan"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "SeriesDescription",
+      "envvar": "ACFLOW_SCAN",
+      "required": false,
+      "hidden": false
+    },
+    "--constant-project-id": {
+      "kind": "Option",
+      "opts": [
+        "--constant-project-id"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_CONSTANT_PROJECT_ID",
+      "required": false,
+      "hidden": false
+    },
+    "--include": {
+      "kind": "Option",
+      "opts": [
+        "--include"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[MimeType]",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_INCLUDE",
+      "required": false,
+      "hidden": false
+    },
+    "--loop": {
+      "kind": "Option",
+      "opts": [
+        "--loop"
+      ],
+      "secondary_opts": [],
+      "type": "IntParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": -1,
+      "envvar": "ACFLOW_LOOP",
+      "required": false,
+      "hidden": false
+    },
+    "--copy-mode": {
+      "kind": "Option",
+      "opts": [
+        "--copy-mode"
+      ],
+      "secondary_opts": [],
+      "type": "CopyModeParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "CopyMode.hardlink_or_copy",
+      "envvar": "ACFLOW_COPY_MODE",
+      "required": false,
+      "hidden": false
+    },
+    "--unlink-source": {
+      "kind": "Option",
+      "opts": [
+        "--unlink-source"
+      ],
+      "secondary_opts": [],
+      "type": [
+        "Choice",
+        [
+          "all",
+          "keep-metadata"
+        ]
+      ],
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_UNLINK_SOURCE",
+      "required": false,
+      "hidden": false
+    },
+    "--logger": {
+      "kind": "Option",
+      "opts": [
+        "--logger"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[LoggerConfig]",
+      "nargs": 3,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--additional-logger": {
+      "kind": "Option",
+      "opts": [
+        "--additional-logger"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ADDITIONAL_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--raise-errors": {
+      "kind": "Option",
+      "opts": [
+        "--raise-errors"
+      ],
+      "secondary_opts": [
+        "--dont-raise-errors"
+      ],
+      "type": "BoolParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": false,
+      "envvar": null,
+      "required": false,
+      "hidden": false
+    }
+  },
+  "label folder": {
+    "input_dir": {
+      "kind": "Argument",
+      "opts": [
+        "input_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_INPUT_DIR",
+      "required": true,
+      "hidden": false
+    },
+    "output_dir": {
+      "kind": "Argument",
+      "opts": [
+        "output_dir"
+      ],
+      "secondary_opts": [],
+      "type": "Path[Path]",
+      "nargs": 1,
+      "multiple": false,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_OUTPUT_DIR",
+      "required": true,
+      "hidden": false
+    },
+    "--level": {
+      "kind": "Option",
+      "opts": [
+        "--level"
+      ],
+      "secondary_opts": [],
+      "type": [
+        "Tuple",
+        [
+          "StringParamType",
+          "StringParamType"
+        ]
+      ],
+      "nargs": 2,
+      "multiple": true,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_LEVELS",
+      "required": true,
+      "hidden": false
+    },
+    "--acquisition": {
+      "kind": "Option",
+      "opts": [
+        "--acquisition"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "SeriesDescription",
+      "envvar": "ACFLOW_ACQUISITION",
+      "required": false,
+      "hidden": false
+    },
+    "--constant-label": {
+      "kind": "Option",
+      "opts": [
+        "--constant-label"
+      ],
+      "secondary_opts": [],
+      "type": [
+        "Tuple",
+        [
+          "StringParamType",
+          "StringParamType"
+        ]
+      ],
+      "nargs": 2,
+      "multiple": true,
+      "default": "Sentinel.UNSET",
+      "envvar": "ACFLOW_CONSTANT_LABELS",
+      "required": false,
+      "hidden": false
+    },
+    "--include": {
+      "kind": "Option",
+      "opts": [
+        "--include"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[MimeType]",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_INCLUDE",
+      "required": false,
+      "hidden": false
+    },
+    "--loop": {
+      "kind": "Option",
+      "opts": [
+        "--loop"
+      ],
+      "secondary_opts": [],
+      "type": "IntParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": -1,
+      "envvar": "ACFLOW_LOOP",
+      "required": false,
+      "hidden": false
+    },
+    "--copy-mode": {
+      "kind": "Option",
+      "opts": [
+        "--copy-mode"
+      ],
+      "secondary_opts": [],
+      "type": "CopyModeParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": "CopyMode.hardlink_or_copy",
+      "envvar": "ACFLOW_COPY_MODE",
+      "required": false,
+      "hidden": false
+    },
+    "--unlink-source": {
+      "kind": "Option",
+      "opts": [
+        "--unlink-source"
+      ],
+      "secondary_opts": [],
+      "type": [
+        "Choice",
+        [
+          "all",
+          "keep-metadata"
+        ]
+      ],
+      "nargs": 1,
+      "multiple": false,
+      "default": null,
+      "envvar": "ACFLOW_UNLINK_SOURCE",
+      "required": false,
+      "hidden": false
+    },
+    "--logger": {
+      "kind": "Option",
+      "opts": [
+        "--logger"
+      ],
+      "secondary_opts": [],
+      "type": "CliType[LoggerConfig]",
+      "nargs": 3,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--additional-logger": {
+      "kind": "Option",
+      "opts": [
+        "--additional-logger"
+      ],
+      "secondary_opts": [],
+      "type": "StringParamType",
+      "nargs": 1,
+      "multiple": true,
+      "default": [],
+      "envvar": "ACFLOW_ADDITIONAL_LOGGERS",
+      "required": false,
+      "hidden": false
+    },
+    "--raise-errors": {
+      "kind": "Option",
+      "opts": [
+        "--raise-errors"
+      ],
+      "secondary_opts": [
+        "--dont-raise-errors"
+      ],
+      "type": "BoolParamType",
+      "nargs": 1,
+      "multiple": false,
+      "default": false,
+      "envvar": null,
+      "required": false,
+      "hidden": false
+    }
+  }
+}

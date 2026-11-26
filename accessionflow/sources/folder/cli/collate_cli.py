@@ -1,13 +1,33 @@
 import time
 import typing as ty
+from datetime import timedelta
 from pathlib import Path
 
 import click
 from fileformats.core import FileSet
 
+from accessionflow.api.collate import (
+    ERROR_NAME_DEFAULT,
+    PROCESSING_NAME_DEFAULT,
+    RUNS_NAME_DEFAULT,
+    UNPROCESSED_NAME_DEFAULT,
+    check_primary_label,
+    combine_run_accessions,
+    list_input_files,
+    list_source_roots,
+)
 from accessionflow.cli.aliases import resolve_deprecated_alias
 from accessionflow.cli.collate_cli import collate_group, collate_options
-from accessionflow.cli.runner import check_loop_options
+from accessionflow.cli.label_options import (
+    StoreLabelOption,
+    resolve_label_options,
+    store_label_options,
+)
+from accessionflow.cli.runner import (
+    check_loop_options,
+    log_stage_summary,
+    run_on_interval,
+)
 from accessionflow.helpers.arg_types import (
     SEMICOLON_LIST,
     ClashSpec,
@@ -23,25 +43,40 @@ from accessionflow.helpers.arg_types import (
     conversion_map_from,
 )
 from accessionflow.helpers.logging import logger, set_logger_handling
+from accessionflow.model.store import get_store, store_plugins
 
 from ..api.collate_api import (
     DEFAULT_ACCESSION_UID_FIELD,
     DEFAULT_ACQUISITION_ID_FIELD,
     DEFAULT_RESOURCE_FIELD,
-    collate,
+    collate_files,
+)
+
+DEFAULT_STORE = "xnat"
+DEFAULT_PRIMARY_LABEL = "combined"
+
+WAIT_PERIOD_HELP = (
+    "The number of seconds an accession must have had no new data for before its run "
+    "accessions are combined and delivered to OUTPUT_DIR. The files are collated on "
+    "every run, whether or not more are still arriving, into run accessions in the "
+    "run-accessions directory (--runs-dir) (ACFLOW_WAIT_PERIOD env. var)"
 )
 
 
 @collate_group.command(
     name="folder",
     help="""Collates the files found in folders, on a local path or a mounted file
-system, into accessions, acquisitions and resources
+system, into accessions, acquisitions and resources, labelled for the data store given
+by --store
 
 INPUT_PATHS are either paths to directories containing the files to collate, or
-glob patterns that select the paths directly
+glob patterns that select the paths directly. The files collated are moved out of them
 
-OUTPUT_DIR is the staging directory the files of each accession are collated to,
-ready to be labelled
+OUTPUT_DIR is the staging directory the accessions are delivered to, each in a directory
+named '<labels>_<primary-label>', e.g. '<project>.<subject>.<session>_combined' for
+XNAT. Each run delivers the accessions it collated to the run-accessions directory
+(--runs-dir), and an accession's run accessions are combined into one in OUTPUT_DIR once
+it has had no new data for --wait-period
 """,
 )
 @click.argument("input_paths", type=str, nargs=-1, envvar="ACFLOW_INPUT_PATHS")
@@ -259,11 +294,8 @@ ready to be labelled
     default=None,
     envvar="ACFLOW_UNLINK_SOURCE",
     help=(
-        "Whether to unlink the source files after they have been successfully "
-        "collated. 'all' and 'keep-metadata' behave the same here (individual "
-        "source files are removed one by one) since 'collate's source isn't a "
-        "directory tree that accessionflow owns and can't have a metadata skeleton "
-        "left behind in it (ACFLOW_UNLINK_SOURCE env. var)"
+        "Deprecated, and has no effect: the files collated are always moved out of the "
+        "input directories (ACFLOW_UNLINK_SOURCE env. var)"
     ),
 )
 @click.option(
@@ -311,7 +343,73 @@ ready to be labelled
         "'ImagePath=HYPERLINK(\"{relpath}\")'\n"
     ),
 )
-@collate_options
+@click.option(
+    "--store",
+    "store_name",
+    type=click.Choice(store_plugins()),
+    default=DEFAULT_STORE,
+    envvar="ACFLOW_STORE",
+    help=(
+        "The data store the accessions are labelled for, which gives the label "
+        "options used, e.g. --project, --subject, --session and --scan for 'xnat', or "
+        "--level and --constant-label for 'folder' (ACFLOW_STORE env. var)"
+    ),
+)
+@click.option(
+    "--primary-label",
+    type=str,
+    default=DEFAULT_PRIMARY_LABEL,
+    envvar="ACFLOW_PRIMARY_LABEL",
+    help=(
+        "The suffix of the names of the accessions delivered to OUTPUT_DIR, "
+        "'<labels>_<primary-label>': letters, digits and '-' "
+        "(ACFLOW_PRIMARY_LABEL env. var)"
+    ),
+)
+@click.option(
+    "--runs-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    envvar="ACFLOW_RUNS_DIR",
+    help=(
+        "The directory each run delivers its run accessions to, "
+        f"'<labels>_<run-uid>', by default OUTPUT_DIR/{RUNS_NAME_DEFAULT} "
+        "(ACFLOW_RUNS_DIR env. var)"
+    ),
+)
+@click.option(
+    "--working-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    envvar="ACFLOW_WORKING_DIR",
+    help=(
+        "The directory the files of each run are moved into while they are collated, "
+        f"by default OUTPUT_DIR/{PROCESSING_NAME_DEFAULT} (ACFLOW_WORKING_DIR env. var)"
+    ),
+)
+@click.option(
+    "--unprocessed-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    envvar="ACFLOW_UNPROCESSED_DIR",
+    help=(
+        "The directory the files of a run that weren't delivered (unrecognised, "
+        "ignored, or of an accession that failed) are moved to, by default "
+        f"OUTPUT_DIR/{UNPROCESSED_NAME_DEFAULT} (ACFLOW_UNPROCESSED_DIR env. var)"
+    ),
+)
+@click.option(
+    "--error-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    envvar="ACFLOW_ERROR_DIR",
+    help=(
+        "The directory the files of a run that failed, and the run accessions of an "
+        "accession that couldn't be combined, are moved to, by default "
+        f"OUTPUT_DIR/{ERROR_NAME_DEFAULT} (ACFLOW_ERROR_DIR env. var)"
+    ),
+)
+@collate_options(wait_period_help=WAIT_PERIOD_HELP)
 def collate_cmd(
     input_paths: list[str],
     output_dir: Path,
@@ -339,6 +437,13 @@ def collate_cmd(
     collate_resources: tuple[CollationSpec, ...],
     conversions: tuple[Convert, ...],
     metadata_tables: tuple[MetadataTable, ...],
+    store_name: str,
+    primary_label: str,
+    runs_dir: Path | None,
+    working_dir: Path | None,
+    unprocessed_dir: Path | None,
+    error_dir: Path | None,
+    **label_values: ty.Any,
 ) -> None:
     accession_uid = resolve_deprecated_alias(
         accession_uid,
@@ -359,50 +464,144 @@ def collate_cmd(
         additional_loggers=additional_loggers,
     )
 
-    # Run the collation in a loop if loop is set to a positive value, otherwise just
-    # run it once
-    while True:
-        start_time = time.monotonic()
-        errors = collate(
-            input_paths=input_paths,
-            output_dir=output_dir,
+    # Everything is checked before anything is changed
+    store = get_store(store_name)
+    _refuse_other_stores_options(store_name)
+    labels = resolve_label_options(store, STORE_LABEL_OPTIONS[store_name], label_values)
+    check_primary_label(primary_label)
+    if unlink_source is not None:
+        logger.warning(
+            "--unlink-source (ACFLOW_UNLINK_SOURCE) is deprecated and has no effect: "
+            "the files collated are always moved out of the input directories"
+        )
+    output_dir = Path(output_dir)
+    runs_dir = runs_dir or output_dir / RUNS_NAME_DEFAULT
+    working_dir = working_dir or output_dir / PROCESSING_NAME_DEFAULT
+    unprocessed_dir = unprocessed_dir or output_dir / UNPROCESSED_NAME_DEFAULT
+    error_dir = error_dir or output_dir / ERROR_NAME_DEFAULT
+
+    def run_once() -> None:
+        # Listed again on every run, which picks up the files that arrived since the
+        # last one
+        input_files = list_input_files(
+            input_paths,
+            exclude_paths,
+            metadata_table_paths=[t.table_file.fspath for t in metadata_tables],
+        )
+        errors = collate_files(
+            input_files,
+            runs_dir,
+            working_dir,
+            unprocessed_dir,
+            error_dir,
+            labels.label_fields,
             datatypes=[dt.datatype for dt in datatype or ()],
-            accession_uid=accession_uid,
-            acquisition_id=acquisition_id,
-            resource=resource,
-            unlink_source=unlink_source,
-            raise_errors=raise_errors,
-            copy_mode=copy_mode,
-            allow_unrecognised=allow_unrecognised,
-            exclude_paths=exclude_paths,
             ignore_datatypes=[dt.datatype for dt in ignore_datatypes],
-            dont_read_metadata=[dt.datatype for dt in dont_read_metadata],
-            on_resource_clash=list(on_resource_clash),
-            wait_period=wait_period,
-            path_metadata_regex=path_metadata_regex,
-            path_metadata=path_metadata,
+            source_roots=list_source_roots(input_paths, input_files),
             recursive=recursive,
+            allow_unrecognised=allow_unrecognised,
+            dont_read_metadata=[dt.datatype for dt in dont_read_metadata],
+            accession_uid_field=accession_uid,
+            acquisition_id_field=acquisition_id,
+            resource_field=resource,
+            path_metadata=path_metadata,
+            path_metadata_regex=path_metadata_regex,
+            metadata_tables=list(metadata_tables),
+            on_resource_clash=list(on_resource_clash),
+            acquisition_field=labels.acquisition_field,
+            constant_labels=labels.constant_labels,
+            store_type=store.name,
+            copy_mode=copy_mode,
             collation_map=collation_map_from(collate_resources),
             conversion_map=conversion_map_from(conversions),
-            metadata_tables=list(metadata_tables),
+            raise_errors=raise_errors,
         )
-        if errors:
-            logger.error(
-                "Staging completed with %s errors:\n\n%s",
-                len(errors),
-                "\n".join(errors),
-            )
-        else:
-            logger.info("Staging completed successfully")
-        if loop < 0:
-            break
-        elapsed_seconds = time.monotonic() - start_time
-        sleep_time = max(loop - elapsed_seconds, 0)
-        logger.info(
-            "Collate took %s seconds, waiting another %s seconds before running "
-            "again (loop every %s seconds)",
-            elapsed_seconds,
-            sleep_time,
-            loop,
+        errors += combine_run_accessions(
+            runs_dir,
+            output_dir,
+            error_dir,
+            timedelta(seconds=wait_period),
+            primary_label,
+            on_resource_clash=list(on_resource_clash),
+            copy_mode=copy_mode,
+            raise_errors=raise_errors,
         )
-        time.sleep(sleep_time)
+        log_stage_summary(errors, "Staging")
+
+    # The clock and sleep are looked up here, so that they can be patched in this
+    # module
+    run_on_interval(
+        run_once, loop, "Collate", monotonic=time.monotonic, sleep=time.sleep
+    )
+
+
+def _store_label_options() -> dict[str, list[StoreLabelOption]]:
+    """The label options of each installed store, by store name, as 'collate folder'
+    takes them. An option whose name or environment variable is one of the command's
+    own is named after its store, e.g. the folder store's '--acquisition' (the field of
+    an acquisition's description) is '--folder-acquisition', since '--acquisition' is
+    the acquisition ID"""
+    taken_opts: set[str] = set()
+    taken_envvars: set[str] = set()
+    for param in collate_cmd.params:
+        taken_opts.update(param.opts + param.secondary_opts)
+        if isinstance(param.envvar, str):
+            taken_envvars.add(param.envvar)
+    by_store: dict[str, list[StoreLabelOption]] = {}
+    for name in store_plugins():
+        store = get_store(name)
+        rename = {
+            opt.option.opts[0]: f"--{name}-{opt.option.opts[0][2:]}"
+            for opt in store_label_options(store, collate=True)
+            if opt.option.opts[0] in taken_opts or opt.option.envvar in taken_envvars
+        }
+        by_store[name] = store_label_options(store, collate=True, rename=rename)
+    return by_store
+
+
+def _add_store_label_options() -> None:
+    """Adds the label options of every installed store to the command, each once,
+    before the options that all sources share"""
+    added: dict[str, click.Option] = {}
+    for name, options in STORE_LABEL_OPTIONS.items():
+        for opt in options:
+            if opt.name in added:
+                # Another store's option of the same name
+                added[
+                    opt.name
+                ].help = f"{added[opt.name].help}. Also used with --store {name}"
+            else:
+                added[opt.name] = opt.option
+    first_shared = next(
+        i for i, param in enumerate(collate_cmd.params) if param.name == "loop"
+    )
+    collate_cmd.params[first_shared:first_shared] = list(added.values())
+
+
+def _refuse_other_stores_options(store_name: str) -> None:
+    """Refuses a label option of another store given on the command line. From the
+    environment, it is ignored, since the environment is shared with other stages,
+    e.g. 'label folder'
+
+    Raises
+    ------
+    click.UsageError
+        if an option of another store is given on the command line
+    """
+    ctx = click.get_current_context()
+    own = {opt.name for opt in STORE_LABEL_OPTIONS[store_name]}
+    for name, options in STORE_LABEL_OPTIONS.items():
+        for opt in options:
+            if (
+                opt.name not in own
+                and ctx.get_parameter_source(opt.name)
+                == click.core.ParameterSource.COMMANDLINE
+            ):
+                raise click.UsageError(
+                    f"{opt.option.opts[0]} is a label option of --store {name}, not "
+                    f"of --store {store_name}"
+                )
+
+
+STORE_LABEL_OPTIONS = _store_label_options()
+_add_store_label_options()

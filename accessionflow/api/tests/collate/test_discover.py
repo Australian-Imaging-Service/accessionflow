@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from accessionflow.api.collate import list_input_files
+from accessionflow.api.collate import list_input_files, list_source_roots
 
 
 def _touch(root: Path, *relpaths: str) -> None:
@@ -196,3 +196,42 @@ def test_missing_metadata_table_ignored(tmp_path: Path) -> None:
         [tmp_path], metadata_table_paths=[tmp_path / "missing.csv"]
     )
     assert _rel(listed, tmp_path) == ["a.png"]
+
+
+def test_list_source_roots_gives_the_input_directories_first(tmp_path: Path) -> None:
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    for d in (a / "sub", b):
+        d.mkdir(parents=True)
+    (a / "sub" / "x.txt").write_text("x")
+    (b / "y.txt").write_text("y")
+    files = list_input_files([a, str(b)])
+    assert list_source_roots([a, str(b), a], files) == [a, b]
+
+
+def test_list_source_roots_adds_the_directory_of_a_file_outside_them(
+    tmp_path: Path,
+) -> None:
+    a = tmp_path / "a"
+    loose = tmp_path / "loose"
+    for d in (a, loose / "deep"):
+        d.mkdir(parents=True)
+    (a / "x.txt").write_text("x")
+    (loose / "deep" / "y.txt").write_text("y")
+    (loose / "z.txt").write_text("z")
+    files = list_input_files([a, str(loose / "**" / "*.txt"), loose / "z.txt"])
+    assert list_source_roots([a, str(loose / "**" / "*.txt")], files) == [
+        a,
+        loose / "deep",
+        loose,
+    ]
+
+
+def test_list_source_roots_makes_relative_paths_absolute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "x.txt").write_text("x")
+    monkeypatch.chdir(tmp_path)
+    files = list_input_files(["in"])
+    assert list_source_roots(["in"], files) == [tmp_path / "in"]

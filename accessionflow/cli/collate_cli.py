@@ -1,6 +1,7 @@
 """The 'collate' stage, whose subcommands are provided by the source plugins, e.g.
 'collate folder' and 'collate orthanc', and the options they all share"""
 
+import functools
 import typing as ty
 
 import click
@@ -19,8 +20,26 @@ collate_group = source_group(
 )
 
 
-def collate_options(func: ty.Callable[..., None]) -> ty.Callable[..., None]:
-    """The options shared by the 'collate <source>' subcommands"""
+WAIT_PERIOD_HELP = (
+    "The number of seconds since an accession was last modified at the "
+    "source before it is collated, so that accessions that are still being "
+    "transferred aren't collated partially (ACFLOW_WAIT_PERIOD env. var)"
+)
+
+
+def collate_options(
+    func: ty.Callable[..., None] | None = None,
+    *,
+    wait_period_help: str = WAIT_PERIOD_HELP,
+) -> ty.Any:
+    """The options shared by the 'collate <source>' subcommands
+
+    Used as ``@collate_options``, or as ``@collate_options(wait_period_help=...)`` by a
+    source whose '--wait-period' means something else, e.g. the combiner's quiet period
+    in 'collate folder'
+    """
+    if func is None:
+        return functools.partial(collate_options, wait_period_help=wait_period_help)
     decorators = [
         click.option(
             "--loop",
@@ -36,11 +55,7 @@ def collate_options(func: ty.Callable[..., None]) -> ty.Callable[..., None]:
             type=click.IntRange(min=0),
             default=0,
             envvar="ACFLOW_WAIT_PERIOD",
-            help=(
-                "The number of seconds since an accession was last modified at the "
-                "source before it is collated, so that accessions that are still being "
-                "transferred aren't collated partially (ACFLOW_WAIT_PERIOD env. var)"
-            ),
+            help=wait_period_help,
         ),
         click.option(
             "--copy-mode",

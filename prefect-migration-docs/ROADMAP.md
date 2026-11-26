@@ -143,8 +143,8 @@ own phase, starting with collate in Phase 1:
 
 Status: In progress. Done, and recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API):
 the step functions (steps 0–20), the three design changes made since ("Phase 1 design
-records"), the composites (C1–C5), the accession combiner and the option converters.
-Collate is split into two parts:
+records"), the composites (C1–C5), the accession combiner, the option converters and
+the CLI. Collate is split into two parts:
 
 1. **Collate runs into run accessions.** Each run delivers the accessions it formed
    from the files it claimed, labelled and named `<project>.<subject>.<session>_<run_uid>`
@@ -153,16 +153,17 @@ Collate is split into two parts:
    had no new run accession for a given time, it combines that session's run
    accessions into a single accession and writes it to the output directory.
 
-What is left: moving the CLI onto `collate_files` and the
-combiner (with the label options and the new directories), the removals, and the tests
-listed below.
+What is left: the removals and the tests listed below.
 
-The current call chain is:
+The call chain before the CLI step was:
 
 1. the `collate folder` command, `sources/folder/cli/collate_cli.py::collate_cmd`
 2. `sources/folder/api/collate_api.py::collate()`
 3. `Accession.from_paths()` (`model/accession.py:792-1129`)
 4. `api/collate_api.py::save_accessions_to_dir()` (`api/collate_api.py:18-119`)
+
+Since the CLI step, `collate_cmd` calls `list_input_files`, `collate_files` and
+`combine_run_accessions`. 2–4 are only called by tests, until the removals step.
 
 ### The input model
 
@@ -261,65 +262,24 @@ Recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
 ### CLI
 
-`sources/folder/cli/collate_cli.py` keeps its arguments, options and environment
-variables. The body of `collate_cmd` becomes:
+Status: **Done** (2026-11-26), recorded in [`CHANGELOG.md`](CHANGELOG.md) (Added,
+Changed and Staging layout). `collate folder` lists the input files on every run, and
+calls `collate_files`, which delivers labelled run accessions to the run-accessions
+directory, and then `combine_run_accessions`, which delivers the combined accessions to
+OUTPUT_DIR, with `--wait-period` as the quiet period. It keeps its arguments, options
+and environment variables, which the CLI contract snapshot checks. The decisions:
 
-1. resolve the deprecated `--accession-uid` and `--acquisition-id` aliases
-2. `check_loop_options`
-3. `set_logger_handling`
-4. warn once if `--unlink-source` (`ACFLOW_UNLINK_SOURCE`) is given: it is deprecated
-   and has no effect
-5. `run_on_interval(run_once, loop, "collate")`, where each run:
-   1. calls `list_input_files(INPUT_PATHS, exclude_paths,
-      metadata_table_paths=[t.table_file.fspath for t in metadata_tables])`. Listing
-      again on every run picks up the files that arrived since the last one.
-   2. calls `collate(...)` with the files it listed, the run-accessions directory as its
-      output directory, and the arguments built by the option converters
-   3. calls `combine_run_accessions(runs_dir, OUTPUT_DIR, ...,
-      quiet_period=wait_period, primary_label=...)`
-   4. logs the errors each returns with `log_stage_summary`
-
-New options:
-
-- `--runs-dir`, the run-accessions directory (by default `<output_dir>/__runs__`), and
-  an option for the combiner's `primary_label`. Their names and defaults are settled
-  with the CLI step.
-- `--working-dir`, `--unprocessed-dir` and `--error-dir`, for the run directories, and
-  the directories `finish_claim` and `abandon_claim` move them to. The working
-  directory defaults to `<output_dir>/__processing__`; the other defaults are settled
-  with the CLI step.
-- **The label options**, as `assign_labels` needs them: the label fields (one per
-  level), the constant labels, the acquisition field and the store type. Today each
-  store's `label` command generates its own options from the store's levels (e.g.
-  XNAT's project, subject and session), so `collate folder` needs to know the target
-  store, e.g. by a store choice that brings in that store's label options.
-- The `label` command stays accepted but is deprecated (principle 11) once every
+- **`--store`** (by default `xnat`) chooses the store the accessions are labelled for.
+  `collate folder` has every installed store's label options, with the same names and
+  environment variables as `label <store>` (built by `cli/label_options.py`), except
+  that the folder store's `--acquisition` is `--folder-acquisition`, since
+  `--acquisition` is already the acquisition ID.
+- **`--primary-label`** (by default `combined`) names the combined accessions,
+  `<labels>_<primary_label>`.
+- **`--runs-dir`, `--working-dir`, `--unprocessed-dir` and `--error-dir`** default to
+  `__runs__`, `__processing__`, `__unprocessed__` and `__error__` in OUTPUT_DIR.
+- **The `label` command** stays accepted. It is deprecated (principle 11) once every
   source labels in collate: the Orthanc source does in Phase 3.
-
-These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
-`MIGRATING.md`:
-
-- **`--wait-period` is now the combiner's quiet period.** The files are collated on
-  every run, whether or not more are still arriving, into run accessions. An accession
-  is combined and delivered to `OUTPUT_DIR` once no new data has arrived for it for
-  `--wait-period`. Before, collate skipped an accession whose files had changed within
-  the period.
-- **Collated files are always removed from the input directory**, whether or not
-  `--unlink-source` is given. A run without it used to leave them there, to be collated
-  again on every run.
-- **Files that weren't recognised or were ignored** used to stay in the input
-  directory. They are now moved into the processing area too, and stay there (see
-  `finish_claim`).
-- **`--metadata-table` files in an input directory are no longer collated.** They are
-  left in place, so they are still there for later runs, and no longer need
-  `--allow-unrecognised` to get past classification. A table whose name changes with
-  every delivery (e.g. a timestamp) still has to be named on each run.
-- **Hidden files and directories are never collated.** They are left in the input
-  directory. Before, a run without `--recursive` collated the hidden entries at the top
-  level of an input directory.
-- **With `--recursive`, an `--exclude-path` pattern that matches a directory excludes
-  everything in it**, as it already did without `--recursive`. Before, it excluded only
-  the directory itself, and its files were still collated.
 
 ### Removed
 
@@ -346,42 +306,33 @@ These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
 
 ### Staging layout
 
-When the folder `collate()` starts claiming, record under **Staging layout** in
-`CHANGELOG.md`: each run's directory, `<working_dir>/<run_uid>/` (by default under
-`<output_dir>/__processing__`), holding `claimed.json` and the claimed files under
-`files/`; and where a run directory goes when files are left
-(`<unprocessed_dir>/<run_uid>/`) or the run fails (`<error_dir>/<run_uid>/`). The
-per-run build directory, the `.staged` marker, the `<labels>_<run_uid>` names and the
-unprocessed and error directories' contents are already recorded there. Data already
-staged doesn't need draining.
+Status: **Done** (2026-11-26), recorded in [`CHANGELOG.md`](CHANGELOG.md) (Staging
+layout) with the CLI step.
 
 ### Tests
 
-- **CLI contract snapshot**, taken before the refactor starts: the option names, types,
-  defaults and environment variables of `collate folder` and `collate orthanc`. They
-  must still match afterwards. Only the help text changes: `--unlink-source` says it is
-  deprecated, and `--wait-period` describes the combiner's quiet period. Later phases extend the
-  snapshot to their commands.
+- **CLI contract snapshot**: done (2026-11-26), `cli/tests/test_cli_contract.py`, of
+  `collate folder`, `collate orthanc`, `label xnat` and `label folder`. Later phases
+  extend the snapshot to their commands.
 - **The tests of `_recursive_collect` and `_datatype_resource_label`** in
   `model/tests/test_accession.py` move with those helpers at the removals step
   (`_recursive_collect`'s is already ported as
   `test_expand_recursion_prunes_on_directory_datatypes`).
 - **Tests that change because the behaviour changes**:
-  - `cli/tests/test_cli.py::test_stage_wait_period` (L721), which checks that a recent
-    accession is skipped. It is rewritten to check that the run accessions are
-    delivered at once, and the combined accession only after `--wait-period`. Its patch
-    of `accessionflow.api.collate_api.time` (L746) goes, and the combiner is given
-    `now` instead.
+  - done with the CLI step (2026-11-26): `cli/tests/test_cli.py::test_stage_wait_period`
+    is rewritten, the collate runs in `test_cli.py` give the label options, and
+    `test_label_missing_id_field_collects_error` became
+    `test_collate_missing_label_field_collects_error` (see `CHANGELOG.md`, Changed).
   - tests that collate the same input more than once, or reuse it after collating it,
     now find it consumed. In particular, `api/tests/test_collate.py` shares a
     module-scoped `dicom_dir` fixture (L25-29) between its tests. Each test copies the
     fixture's files into its own `tmp_path` first.
 - **Unchanged otherwise**: `cli/tests/test_collate_commands.py`,
-  `cli/tests/test_loop_interval.py`,
   `sources/orthanc/tests/test_orthanc_cli.py` and the rest of `cli/tests/test_cli.py`
-  must pass with their assertions as they are. The scripts in `real-tests/` use the CLI.
-  `real-tests/uq_acemid_collate.py` should be checked, since collating now consumes its
-  input.
+  pass with their assertions as they were. `cli/tests/test_loop_interval.py` follows
+  the folder command onto `collate_files` and `run_on_interval`'s logger. The scripts in
+  `real-tests/` use the CLI. `real-tests/uq_acemid_collate.py` should be checked, since
+  collating now consumes its input and labels for XNAT by default.
 
 ## Phase 2: Collate step API hand-off
 
@@ -494,6 +445,12 @@ accession: selecting the recipes for its project, de-identifying it, hashing its
 (`_hash_uid`), saving it (build, then move into place), and writing its
 re-identification record, encrypted if a key is given.
 
+Phase 7 runs the XNAT server and deidentification tests again, which were left out
+since 2026-11-26. In `cli/tests/test_cli.py`, the Phase 1 CLI step changed them
+without running them: `collate folder` now labels (they give it `LABEL_ID_ARGS`), and
+they look for the `<labels>_combined` directories and reid files that collate's
+combined accessions give. Check those names first if they fail.
+
 ## Phase 8: Package
 
 Status: Planned. Outline.
@@ -547,6 +504,12 @@ Status: Planned.
   `<labels>_<primary_label>` exists, and goes to the error directory. Is that the
   workflow wanted, or should late data be delivered another way (e.g. a second
   combined accession)?
-- Should the processing area's location be configurable (a new optional CLI option
-  such as `--processing-dir`), for input directories on a different file system from
-  the staging directory?
+- Should the processing area's location be configurable? The CLI step added
+  `--working-dir`, which moves it; is a separate file system for the input
+  directories still a concern?
+- A loaded accession's resource metadata merges the file's own fields over the saved
+  ones the first time it is read (`Metadata.load` doesn't mark it read). The combiner
+  stops this for its run accessions (2026-11-26, see `CHANGELOG.md`), but `label` and
+  the later stages still read every file again, which adds the fields that
+  `--dont-read-metadata` left out, can replace saved values, and is slow on a network
+  file system. Should `Metadata.load` treat the saved file as complete, for every stage?

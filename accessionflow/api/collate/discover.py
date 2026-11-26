@@ -14,7 +14,7 @@ from accessionflow.helpers.glob2re import glob_to_regex
 from accessionflow.helpers.logging import logger
 from accessionflow.model.accession import fix_long_path
 
-__all__ = ["list_input_files"]
+__all__ = ["list_input_files", "list_source_roots"]
 
 
 def list_input_files(
@@ -101,6 +101,39 @@ def list_input_files(
     for fspath in fspaths:
         unique.setdefault(fspath.absolute(), fspath)
     return sorted(unique.values())
+
+
+def list_source_roots(
+    input_paths: ty.Sequence[str | Path], input_files: ty.Sequence[Path]
+) -> list[Path]:
+    """The directories the files were listed from, for `claim_input_files`, so that
+    the top-level entries of an input directory are classified as they were in it
+
+    Parameters
+    ----------
+    input_paths : Sequence[str | Path]
+        the paths the files were listed from, as given to `list_input_files`
+    input_files : Sequence[Path]
+        the files `list_input_files` listed
+
+    Returns
+    -------
+    list[Path]
+        the input directories, then the directory of each file that isn't in one of them
+        (a file given as an input path, or found by a glob pattern), absolute and without
+        duplicates
+    """
+    roots: list[Path] = []
+    for input_path in input_paths:
+        if isinstance(input_path, Path) or "*" not in input_path:
+            path = Path(input_path).absolute()
+            if path.is_dir() and path not in roots:
+                roots.append(path)
+    for fspath in input_files:
+        absolute = fspath.absolute()
+        if not any(absolute.is_relative_to(root) for root in roots):
+            roots.append(absolute.parent)
+    return roots
 
 
 def _walk_files(root: Path) -> ty.Iterator[Path]:

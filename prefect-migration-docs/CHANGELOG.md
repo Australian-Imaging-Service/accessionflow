@@ -23,6 +23,33 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-26, Phase 1, CLI: `collate folder` labels the accessions it collates, for the
+  data store given by the new `--store` option (`ACFLOW_STORE`, by default `xnat`,
+  one of the installed stores). New options:
+  - **Each installed store's label options**, with the same names and environment
+    variables as `label <store>`: XNAT's `--project`, `--subject`, `--session`,
+    `--scan` and `--constant-project-id`, and the folder store's `--level`,
+    `--constant-label` and `--folder-acquisition`. The folder store's acquisition
+    option is `--acquisition` in `label folder`, but in `collate folder` that is the
+    acquisition ID, so there it is named after its store
+    (`ACFLOW_FOLDER_ACQUISITION`). The options of the chosen store default to the
+    store's defaults. An option of another store given on the command line is an
+    error; from the environment, which other stages share, it is ignored.
+  - `--primary-label` (`ACFLOW_PRIMARY_LABEL`, by default `combined`), the suffix of
+    the combined accessions' names.
+  - `--runs-dir`, `--working-dir`, `--unprocessed-dir` and `--error-dir`
+    (`ACFLOW_RUNS_DIR`, `ACFLOW_WORKING_DIR`, `ACFLOW_UNPROCESSED_DIR` and
+    `ACFLOW_ERROR_DIR`), by default `__runs__`, `__processing__`, `__unprocessed__`
+    and `__error__` in OUTPUT_DIR.
+  - **Code:** `accessionflow/cli/label_options.py` (`store_label_options`,
+    `resolve_label_options`, `StoreLabelOption`, `LabelOptions`), which `label <store>`
+    now builds its options with, unchanged; the step `list_source_roots`; and the
+    constants `RUNS_NAME_DEFAULT`, `UNPROCESSED_NAME_DEFAULT` and `ERROR_NAME_DEFAULT`.
+  - **Tests:** the CLI contract snapshot, `cli/tests/test_cli_contract.py` with
+    `cli/tests/snapshots/cli_contract.json`, taken before the change, of
+    `collate folder`, `collate orthanc`, `label xnat` and `label folder`; and
+    `sources/folder/tests/test_collate_cli.py`. PR: pending.
+
 - 2026-11-26, Phase 1, option converters, `accessionflow/helpers/arg_types.py`:
   `collation_map_from(specs)` and `conversion_map_from(converts)`, which turn the values
   of `--collate-resources` (`CollationSpec`) and `--convert` (`Convert`) into the
@@ -252,6 +279,64 @@ contract, so each entry says "CLI unchanged".
   end from claim to `finish_claim`. Nothing calls it yet. CLI unchanged. PR: pending.
 
 ### Changed
+
+- 2026-11-26, Phase 1, CLI, `accessionflow/api/collate/combine.py`:
+  `combine_accessions` uses the metadata of the run accessions' resources as collate
+  saved it, and no longer reads their files again. A loaded resource's `Metadata`
+  merges the file's own fields over the saved ones on first access, which added the
+  fields that `--dont-read-metadata` left out, and could replace a saved value (e.g.
+  from the path) with the file's. Found by
+  `cli/tests/test_cli.py::test_collate_dont_read_metadata[False]`. Test
+  `test_combine_accessions_keeps_the_metadata_collate_saved` in
+  `api/tests/collate/test_combine.py`. Other stages that load an accession (e.g.
+  `label`) still read the files again, as before. PR: pending.
+- 2026-11-26, Phase 1, CLI: `collate folder` runs on the collate steps:
+  `list_input_files`, `list_source_roots`, `collate_files`, which delivers labelled run
+  accessions to the run-accessions directory, and `combine_run_accessions`, which
+  delivers the combined accessions to OUTPUT_DIR. It loops with
+  `accessionflow.cli.runner.run_on_interval` and logs with `log_stage_summary`. Its
+  existing arguments, options and environment variables are unchanged (the snapshot
+  test checks them), except for the help of `--wait-period` and `--unlink-source`.
+  `collate orthanc` is unchanged until Phase 3. These are changes in behaviour, for
+  `MIGRATING.md` in Phase 10:
+  - **Collate labels the accessions.** With no options, it labels for XNAT with
+    XNAT's default fields (`StudyComments`, `PatientID`, `AccessionNumber` and
+    `SeriesDescription`). A run whose data lacks them needs the label options given to
+    `collate folder` as well as to `label`. An accession whose label fields are
+    missing isn't delivered: it is reported as an error and its files go to the
+    unprocessed directory. Before, `label` saved it under `__invalid__`.
+  - **OUTPUT_DIR holds the combined accessions**, named `<labels>_combined` (see
+    `--primary-label`). Before, it held unlabelled accessions named `_.<uid>`.
+    `label` still accepts them, and relabels them.
+  - **`--wait-period` is now the combiner's quiet period.** The files are collated on
+    every run, into run accessions, whether or not more are still arriving. An
+    accession is combined and delivered to OUTPUT_DIR once it has had no new run
+    accession for `--wait-period`. Before, collate skipped an accession whose files had
+    changed within the period.
+  - **Collated files are always moved out of the input directory**, whether or not
+    `--unlink-source` is given. `--unlink-source` is deprecated, has no effect, and
+    logs a warning.
+  - **Files that weren't recognised or were ignored** used to stay in the input
+    directory. They are moved into the processing area too, and then to the
+    unprocessed directory.
+  - **`--metadata-table` files in an input directory are no longer collated.** They are
+    left in place, and no longer need `--allow-unrecognised`.
+  - **Hidden files and directories are never collated.** They are left in the input
+    directory.
+  - **With `--recursive`, an `--exclude-path` pattern that matches a directory excludes
+    everything in it**, as it already did without `--recursive`.
+  - **Tests:** `cli/tests/test_cli.py::test_stage_wait_period` is rewritten to check
+    that the run accession is delivered at once and the combined accession only after
+    the wait period (an hour, which collating its large fixture can't use up, with the
+    combiner's clock moved on). `test_label_missing_id_field_collects_error` became
+    `test_collate_missing_label_field_collects_error`.
+    `test_sort_orthanc_collate_resources` gives each of its two runs its own copy of
+    the input, which collating consumes. The collate runs in `test_cli.py` give the
+    label options. The XNAT server and deidentification tests
+    there (`test_stage_and_upload`, `test_deidentify_cli_dicom*`) look for
+    `<labels>_combined` directories and reid files, but aren't run until Phase 7.
+    `cli/tests/test_loop_interval.py` patches `collate_files`, and
+    `accessionflow.cli.runner.logger` too. PR: pending.
 
 - 2026-11-26, Phase 1, option converters: `collate folder`
   (`sources/folder/cli/collate_cli.py`) and `collate orthanc`
@@ -1186,6 +1271,11 @@ left for the next combine.
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, CLI, added in `accessionflow.api.collate`:
+  - `list_source_roots(input_paths, input_files) -> list[Path]`
+  - `RUNS_NAME_DEFAULT` (`__runs__`), `UNPROCESSED_NAME_DEFAULT` (`__unprocessed__`)
+    and `ERROR_NAME_DEFAULT` (`__error__`)
+
 - 2026-11-26, Phase 1, option converters, added in `accessionflow.helpers.arg_types`:
   - `collation_map_from(specs) -> dict[type[FileSet], FileSet.CopyCollation]`
   - `conversion_map_from(converts) -> dict[type[FileSet] | UnionType, tuple[type[FileSet], dict[str, Any]]]`
@@ -1307,6 +1397,20 @@ left for the next combine.
   - `BUILD_NAME_DEFAULT`, moved from `accessionflow.api.collate_api`
 
 ### Staging layout
+
+- 2026-11-26, Phase 1, CLI: `collate folder` uses the new layout. In OUTPUT_DIR (each
+  directory can be moved with its option):
+  - `__processing__/<run_uid>/`: a run's claimed files, under `files/`, with its plan,
+    `claimed.json`. Removed at the end of the run, or moved to one of the next two.
+  - `__unprocessed__/<run_uid>/`: the files a run didn't deliver, with
+    `unprocessed.json`.
+  - `__error__/<run_uid>/`: the files of a run that failed, and
+    `__error__/<labels>_<run_uid>/`: the run accessions of an accession that couldn't be
+    combined, each with `error.json`.
+  - `__runs__/<labels>_<run_uid>/`: the run accessions, until they are combined.
+  - `<labels>_combined/`: the combined accessions, which later stages read.
+  Accessions staged by an earlier version (`_.<uid>`) are still read by `label`, so
+  nothing needs draining. PR: pending.
 
 - 2026-11-26, Phase 1, Combine: a combined accession is named
   `<labels>_<primary_label>` (e.g. `P.S.V1_combined`). Its `__METADATA__.json` records

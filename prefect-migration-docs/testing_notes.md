@@ -153,16 +153,33 @@ same tests, and `git stash pop`.
 - **Collate**: `api/tests/test_collate.py`, `model/tests/test_accession.py` (its
   `Accession.from_paths` tests become the regression net for Phase 1),
   `sources/folder/tests/test_collate_api.py`, `sources/orthanc/tests/`.
-- **CLI contract**: `cli/tests/test_collate_commands.py`, `cli/tests/test_cli.py`, and
-  `cli/tests/test_loop_interval.py`, which runs each looping command with the API, `time`,
-  `datetime` and `logger` of the command's module patched. When a command moves to
-  `accessionflow.cli.runner.run_on_interval`, the clock and sleep are looked up there
-  instead, so the test's patching needs to follow. `run_on_interval` keeps the timings
-  as the first arguments of its log message, as the test checks.
-- **Internal paths patched by tests**: `cli/tests/test_cli.py:746` patches
-  `accessionflow.api.collate_api.time`, and `sources/orthanc/tests/test_orthanc_cli.py`
-  patches `accessionflow.sources.orthanc.api.collate_api.stage_studies`. Both need
-  updating when that code moves (Phases 1 and 3).
+- **CLI contract**: `cli/tests/test_cli_contract.py`, a snapshot
+  (`cli/tests/snapshots/cli_contract.json`) of the parameters of `collate folder`,
+  `collate orthanc`, `label xnat` and `label folder`, taken before Phase 1 changed them:
+  each keeps its option strings, type, `nargs`, `multiple`, default, environment
+  variable, `required` and `hidden`, and a new one must be listed in `ADDED`. To
+  snapshot a later phase's commands, add them to `COMMANDS` and run the module as a
+  script (`.venv/bin/python -m accessionflow.cli.tests.test_cli_contract`) before
+  changing them. Also `cli/tests/test_collate_commands.py`, `cli/tests/test_cli.py`,
+  and `cli/tests/test_loop_interval.py`, which runs each looping command with the API,
+  `time`, `datetime` and `logger` of the command's module patched. A command on
+  `accessionflow.cli.runner.run_on_interval` passes it `time.monotonic` and
+  `time.sleep` from its own module, so that the patch of `time` still works, and logs
+  its timings through the runner's logger, which the test patches too.
+  `run_on_interval` keeps the timings as the first arguments of its log message, as the
+  test checks.
+- **Internal paths patched by tests**: `cli/tests/test_cli.py::test_stage_wait_period`
+  and `sources/folder/tests/test_collate_cli.py` patch
+  `accessionflow.api.collate.combine.datetime` to move the combiner's clock on, and
+  `sources/orthanc/tests/test_orthanc_cli.py` patches
+  `accessionflow.sources.orthanc.api.collate_api.stage_studies`, which needs updating
+  when that code moves (Phase 3).
+- **`collate folder` (Phase 1, CLI)**: `sources/folder/tests/test_collate_cli.py`, on
+  small JSON trees, so it runs in about a second: the run and combined accessions, the
+  store options, `--primary-label`, `--unlink-source` and the directory defaults and
+  environment variables. Since collate labels for XNAT by default, a `collate folder`
+  run in a test gives the label options its data needs (`LABEL_ID_ARGS` in
+  `cli/tests/test_cli.py`).
 - **Shared helpers (Phase 0)**: `api/tests/test_staging.py` and
   `cli/tests/test_runner.py`.
 - **Collate steps (Phase 1)**: `api/tests/collate/`, one test module per step module,

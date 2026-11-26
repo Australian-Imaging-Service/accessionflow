@@ -6,8 +6,10 @@ from .claim import (
     CLAIMED_FILES_DIRNAME,
     CLAIMED_MANIFEST,
     ERROR_MANIFEST,
+    ERROR_NAME_DEFAULT,
     PROCESSING_NAME_DEFAULT,
     UNPROCESSED_MANIFEST,
+    UNPROCESSED_NAME_DEFAULT,
     ClaimedFiles,
     abandon_claim,
     claim_input_files,
@@ -26,6 +28,7 @@ from .classify import (
 )
 from .combine import (
     COMBINED_FROM_KEY,
+    RUNS_NAME_DEFAULT,
     RunAccessionGroup,
     abandon_group,
     check_primary_label,
@@ -43,7 +46,7 @@ from .composites import (
     combine_run_accessions,
     move_accessions,
 )
-from .discover import list_input_files
+from .discover import list_input_files, list_source_roots
 from .group import (
     acquisition_id_for,
     clash_hint_for,
@@ -77,6 +80,8 @@ __all__ = [
     "build_accessions",
     "build_filesets",
     "PROCESSING_NAME_DEFAULT",
+    "UNPROCESSED_NAME_DEFAULT",
+    "ERROR_NAME_DEFAULT",
     "ClaimedFiles",
     "ClassifiedFilesets",
     "claim_input_files",
@@ -96,6 +101,7 @@ __all__ = [
     "inject_accession_tables",
     "inject_fileset_tables",
     "list_input_files",
+    "list_source_roots",
     "load_metadata_tables",
     "make_run_uid",
     "move_accessions",
@@ -108,6 +114,7 @@ __all__ = [
     "tag_fileset_types",
     "warn_if_hardlinks_unavailable",
     "COMBINED_FROM_KEY",
+    "RUNS_NAME_DEFAULT",
     "RunAccessionGroup",
     "abandon_group",
     "check_primary_label",

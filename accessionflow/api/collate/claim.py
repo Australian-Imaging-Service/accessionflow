@@ -28,6 +28,8 @@ __all__ = [
     "CLAIMED_MANIFEST",
     "ERROR_MANIFEST",
     "PROCESSING_NAME_DEFAULT",
+    "UNPROCESSED_NAME_DEFAULT",
+    "ERROR_NAME_DEFAULT",
     "UNPROCESSED_MANIFEST",
     "ClaimedFiles",
     "abandon_claim",
@@ -43,6 +45,12 @@ __all__ = [
 # into, under a subdirectory named after the run's UID. Later stages don't see it,
 # because list_session_dirs skips directories whose names start with '__'
 PROCESSING_NAME_DEFAULT = "__processing__"
+
+# The subdirectories of the output directory that the CLI moves a run directory to by
+# default, when files are left (finish_claim) or the run fails (abandon_claim). The
+# combiner moves the run accessions of a group that fails to the same error directory
+UNPROCESSED_NAME_DEFAULT = "__unprocessed__"
+ERROR_NAME_DEFAULT = "__error__"
 
 # The plan of a claim, written to the run's directory before any file is moved
 CLAIMED_MANIFEST = "claimed.json"

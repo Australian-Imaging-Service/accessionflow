@@ -45,7 +45,7 @@ CASES = [
         "accessionflow.sources.folder.cli.collate_cli",
         "collate_cmd",
         "accessionflow.sources.folder.cli.collate_cli",
-        "collate",
+        "collate_files",
         [],
         True,
     ),
@@ -99,7 +99,7 @@ def test_loop_interval(
     now = [100.0]
     sleeps = []
 
-    def work(**kwargs):
+    def work(*args, **kwargs):
         now[0] += elapsed
         return []
 
@@ -122,6 +122,9 @@ def test_loop_interval(
     )
     log = MagicMock()
     monkeypatch.setattr(module, "logger", log)
+    # A command that runs on accessionflow.cli.runner.run_on_interval logs its timings
+    # there
+    monkeypatch.setattr("accessionflow.cli.runner.logger", log)
     if api_name == "store":
         monkeypatch.setattr(module, "Xnat", MagicMock())
     # Keep a developer's ACFLOW_* environment out of this CLI invocation.

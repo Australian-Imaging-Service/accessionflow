@@ -8,9 +8,10 @@ from fileformats.core import FileSet
 from accessionflow.api.label_api import label
 from accessionflow.helpers.arg_types import CopyModeParamType, LoggerConfig, MimeType
 from accessionflow.helpers.logging import logger, set_logger_handling
-from accessionflow.model.store import Store, check_level_names
+from accessionflow.model.store import Store
 
 from .base import data_store_group
+from .label_options import resolve_label_options, store_label_options
 
 label_group = data_store_group(
     name="label",
@@ -60,6 +61,7 @@ def make_label_command(data_store: Store) -> click.Command:
     prefix = data_store.envvar_prefix
     fixed_levels = data_store.labels
     acquisition = data_store.acquisition
+    label_options = store_label_options(data_store)
 
     def label_cmd(
         input_dir: Path,
@@ -71,11 +73,7 @@ def make_label_command(data_store: Store) -> click.Command:
         raise_errors: bool,
         loop: int,
         copy_mode: FileSet.CopyMode,
-        acquisition_field: str | None = None,
-        constant_top_label: str | None = None,
-        levels: ty.Sequence[tuple[str, str]] = (),
-        constant_label_pairs: ty.Sequence[tuple[str, str]] = (),
-        **fixed_level_fields: str,
+        **label_values: ty.Any,
     ) -> None:
         if raise_errors and loop >= 0:
             raise ValueError(
@@ -88,30 +86,7 @@ def make_label_command(data_store: Store) -> click.Command:
             additional_loggers=additional_loggers,
         )
 
-        label_fields: dict[str, str]
-        constant_labels: dict[str, str]
-        if fixed_levels is not None:
-            label_fields = {
-                level.name: fixed_level_fields[f"label_{i}"]
-                for i, level in enumerate(fixed_levels)
-            }
-            constant_labels = (
-                {fixed_levels[0].name: constant_top_label}
-                if constant_top_label is not None
-                else {}
-            )
-        else:
-            names = [name for name, _ in levels]
-            check_level_names(
-                data_store.name, names, acquisition.name if acquisition else None
-            )
-            label_fields = dict(levels)
-            constant_labels = dict(constant_label_pairs)
-            if unknown := set(constant_labels) - set(label_fields):
-                raise click.UsageError(
-                    f"--constant-label names {sorted(unknown)} that aren't levels "
-                    f"given by --level ({names})"
-                )
+        labels = resolve_label_options(data_store, label_options, label_values)
 
         # Run the label process in a loop if loop is set to a positive value,
         # otherwise just run it once
@@ -120,9 +95,9 @@ def make_label_command(data_store: Store) -> click.Command:
             label(
                 input_dir=input_dir,
                 output_dir=output_dir,
-                label_fields=label_fields,
-                acquisition_field=acquisition_field,
-                constant_labels=constant_labels,
+                label_fields=labels.label_fields,
+                acquisition_field=labels.acquisition_field,
+                constant_labels=labels.constant_labels,
                 store_type=data_store.name,
                 unlink_source=unlink_source,
                 raise_errors=raise_errors,
@@ -144,100 +119,6 @@ def make_label_command(data_store: Store) -> click.Command:
             )
             time.sleep(sleep_time)
 
-    label_options: list[click.Parameter] = []
-    if fixed_levels is not None:
-        for i, level in enumerate(fixed_levels):
-            envvar = level.envvar(prefix)
-            # An explicit default of None would count as a value for 'required' in
-            # click >= 8.3, so a level without a default is given none at all
-            default: dict[str, ty.Any] = (
-                {} if level.default is None else {"default": level.default}
-            )
-            label_options.append(
-                click.Option(
-                    [level.option_name, f"label_{i}"],
-                    type=str,
-                    required=level.default is None,
-                    envvar=envvar,
-                    **default,
-                    help=(
-                        f"The keyword of the metadata field to extract the "
-                        f"{level.description or level.name} from, or a Python format "
-                        "string over several fields, e.g. "
-                        "'{PatientID}_{StudyDate:%Y%m%d}', to compose one "
-                        f"({envvar} env. var)"
-                    ),
-                )
-            )
-    else:
-        envvar = f"{prefix}LEVELS"
-        label_options.append(
-            click.Option(
-                ["--level", "levels"],
-                type=(str, str),
-                multiple=True,
-                required=True,
-                envvar=envvar,
-                metavar="<name> <field>",
-                help=(
-                    "A level of the folder hierarchy the sessions are labelled with, "
-                    "and the keyword of the metadata field to extract its label from "
-                    "(or a Python format string over several fields, e.g. "
-                    "'{PatientID}_{StudyDate:%Y%m%d}'). Repeat for each level, in "
-                    "order from the top, e.g. '--level site SiteID --level subject "
-                    f"PatientID' ({envvar} env. var, as space-separated pairs)"
-                ),
-            )
-        )
-    if acquisition is not None:
-        envvar = acquisition.envvar(prefix)
-        label_options.append(
-            click.Option(
-                [acquisition.option_name, "acquisition_field"],
-                type=str,
-                default=acquisition.default,
-                envvar=envvar,
-                help=(
-                    "The keyword of the metadata field to extract the "
-                    f"{acquisition.description or 'description'} of each "
-                    f"{acquisition.name} from. {acquisition.name.capitalize()}s for "
-                    "which the field can't be resolved are left without one "
-                    f"({envvar} env. var)"
-                ),
-            )
-        )
-    if fixed_levels is not None:
-        top = fixed_levels[0]
-        constant_envvar = f"{prefix}CONSTANT_{top.name.upper()}_ID"
-        label_options.append(
-            click.Option(
-                [f"--constant-{top.name}-id", "constant_top_label"],
-                type=str,
-                default=None,
-                envvar=constant_envvar,
-                help=(
-                    f"Fix the {top.description or top.name} as a constant for all "
-                    f"data matched by this command ({constant_envvar} env. var)"
-                ),
-            )
-        )
-    else:
-        constant_envvar = f"{prefix}CONSTANT_LABELS"
-        label_options.append(
-            click.Option(
-                ["--constant-label", "constant_label_pairs"],
-                type=(str, str),
-                multiple=True,
-                envvar=constant_envvar,
-                metavar="<name> <value>",
-                help=(
-                    "Fix the label of a level given by --level as a constant for all "
-                    "data matched by this command, e.g. '--constant-label site "
-                    f"SYDNEY'. May be repeated ({constant_envvar} env. var)"
-                ),
-            )
-        )
-
     if fixed_levels is not None:
         level_names = [level.name for level in fixed_levels]
         levels_desc = "/".join(level_names)
@@ -258,7 +139,7 @@ def make_label_command(data_store: Store) -> click.Command:
         ),
     )(label_cmd)
     # After the arguments, before the options that all stores share
-    command.params[2:2] = label_options
+    command.params[2:2] = [opt.option for opt in label_options]
     label_group.add_command(command)
     return command
 

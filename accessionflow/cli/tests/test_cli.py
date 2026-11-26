@@ -2,12 +2,10 @@ import json
 import os
 import shutil
 import struct
-import time
 import typing as ty
 import zlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import click
@@ -35,7 +33,6 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
 )
 from moto import mock_aws
 
-from accessionflow.api.label_api import INVALID_DIRNAME
 from accessionflow.cli import (
     annotate_cmd,
     attach_cmd,
@@ -489,7 +486,8 @@ def test_stage_and_upload(
             "--raise-errors",
             "--unlink-source",
             "all",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={
             "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
         },
@@ -509,7 +507,8 @@ def test_stage_and_upload(
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
-    mdata_path = labelled_dir / session_names[0] / Metadata.FNAME
+    # Collate delivers the combined accession, named with the primary label
+    mdata_path = labelled_dir / f"{session_names[0]}_combined" / Metadata.FNAME
     assert mdata_path.exists(), show_cli_trace(result)
     mdata = json.loads(mdata_path.read_bytes())
     assert mdata.get("PatientID") == "subject0", show_cli_trace(result)
@@ -706,7 +705,8 @@ def test_additional_logger_routes_to_configured_handler(
             "--raise-errors",
             "--additional-logger",
             "fileformats",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={
             "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
         },
@@ -721,81 +721,51 @@ def test_additional_logger_routes_to_configured_handler(
 def test_stage_wait_period(
     cli_runner: ty.Any,
     tmp_path: Path,
-    capsys: ty.Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Get test image data
+    # Each run delivers its run accessions at once, and the combiner delivers the
+    # combined accession once it has had no new data for the wait period
 
     sorted_dir = tmp_path / "sorted"
-    dicoms_path = tmp_path / "dicoms"
-    if sorted_dir.exists():
-        shutil.rmtree(sorted_dir)
     sorted_dir.mkdir()
-
+    dicoms_path = tmp_path / "dicoms"
     stage_log_file = tmp_path / "stage-logs.log"
-    if stage_log_file.exists():
-        os.unlink(stage_log_file)
 
     # Generate a test DICOM image
     get_pet_image(dicoms_path)
 
-    # Fix the age-check clock so loading this large fixture cannot consume the
-    # waiting period. Other modules keep their real clocks.
-    checked_at = time.time_ns()
-    monkeypatch.setattr(
-        "accessionflow.api.collate_api.time",
-        SimpleNamespace(time_ns=lambda: checked_at),
-    )
+    args = [
+        str(dicoms_path),
+        str(sorted_dir),
+        "--raise-errors",
+        "--unlink-source",
+        "all",
+        # Long enough that collating this large fixture can't use it up
+        "--wait-period",
+        "3600",
+    ] + LABEL_ID_ARGS
+    env = {"ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout"}
 
-    result = cli_runner(
-        collate_cmd,
-        [
-            str(dicoms_path),
-            str(sorted_dir),
-            "--raise-errors",
-            "--unlink-source",
-            "all",
-            "--wait-period",
-            "10",
-        ],
-        env={
-            "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
-        },
-    )
+    result = cli_runner(collate_cmd, args, env=env)
+    assert result.exit_code == 0, show_cli_trace(result)
+    assert len(list_session_dirs(sorted_dir / "__runs__")) == 1, show_cli_trace(result)
+    assert not list_session_dirs(sorted_dir), show_cli_trace(result)
 
+    # Move the combiner's clock past the wait period, rather than sleeping until it
+    # has elapsed
+    class Later(datetime):
+        @classmethod
+        def now(cls, tz: ty.Any = None) -> datetime:  # type: ignore[override]
+            return datetime.now(tz) + timedelta(hours=2)
+
+    monkeypatch.setattr("accessionflow.api.collate.combine.datetime", Later)
+
+    result = cli_runner(collate_cmd, args, env=env)
     assert result.exit_code == 0, show_cli_trace(result)
     logs = stage_log_file.read_text()
-    assert " as it was last modified " in logs, show_cli_trace(result)
-    assert not [p for p in sorted_dir.iterdir() if not p.name.startswith("__")], (
-        show_cli_trace(result)
-    )
-
-    # Backdate the modification times of the files past the wait period, rather than
-    # sleeping until it has elapsed
-    backdated = checked_at / 1e9 - 60
-    for fspath in dicoms_path.rglob("*"):
-        os.utime(fspath, (backdated, backdated))
-
-    result = cli_runner(
-        collate_cmd,
-        [
-            str(dicoms_path),
-            str(sorted_dir),
-            "--raise-errors",
-            "--unlink-source",
-            "all",
-            "--wait-period",
-            "10",
-        ],
-        env={
-            "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
-        },
-    )
-
-    assert result.exit_code == 0, show_cli_trace(result)
-    logs = stage_log_file.read_text()
-    assert "Successfully collated " in logs, show_cli_trace(result)
-    assert list(sorted_dir.iterdir())
+    assert "Staging completed successfully" in logs, show_cli_trace(result)
+    assert not list_session_dirs(sorted_dir / "__runs__"), show_cli_trace(result)
+    assert len(list_session_dirs(sorted_dir)) == 1, show_cli_trace(result)
 
 
 def test_collate_path_metadata_regex(
@@ -820,7 +790,8 @@ def test_collate_path_metadata_regex(
             "--path-metadata-regex",
             r".*/(?P<cohort>[^/]+)$",
             "medimage/dicom-series",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -858,7 +829,8 @@ def test_collate_path_metadata(
             "--path-metadata-regex",
             r".*/site-(?P<site_num>\d+)/[^/]+$",
             "medimage/dicom-series",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -902,6 +874,13 @@ def test_collate_dont_read_metadata(
             "--acquisition",
             "subject",
             "all",
+            # Without the DICOM headers, the labels come from the path too
+            "--constant-project-id",
+            "PROJECT",
+            "--subject",
+            "subject",
+            "--session",
+            "subject",
         ]
         + ([] if read_metadata else ["--dont-read-metadata", "medimage/dicom-series"]),
     )
@@ -1003,6 +982,12 @@ def test_collate_metadata_table_detailed_example(
             f"{table}[text/csv]",
             "fileset[image/png|image/jpeg]",
             "relpath=relpath",
+            "--constant-project-id",
+            "PROJECT",
+            "--subject",
+            "SubjectID",
+            "--session",
+            "SubjectID",
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
@@ -1088,7 +1073,8 @@ def test_collate_allow_unrecognised_skips_unrecognised_files(
             "0",
             "--allow-unrecognised",
             r".*\.txt",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -1116,7 +1102,8 @@ def test_collate_without_allow_unrecognised_fails_on_unrecognised_file(
             "--raise-errors",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code != 0
     assert isinstance(result.exception, FormatMismatchError)
@@ -1144,7 +1131,8 @@ def test_collate_allow_unrecognised_pattern_not_matching_still_fails(
             "0",
             "--allow-unrecognised",
             r"unrelated-pattern",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code != 0
     assert isinstance(result.exception, FormatMismatchError)
@@ -1172,7 +1160,8 @@ def test_collate_ignore_datatype_excludes_recognised_but_unwanted_files(
             "0",
             "--ignore-datatype",
             "application/json",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -1200,7 +1189,8 @@ def test_collate_without_ignore_datatype_fails_on_recognised_extra_type(
             "--raise-errors",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code != 0
     assert isinstance(result.exception, FormatMismatchError)
@@ -1229,7 +1219,8 @@ def test_collate_ignore_datatype_contradicting_datatype_fails(
             "medimage/dicom-series",
             "--ignore-datatype",
             "medimage/dicom-series",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code != 0
     assert isinstance(result.exception, ValueError)
@@ -1252,24 +1243,29 @@ def test_sort_orthanc_collate_resources(
         AccessionNumber="acc1",
     )
 
-    orthanc_dir = tmp_path / "orthanc"
     dcm_files = list(pet_dir.iterdir())[:4]
-    for i, dcm in enumerate(dcm_files):
-        nested = orthanc_dir / f"hash{i // 2}" / f"subhash{i % 2}"
-        nested.mkdir(parents=True, exist_ok=True)
-        os.link(dcm, nested / dcm.name)
+
+    def orthanc_tree(name: str) -> Path:
+        # Collating consumes its input, so each run is given its own tree
+        orthanc_dir = tmp_path / name
+        for i, dcm in enumerate(dcm_files):
+            nested = orthanc_dir / f"hash{i // 2}" / f"subhash{i % 2}"
+            nested.mkdir(parents=True, exist_ok=True)
+            os.link(dcm, nested / dcm.name)
+        return orthanc_dir
 
     # Without --collate-resources the nested source structure is preserved in the resource dir
     result = cli_runner(
         collate_cmd,
         [
-            str(orthanc_dir),
+            str(orthanc_tree("orthanc")),
             str(sorted_dir),
             "--raise-errors",
             "--recursive",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -1288,7 +1284,7 @@ def test_sort_orthanc_collate_resources(
     result = cli_runner(
         collate_cmd,
         [
-            str(orthanc_dir),
+            str(orthanc_tree("orthanc_collated")),
             str(sorted_collated_dir),
             "--raise-errors",
             "--recursive",
@@ -1297,7 +1293,8 @@ def test_sort_orthanc_collate_resources(
             "--collate-resources",
             "medimage/dicom-series",
             "siblings",
-        ],
+        ]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -1310,48 +1307,39 @@ def test_sort_orthanc_collate_resources(
     )
 
 
-def test_label_missing_id_field_collects_error(
+def test_collate_missing_label_field_collects_error(
     cli_runner: ty.Any,
     tmp_path: Path,
 ) -> None:
-    # A session that fails to collate->label (the subject ID field is missing) is
-    # collected as an error rather than crashing the whole run, and it isn't written
-    # to the output directory
+    # An accession that can't be labelled (the subject ID field is missing) is
+    # collected as an error rather than crashing the whole run. It isn't delivered:
+    # its files are moved to the unprocessed directory
 
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
-    labelled_dir = tmp_path / "labelled"
-    labelled_dir.mkdir()
     dicoms_path = tmp_path / "dicoms"
 
-    label_log_file = tmp_path / "label-logs.log"
-    if label_log_file.exists():
-        os.unlink(label_log_file)
+    stage_log_file = tmp_path / "stage-logs.log"
 
     # Generate a test DICOM image without a patient ID
     get_pet_image(dicoms_path, PatientID="")
 
     result = cli_runner(
         collate_cmd,
-        [str(dicoms_path), str(collated_dir), "--raise-errors"],
-    )
-    assert result.exit_code == 0, show_cli_trace(result)
-
-    result = cli_runner(
-        label_cmd,
-        [str(collated_dir), str(labelled_dir)] + LABEL_ID_ARGS,
+        [str(dicoms_path), str(collated_dir)] + LABEL_ID_ARGS,
         env={
-            "ACFLOW_LOGGERS": f"file debug {label_log_file};stream info stdout",
+            "ACFLOW_LOGGERS": f"file debug {stage_log_file};stream info stdout",
         },
     )
 
     assert result.exit_code == 0, show_cli_trace(result)
-    logs = label_log_file.read_text()
-    assert "Label completed with 1 errors" in logs, show_cli_trace(result)
-    # The session couldn't be assigned an ID, so nothing was written to the output dir
-    assert not [d for d in labelled_dir.iterdir() if d.name != INVALID_DIRNAME], (
-        show_cli_trace(result)
-    )
+    logs = stage_log_file.read_text()
+    assert "Staging completed with 1 errors" in logs, show_cli_trace(result)
+    # The accession couldn't be labelled, so nothing was delivered
+    assert not list_session_dirs(collated_dir), show_cli_trace(result)
+    assert not list_session_dirs(collated_dir / "__runs__"), show_cli_trace(result)
+    (run_dir,) = (collated_dir / "__unprocessed__").iterdir()
+    assert list((run_dir / "files").rglob("*")), show_cli_trace(result)
 
 
 # The XNAT test container intermittently answers an upload with HTTP 500
@@ -1414,7 +1402,8 @@ def test_check_upload_missing_scan(
             "all",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
@@ -1543,7 +1532,8 @@ def test_check_upload_empty_scan(
             "all",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
@@ -1685,7 +1675,8 @@ def test_check_upload_missing_resource(
             "all",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
@@ -1825,7 +1816,8 @@ def test_check_upload_checksum_fail(
             "all",
             "--wait-period",
             "0",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={
             "ACFLOW_LOGGERS": "stream debug stdout",
             "ACFLOW_DATATYPES": "testing/my-format-x;testing/my-format-gz-x",
@@ -1968,7 +1960,8 @@ def test_upload_snapshots_display_in_xnat(
             r".*/(?P<ProjectID>\w+)/(?P<SubjectID>\w+)/(?P<SessionID>\w+)/"
             r"(?P<ScanID>\w+)-\w+\.png",
             "image/png",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={"ACFLOW_LOGGERS": "stream debug stdout"},
     )
     assert result.exit_code == 0, show_cli_trace(result)
@@ -2126,7 +2119,8 @@ def test_deidentify_cli_dicom(
             "--wait-period",
             "0",
             "--recursive",
-        ],
+        ]
+        + LABEL_ID_ARGS,
         env={"ACFLOW_LOGGERS": f"file debug {sort_log};stream info stdout"},
     )
     assert result.exit_code == 0, show_cli_trace(result)
@@ -2140,7 +2134,8 @@ def test_deidentify_cli_dicom(
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
-    session_name = f"{PROJECT_ID}.{PATIENT_ID}.{ACCESSION}"
+    # Collate delivers the combined accession, named with the primary label
+    session_name = f"{PROJECT_ID}.{PATIENT_ID}.{ACCESSION}_combined"
     assert (labelled_dir / session_name).exists(), "Session not labelled"
 
     # 3. Project spec mapping DicomSeries to an empty spec dict
@@ -2232,7 +2227,8 @@ def test_deidentify_cli_dicom_missing_transform(
     staged_dir.mkdir()
     result = cli_runner(
         collate_cmd,
-        [str(dicoms_dir), str(staged_dir), "--raise-errors", "--wait-period", "0"],
+        [str(dicoms_dir), str(staged_dir), "--raise-errors", "--wait-period", "0"]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -2308,7 +2304,8 @@ def test_deidentify_cli_dicom_encrypted_reid(
     staged_dir.mkdir()
     result = cli_runner(
         collate_cmd,
-        [str(dicoms_dir), str(staged_dir), "--raise-errors", "--wait-period", "0"],
+        [str(dicoms_dir), str(staged_dir), "--raise-errors", "--wait-period", "0"]
+        + LABEL_ID_ARGS,
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -2365,7 +2362,8 @@ def test_deidentify_cli_dicom_encrypted_reid(
         )
     assert result.exit_code == 0, show_cli_trace(result)
 
-    session_name = f"{PROJECT_ID}.{PATIENT_ID}.{ACCESSION}"
+    # Collate delivers the combined accession, named with the primary label
+    session_name = f"{PROJECT_ID}.{PATIENT_ID}.{ACCESSION}_combined"
     enc_file = reid_dir / f"{session_name}.json.enc"
     assert enc_file.exists(), f"Encrypted reid file missing: {enc_file}"
     assert not (reid_dir / f"{session_name}.json").exists()

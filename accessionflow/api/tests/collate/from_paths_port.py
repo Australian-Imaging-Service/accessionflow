@@ -15,6 +15,7 @@ from accessionflow.api.collate import (
     check_datatypes,
     claim_input_files,
     list_input_files,
+    list_source_roots,
     load_metadata_tables,
     make_run_uid,
     plan_recursion,
@@ -61,17 +62,8 @@ def collect_like_from_paths(
     tables = load_metadata_tables(metadata_tables)
 
     # The input directories are the roots, so their top-level entries are classified
-    # as from_paths classifies them. A file found by a glob outside them is its own
-    # top-level entry
-    input_dirs = [
-        Path(p).absolute()
-        for p in files_path
-        if (isinstance(p, Path) or "*" not in p) and Path(p).is_dir()
-    ]
-    roots = list(input_dirs)
-    for fspath in files:
-        if not any(fspath.absolute().is_relative_to(r) for r in roots):
-            roots.append(fspath.absolute().parent)
+    # as from_paths classifies them
+    roots = list_source_roots(list(files_path), files)
 
     run_uid = make_run_uid()
     claimed = claim_input_files(files, working_dir, run_uid, roots)

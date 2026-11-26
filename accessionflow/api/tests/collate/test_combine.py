@@ -418,3 +418,27 @@ def test_combine_run_accessions_bad_arguments_change_nothing(
         )
     assert all(d.exists() for d in group.run_dirs)
     assert not dirs.output.exists()
+
+
+def test_combine_accessions_keeps_the_metadata_collate_saved(
+    tmp_path: Path, dirs: Dirs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    group = _two_runs_of_s1(tmp_path, dirs, monkeypatch)
+    # Fields in the files that collate didn't save, as with dont_read_metadata, one
+    # of them clashing with a field from the path
+    monkeypatch.setattr(
+        Json,
+        "read_metadata",
+        lambda self, **kwargs: {"header": "x", "name": "from-header"},
+        raising=False,
+    )
+    combined = combine_accessions(group)
+    resources = [
+        resource
+        for acquisition in combined.acquisitions.values()
+        for resource in acquisition.resources.values()
+    ]
+    assert len(resources) == 2
+    for resource in resources:
+        assert "header" not in resource.metadata
+        assert resource.metadata["name"] in ("a", "b")
