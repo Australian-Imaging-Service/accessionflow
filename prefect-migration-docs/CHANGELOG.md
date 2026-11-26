@@ -23,6 +23,21 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-26, Phase 1, composites step C5, tests only: the regression net for removing
+  `Accession.from_paths` and the old folder `collate()`.
+  - `api/tests/collate/from_paths_port.py`: `collect_like_from_paths`, which takes
+    `from_paths`' arguments and runs `list_input_files`, `claim_input_files` and
+    `collect_accessions`.
+  - The 16 tests in `model/tests/test_accession.py` and `api/tests/test_collate.py`
+    that called `Accession.from_paths` take a `collect` fixture, parametrized over
+    `from_paths` and the steps, and keep their assertions. Both paths pass all of
+    them.
+  - `sources/folder/tests/test_collate_files.py`: `collate_files` counterparts of the
+    six DICOM tests of the old `collate()` (labelled delivery and names, reloading,
+    accession tables, conversion to zip, the hard-link warning, hashing once). The
+    roadmap maps every old `collate()` test to its counterpart.
+
+  CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1, composites step C4, `sources/folder/api/collate_api.py`:
   `collate_files`, the folder source's whole run on the collate steps, built alongside
   today's `collate()`, which the CLI still runs.

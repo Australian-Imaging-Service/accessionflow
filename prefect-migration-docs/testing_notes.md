@@ -171,6 +171,11 @@ same tests, and `git stash pop`.
   (`collect_accessions`, `deliver_accessions`) and
   `sources/folder/tests/test_collate_files.py` (`collate_files`), which holds the
   end-to-end race test: files that arrive during a run wait for the next.
+- **`from_paths` parity (Phase 1, C5)**: the tests in `model/tests/test_accession.py`
+  and `api/tests/test_collate.py` that took a `collect` fixture run twice, as
+  `[from_paths]` and `[steps]`, so the slow PET raw-data ones take twice as long. The
+  `[steps]` run claims (moves) its input, so a test on a shared fixture directory gives
+  it a copy. The DICOM tests of `collate_files` take about 4 minutes in all.
 - `real-tests/` scripts drive collate through the CLI, so Python API changes don't
   affect them.
 

@@ -34,6 +34,7 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
     get_image as get_pet_image,
 )  # type: ignore[import-untyped]
 
+from accessionflow.api.tests.collate.from_paths_port import collect_like_from_paths
 from accessionflow.helpers.arg_types import (
     AttachedFiles,
     ClashSpec,
@@ -77,6 +78,20 @@ RAW_COLUMNS: ty.List[ty.Tuple[str, str, str]] = [
         ".*/PET_COUNTRATE",
     ),
 ]
+
+CollectFn = ty.Callable[..., list[Accession]]
+
+
+@pytest.fixture(params=["from_paths", "steps"])
+def collect(request: pytest.FixtureRequest, tmp_path: Path) -> CollectFn:
+    """``Accession.from_paths``, or the collate steps called the same way, so that each
+    test checks both give the same accessions (composites step C5). The steps move the
+    input files into ``tmp_path / "__processing__"``"""
+    if request.param == "from_paths":
+        return Accession.from_paths
+    return functools.partial(
+        collect_like_from_paths, working_dir=tmp_path / "__processing__"
+    )
 
 
 @pytest.fixture
@@ -323,7 +338,9 @@ def test_unlink_keep_metadata(tmp_path: Path, imaging_session: Accession) -> Non
         )
 
 
-def test_stage_raw_data_directly(raw_frameset: FrameSet, tmp_path: Path) -> None:
+def test_stage_raw_data_directly(
+    collect: CollectFn, raw_frameset: FrameSet, tmp_path: Path
+) -> None:
 
     raw_data_dir = tmp_path / "raw"
     raw_data_dir.mkdir()
@@ -343,7 +360,7 @@ def test_stage_raw_data_directly(raw_frameset: FrameSet, tmp_path: Path) -> None
             StudyInstanceUID=f"StudyInstanceUID{i}",
         )
 
-    imaging_sessions = Accession.from_paths(
+    imaging_sessions = collect(
         f"{raw_data_dir}/**/*.ptd",
         datatypes=[
             SyngoMi_Vr20b_ListMode,
@@ -389,12 +406,14 @@ def test_stage_raw_data_directly(raw_frameset: FrameSet, tmp_path: Path) -> None
         )
 
 
-def test_path_metadata_regex_extracts_named_groups(tmp_path: Path) -> None:
+def test_path_metadata_regex_extracts_named_groups(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     raw_data_dir = tmp_path / "raw" / "cohort-A"
     raw_data_dir.mkdir(parents=True)
     get_pet_image(out_dir=raw_data_dir)
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         f"{raw_data_dir}/**/*",
         datatypes=[DicomSeries],
         accession_uid_field=[IDSpec("StudyInstanceUID")],
@@ -411,13 +430,15 @@ def test_path_metadata_regex_extracts_named_groups(tmp_path: Path) -> None:
     assert resource.metadata["cohort"] == "cohort-A"
 
 
-def test_path_metadata_regex_no_match_raises(tmp_path: Path) -> None:
+def test_path_metadata_regex_no_match_raises(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     raw_data_dir = tmp_path / "raw" / "cohort-A"
     raw_data_dir.mkdir(parents=True)
     get_pet_image(out_dir=raw_data_dir)
 
     with pytest.raises(ValueError, match="Could not extract metadata"):
-        Accession.from_paths(
+        collect(
             f"{raw_data_dir}/**/*",
             datatypes=[DicomSeries],
             accession_uid_field=[IDSpec("StudyInstanceUID")],
@@ -429,14 +450,16 @@ def test_path_metadata_regex_no_match_raises(tmp_path: Path) -> None:
         )
 
 
-def test_from_paths_injects_datatype_metadata_field(tmp_path: Path) -> None:
+def test_from_paths_injects_datatype_metadata_field(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     """The resolved fileset type name is exposed as the '__datatype__' metadata
     field and is usable from an IDSpec (including a format string)."""
     src = tmp_path / "src"
     src.mkdir()
     (src / "a.txt").write_text("x")
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         src,
         datatypes=[File],
         accession_uid_field=[IDSpec("sess")],
@@ -452,6 +475,7 @@ def test_from_paths_injects_datatype_metadata_field(tmp_path: Path) -> None:
 
 
 def test_from_paths_resource_label_defaults_to_mime_like_type_name(
+    collect: CollectFn,
     tmp_path: Path,
 ) -> None:
     """With no resource_field, each resource is labelled with the mime-like
@@ -460,7 +484,7 @@ def test_from_paths_resource_label_defaults_to_mime_like_type_name(
     src.mkdir()
     (src / "a.txt").write_text("x")
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         src,
         datatypes=[File],
         accession_uid_field=[IDSpec("__datatype__")],
@@ -519,13 +543,15 @@ def test_recursive_collect_prunes_on_match(tmp_path: Path) -> None:
     # 'analysis/' not descended -> its own files never surface
 
 
-def test_from_paths_recursive_pulls_nested_directory_datatype(tmp_path: Path) -> None:
+def test_from_paths_recursive_pulls_nested_directory_datatype(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     from fileformats.application import Json
     from fileformats.generic import DirectoryOf
     from fileformats.text import Csv, Plain
 
     root = _tree(tmp_path / "export")
-    sessions = Accession.from_paths(
+    sessions = collect(
         root,
         datatypes=[DirectoryOf[Json]],
         accession_uid_field=[IDSpec("__datatype__")],
@@ -545,6 +571,7 @@ def test_from_paths_recursive_pulls_nested_directory_datatype(tmp_path: Path) ->
 
 
 def test_from_paths_recursive_allow_unrecognised_wildcard_pulls_only_wanted_dirs(
+    collect: CollectFn,
     tmp_path: Path,
 ) -> None:
     """The wanted directory formats are nested inside larger 'clutter' directories
@@ -569,7 +596,7 @@ def test_from_paths_recursive_allow_unrecognised_wildcard_pulls_only_wanted_dirs
     (lesion / "report.csv").write_text("a,b\n1,2\n")
     (root / "loose_at_root.txt").write_text("junk")
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         root,
         datatypes=[DirectoryOf[Json]],
         accession_uid_field=[IDSpec("__datatype__")],
@@ -586,7 +613,9 @@ def test_from_paths_recursive_allow_unrecognised_wildcard_pulls_only_wanted_dirs
     assert set(sessions[0].acquisitions) == {"analysis", "dexi"}
 
 
-def test_from_paths_recursive_raises_on_unlisted_type(tmp_path: Path) -> None:
+def test_from_paths_recursive_raises_on_unlisted_type(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     from fileformats.application import Json
     from fileformats.core.exceptions import FormatMismatchError
     from fileformats.generic import DirectoryOf
@@ -596,7 +625,7 @@ def test_from_paths_recursive_raises_on_unlisted_type(tmp_path: Path) -> None:
     (root / "mystery.unknownext").write_text("not a recognised type")
 
     with pytest.raises(FormatMismatchError, match="mystery"):
-        Accession.from_paths(
+        collect(
             root,
             datatypes=[DirectoryOf[Json]],
             accession_uid_field=[IDSpec("__datatype__")],
@@ -606,12 +635,14 @@ def test_from_paths_recursive_raises_on_unlisted_type(tmp_path: Path) -> None:
         )
 
 
-def test_from_paths_recursive_rejects_bare_generic_directory(tmp_path: Path) -> None:
+def test_from_paths_recursive_rejects_bare_generic_directory(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     from fileformats.generic import Directory
 
     root = _tree(tmp_path / "export")
     with pytest.raises(ValueError, match="generic/directory"):
-        Accession.from_paths(
+        collect(
             root,
             datatypes=[Directory],
             accession_uid_field=[IDSpec("__datatype__")],
@@ -621,6 +652,7 @@ def test_from_paths_recursive_rejects_bare_generic_directory(tmp_path: Path) -> 
 
 
 def test_from_paths_exclude_path_drops_recognised_by_relative_depth(
+    collect: CollectFn,
     tmp_path: Path,
 ) -> None:
     """--exclude-path matches the path *relative to the input dir* and is applied
@@ -634,7 +666,7 @@ def test_from_paths_exclude_path_drops_recognised_by_relative_depth(
     (root / "uuid" / "stamp").mkdir(parents=True)
     (root / "uuid" / "stamp" / "deep.txt").write_text("drop")  # relative depth 3
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         root,
         datatypes=[File],
         accession_uid_field=[IDSpec("__datatype__")],
@@ -693,6 +725,7 @@ def _canfield_shaped_tree(root: Path) -> Path:
 
 
 def test_from_paths_recursive_extracts_nested_dirs_from_canfield_shaped_tree(
+    collect: CollectFn,
     tmp_path: Path,
 ) -> None:
     """End-to-end on the Canfield-shaped tree: two distinct nested directory
@@ -706,7 +739,7 @@ def test_from_paths_recursive_extracts_nested_dirs_from_canfield_shaped_tree(
 
     root = _canfield_shaped_tree(tmp_path / "raw")
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         root,
         datatypes=[DirectoryOf[Json], DirectoryOf[Csv]],
         accession_uid_field=[IDSpec("session")],
@@ -736,13 +769,15 @@ def test_from_paths_recursive_extracts_nested_dirs_from_canfield_shaped_tree(
     }
 
 
-def test_from_paths_scan_id_defaults_to_resource_label(tmp_path: Path) -> None:
+def test_from_paths_scan_id_defaults_to_resource_label(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     """With no scan_field, each resource sits in a scan of the same name."""
     src = tmp_path / "src"
     src.mkdir()
     (src / "a.txt").write_text("x")
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         src,
         datatypes=[File],
         accession_uid_field=[IDSpec("__datatype__")],
@@ -754,7 +789,9 @@ def test_from_paths_scan_id_defaults_to_resource_label(tmp_path: Path) -> None:
     assert list(scan.resources) == ["file"]
 
 
-def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> None:
+def test_from_paths_datatype_scoped_scan_spec_falls_through(
+    collect: CollectFn, tmp_path: Path
+) -> None:
     """A datatype-scoped --acquisition spec that doesn't apply to a fileset's type (the
     DICOM 'SeriesNumber' default vs a plain File) names the scan after the resource
     rather than raising."""
@@ -762,7 +799,7 @@ def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> N
     src.mkdir()
     (src / "a.txt").write_text("x")
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         src,
         datatypes=[File],
         accession_uid_field=[IDSpec("__datatype__")],
@@ -773,6 +810,7 @@ def test_from_paths_datatype_scoped_scan_spec_falls_through(tmp_path: Path) -> N
 
 
 def test_from_paths_session_spec_not_matching_type_raises_clearly(
+    collect: CollectFn,
     tmp_path: Path,
 ) -> None:
     """The session UID has no auto-fallback: a session spec whose datatype doesn't
@@ -783,7 +821,7 @@ def test_from_paths_session_spec_not_matching_type_raises_clearly(
     (src / "a.txt").write_text("x")
 
     with pytest.raises(TypeError, match="apply to a File"):
-        Accession.from_paths(
+        collect(
             src,
             datatypes=[File],
             accession_uid_field=[
@@ -1306,7 +1344,7 @@ def test_session_save_include_requires_a_matching_resource(
     assert not (tmp_path / imaging_session.name).exists()
 
 
-def test_id_escape(tmp_path: Path) -> None:
+def test_id_escape(collect: CollectFn, tmp_path: Path) -> None:
     raw_data_dir = tmp_path / "raw"
     raw_data_dir.mkdir()
     get_raw_data_files(
@@ -1319,7 +1357,7 @@ def test_id_escape(tmp_path: Path) -> None:
         StudyInstanceUID="StudyInstanceUID1",
     )
 
-    sessions = Accession.from_paths(
+    sessions = collect(
         f"{raw_data_dir}/**/*.ptd",
         datatypes=[SyngoMi_Vr20b_ListMode, SyngoMi_Vr20b_CountRate],
         accession_uid_field=[IDSpec("StudyInstanceUID")],

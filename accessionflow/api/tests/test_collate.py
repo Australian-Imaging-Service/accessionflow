@@ -1,3 +1,4 @@
+import functools
 import shutil
 import typing as ty
 from pathlib import Path
@@ -13,6 +14,7 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
 )
 
 from accessionflow.api.staging import BUILD_NAME_DEFAULT
+from accessionflow.api.tests.collate.from_paths_port import collect_like_from_paths
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable
 from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
@@ -21,6 +23,20 @@ from accessionflow.sources.folder.api import collate
 ACCESSION_UID_FIELD = [IDSpec("StudyInstanceUID", "medimage/dicom-collection")]
 ACQUISITION_ID_FIELD = [IDSpec("SeriesNumber", "medimage/dicom-collection")]
 RESOURCE_FIELD = [IDSpec("ImageType[2:]", "medimage/dicom-collection")]
+
+CollectFn = ty.Callable[..., list[Accession]]
+
+
+@pytest.fixture(params=["from_paths", "steps"])
+def collect(request: pytest.FixtureRequest, tmp_path: Path) -> CollectFn:
+    """``Accession.from_paths``, or the collate steps called the same way, so that each
+    test checks both give the same accessions (composites step C5). The steps move the
+    input files into ``tmp_path / "__processing__"``"""
+    if request.param == "from_paths":
+        return Accession.from_paths
+    return functools.partial(
+        collect_like_from_paths, working_dir=tmp_path / "__processing__"
+    )
 
 
 @pytest.fixture(scope="module")
@@ -342,15 +358,18 @@ def test_collate_removes_build_dir_when_raising(
 
 
 @pytest.fixture
-def patient_id(dicom_dir: Path) -> str:
+def patient_id(dicom_dir: Path, tmp_path: Path) -> str:
     """The PatientID of the dummy dataset, discovered by a throwaway load so the
-    metadata-table tests don't have to hard-code it"""
-    sessions = Accession.from_paths(
-        dicom_dir,
+    metadata-table tests don't have to hard-code it. The load claims its files, so it
+    is given a copy of the module's DICOM directory"""
+    copy = shutil.copytree(dicom_dir, tmp_path / "patient_id" / "dicom")
+    sessions = collect_like_from_paths(
+        copy,
         [DicomSeries],
         ACCESSION_UID_FIELD,
         ACQUISITION_ID_FIELD,
         RESOURCE_FIELD,
+        working_dir=tmp_path / "patient_id" / "__processing__",
     )
     resource = next(
         iter(next(iter(sessions[0].acquisitions.values())).resources.values())
@@ -394,13 +413,14 @@ def test_collate_injects_session_metadata_from_table(
 
 
 def test_from_paths_injects_resource_metadata_from_table(
-    dicom_dir: Path, patient_id: str, tmp_path: Path
+    collect: CollectFn, dicom_dir: Path, patient_id: str, tmp_path: Path
 ) -> None:
     table = tmp_path / "clinical.csv"
     table.write_text(f"PatientID,Radiotracer\n{patient_id},FDG\nother,ignored\n")
 
-    sessions = Accession.from_paths(
-        dicom_dir,
+    # The steps claim (move) their input, so they are given a copy
+    sessions = collect(
+        shutil.copytree(dicom_dir, tmp_path / "input" / "dicom"),
         [DicomSeries],
         ACCESSION_UID_FIELD,
         ACQUISITION_ID_FIELD,

@@ -244,7 +244,7 @@ stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
 
 ### Composites
 
-Status: Planned. Plain-Python sequences of the steps, which the CLI runs; the flows
+Status: Done (2026-11-26); the [CLI](#cli) step is next. Plain-Python sequences of the steps, which the CLI runs; the flows
 repository wraps the same steps in the same order (principle 10). Their signatures can
 change. They are built in five steps, each one PR that keeps the suite green and adds
 its own `CHANGELOG.md` entry. The folder `collate()` keeps its many callers (the CLI and
@@ -361,14 +361,39 @@ collate_files(
   matches an ignored directory format, rather than skipping it. It is classified and
   dropped as ignored, so `finish_claim` records its files as `ignored` (found in C2).
 
-**C5. Port the `from_paths` tests**, the regression net, before anything is removed:
+**C5. Port the `from_paths` tests**, the regression net, before anything is removed.
+**Done (2026-11-26).**
 
-- The 15 calls in `model/tests/test_accession.py` and the 2 in
-  `api/tests/test_collate.py` claim the same input and run `collect_accessions`,
-  keeping their assertions.
-- The DICOM-based tests of the folder `collate()` in `api/tests/test_collate.py` get
-  `collate_files` counterparts for what changes: labelling, the delivered names and the
-  unprocessed directory.
+- **Both paths run the same tests.** `api/tests/collate/from_paths_port.py` holds
+  `collect_like_from_paths`. It takes `from_paths`' arguments, plus a `working_dir`,
+  then lists, claims and runs `collect_accessions`.
+  - `model/tests/test_accession.py` and `api/tests/test_collate.py` each have a
+    `collect` fixture parametrized over `from_paths` and `steps`.
+  - The 16 tests that called `Accession.from_paths` call `collect` instead and keep
+    their assertions, so each one checks that both paths agree. They all do.
+  - The `patient_id` fixture uses the steps on a copy of the DICOM directory.
+  - `test_recursive_collect_prunes_on_match` stays on `_recursive_collect` until it is
+    removed. Its port is `test_expand_recursion_prunes_on_directory_datatypes`.
+- **The DICOM tests of the folder `collate()` have `collate_files` counterparts**, in
+  `sources/folder/tests/test_collate_files.py`. They check what changes: labelling and
+  the delivered names.
+
+  | Old `collate()` test | Counterpart |
+  | --- | --- |
+  | `test_collate_creates_pre_label_session_dir` | `test_dicom_delivered_labelled` |
+  | `test_collate_output_reloadable_with_no_labelled_ids` | `test_dicom_delivered_reloads_with_labels` |
+  | `test_collate_injects_session_metadata_from_table` | `test_dicom_accession_metadata_from_table` |
+  | `test_collate_converts_directory_to_zip` | `test_dicom_directory_converted_to_zip` |
+  | `test_collate_warns_when_hardlinks_unavailable` | `test_dicom_warns_when_hardlinks_unavailable` |
+  | `test_collate_hashes_each_resource_once` | `test_dicom_hashes_each_resource_once` |
+  | `test_collate_collects_errors_without_raising` | `test_no_input_files` |
+  | `test_collate_unrecognised_file_raises_without_allow_unrecognised`, `..._allow_unrecognised_pattern_not_matching_still_raises` | `test_run_that_raises_is_moved_to_the_error_dir` |
+  | `test_collate_allow_unrecognised_skips_matching_files` | `test_delivers_and_leaves_the_rest` |
+  | `test_collate_ignore_datatypes_excludes_recognised_but_unwanted_files` | `test_recursive_ignored_directory_recorded_as_ignored`, `test_classify.py` |
+  | `test_collate_without_ignore_datatypes_raises_on_recognised_extra_type` | `test_classify.py` (`classify_paths` raising) |
+  | `test_collate_ignore_datatypes_contradicting_datatype_raises`, `test_collate_recursive_generic_directory_raises` | `test_classify.py` (`check_datatypes`, `plan_recursion`) |
+  | `test_collate_makes_a_new_run_uid_on_a_clash` | `test_run_uid_clash_makes_another` |
+  | `test_collate_creates_build_dir`, `test_collate_removes_build_dir_when_raising` | `test_delivers_and_leaves_the_rest`, `test_run_that_raises_is_moved_to_the_error_dir` |
 
 After C5, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
 `collate_files`, and the removals step deletes `from_paths`, the old `collate()` and
@@ -454,8 +479,12 @@ These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
   in `docs/source/reference/api.rst:55` and `docs/source/developer/data_model.rst:19`.
   `MIGRATING.md:293` is updated in Phase 10.
 - The old folder `collate(input_paths, ...)`. `collate_files` (composites step C4) is
-  renamed `collate`, and the tests that call the old one with `input_paths=...` move
-  to it or are dropped where C5 has ported them.
+  renamed `collate`. The tests that call the old one with `input_paths=...` are
+  dropped: C5 recorded each one's counterpart (see [Composites](#composites)).
+- The `from_paths` parameter of the `collect` fixtures in `model/tests/test_accession.py`
+  and `api/tests/test_collate.py`, and `test_recursive_collect_prunes_on_match`. The
+  tests then call `collect_like_from_paths` only. It can be renamed, or the tests moved
+  to `api/tests/collate/`.
 
 ### Staging layout
 

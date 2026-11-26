@@ -2,14 +2,20 @@
 ``prefect-migration-docs/ROADMAP.md``, Phase 1, Composites step C4)"""
 
 import json
+import shutil
 import typing as ty
 from pathlib import Path
 
 import pytest
-from fileformats.application import Json
+from fileformats.application import Json, Zip
+from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 from fileformats.generic import DirectoryOf
+from fileformats.medimage import DicomDir, DicomSeries
 from fileformats.text import Csv
+from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
+    get_image as get_pet_image,  # type: ignore[import-untyped]
+)
 
 from accessionflow.api.collate import (
     CLAIMED_FILES_DIRNAME,
@@ -21,7 +27,9 @@ from accessionflow.api.collate import (
 from accessionflow.api.collate import claim as claim_module
 from accessionflow.api.staging import BUILD_NAME_DEFAULT
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable, PathMetadataPattern
+from accessionflow.helpers.run_uid import RUN_UID_RE
 from accessionflow.model.accession import Accession
+from accessionflow.model.resource import Resource
 from accessionflow.sources.folder.api import collate_api
 from accessionflow.sources.folder.api.collate_api import collate_files
 
@@ -302,3 +310,158 @@ def test_bad_path_metadata_pattern_changes_nothing(dirs: Dirs) -> None:
         _run(dirs, path_metadata=[PathMetadataPattern("{sess/{name}.json", Json)])
     assert (dirs.inbox / "s1" / "a.json").exists()
     assert not dirs.output.exists()
+
+
+# Counterparts of the DICOM tests of the old collate(), in api/tests/test_collate.py
+# (composites step C5) -------------------------------------------------------------
+
+DICOM_LABEL_FIELDS = {
+    "project": "StudyID",
+    "subject": "PatientID",
+    "session": "AccessionNumber",
+}
+
+
+@pytest.fixture(scope="module")
+def dicom_source(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A PET series, copied into each test's inbox, as a run claims (moves) its input"""
+    source = tmp_path_factory.mktemp("dicom")
+    get_pet_image(out_dir=source)
+    return source
+
+
+def _run_dicom(dirs: Dirs, dicom_source: Path, **kwargs: ty.Any) -> list[str]:
+    """Collates a copy of the PET series with the DICOM defaults"""
+    shutil.copytree(dicom_source, dirs.inbox / "dicom")
+    options: dict[str, ty.Any] = dict(
+        datatypes=[DicomSeries],
+        source_roots=[dirs.inbox],
+        recursive=True,
+        acquisition_field="SeriesDescription",
+    )
+    options.update(kwargs)
+    return collate_files(
+        list_input_files([dirs.inbox]),
+        dirs.output,
+        dirs.working,
+        dirs.unprocessed,
+        dirs.error,
+        DICOM_LABEL_FIELDS,
+        **options,
+    )
+
+
+def test_dicom_delivered_labelled(dirs: Dirs, dicom_source: Path) -> None:
+    """Counterpart of test_collate_creates_pre_label_session_dir: delivered labelled,
+    as <labels>_<run_uid>, not as a pre-label '_.<uid>' directory"""
+    assert _run_dicom(dirs, dicom_source) == []
+    (name,) = _delivered(dirs)
+    assert not name.startswith(Accession.PRE_LABEL_PREFIX)
+    assert name.startswith("PROJECT_ID.")
+    assert RUN_UID_RE.search(name)
+    acquisition_dirs = [d for d in (dirs.output / name).iterdir() if d.is_dir()]
+    assert len(acquisition_dirs) == 1
+    # The acquisition's description is assigned with its labels
+    assert not acquisition_dirs[0].name.endswith(".")
+    assert _files_under(dirs.inbox) == []
+    assert not dirs.unprocessed.exists()
+    assert not dirs.error.exists()
+
+
+def test_dicom_delivered_reloads_with_labels(dirs: Dirs, dicom_source: Path) -> None:
+    """Counterpart of test_collate_output_reloadable_with_no_labelled_ids"""
+    assert _run_dicom(dirs, dicom_source) == []
+    (name,) = _delivered(dirs)
+    reloaded = Accession.load(dirs.output / name)
+    assert reloaded.labels["project"] == "PROJECT_ID"
+    assert reloaded.labels["session"] == "987654321"
+    assert name.endswith(f"_{reloaded.run_uid}")
+    acquisition = next(iter(reloaded.acquisitions.values()))
+    assert acquisition.type == "PET SWB 8MIN"
+
+
+def test_dicom_accession_metadata_from_table(
+    dirs: Dirs, dicom_source: Path, tmp_path: Path
+) -> None:
+    """Counterpart of test_collate_injects_session_metadata_from_table"""
+    table = tmp_path / "clinical.csv"
+    table.write_text(
+        "PatientID,StudyComment,Cohort\n"
+        "Session Label,injected-via-table,control\n"
+        "someone-else,should-not-be-used,case\n"
+    )
+    errors = _run_dicom(
+        dirs,
+        dicom_source,
+        metadata_tables=[MetadataTable(str(table), "accession", "PatientID=PatientID")],
+    )
+    assert errors == []
+    (name,) = _delivered(dirs)
+    reloaded = Accession.load(dirs.output / name)
+    assert reloaded.metadata["StudyComment"] == "injected-via-table"
+    assert reloaded.metadata["Cohort"] == "control"
+
+
+def test_dicom_directory_converted_to_zip(dirs: Dirs, dicom_source: Path) -> None:
+    """Counterpart of test_collate_converts_directory_to_zip"""
+    errors = _run_dicom(
+        dirs,
+        dicom_source,
+        datatypes=[DicomDir],
+        recursive=False,
+        conversion_map={DicomDir: (Zip, {"compression": "ZIP_STORED"})},
+    )
+    assert errors == []
+    (name,) = _delivered(dirs)
+    acquisition_dir = next(d for d in (dirs.output / name).iterdir() if d.is_dir())
+    resource_dir = next(d for d in acquisition_dir.iterdir() if d.is_dir())
+    manifest = Json(resource_dir / Resource.MANIFEST_FNAME).load()
+    assert manifest["datatype"] == Zip.mime_like
+    assert (resource_dir / "dicom.zip").exists()
+
+
+@pytest.mark.parametrize("same_mount", [True, False])
+def test_dicom_warns_when_hardlinks_unavailable(
+    dirs: Dirs,
+    dicom_source: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    same_mount: bool,
+) -> None:
+    """Counterpart of test_collate_warns_when_hardlinks_unavailable"""
+    from fileformats.core.fs_mount_identifier import FsMountIdentifier
+
+    monkeypatch.setattr(
+        FsMountIdentifier, "on_same_mount", classmethod(lambda cls, a, b: same_mount)
+    )
+    with caplog.at_level("WARNING"):
+        errors = _run_dicom(
+            dirs, dicom_source, copy_mode=FileSet.CopyMode.hardlink_or_copy
+        )
+    assert errors == []
+    warnings = [
+        r.getMessage() for r in caplog.records if "hard-linked" in r.getMessage()
+    ]
+    assert len(warnings) == (0 if same_mount else 1)
+    # The warning names the output directory, not the run's build directory
+    assert all(f"'{dirs.output}'" in w for w in warnings)
+
+
+def test_dicom_hashes_each_resource_once(
+    dirs: Dirs, dicom_source: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Counterpart of test_collate_hashes_each_resource_once: only the delivered copy
+    is hashed, not the claimed files as well"""
+    hashed: list[FileSet] = []
+    hash_files = FileSet.hash_files
+
+    def counting_hash_files(self: FileSet, *args: ty.Any, **kwargs: ty.Any) -> ty.Any:
+        hashed.append(self)
+        return hash_files(self, *args, **kwargs)
+
+    monkeypatch.setattr(FileSet, "hash_files", counting_hash_files)
+    errors = _run_dicom(dirs, dicom_source, copy_mode=FileSet.CopyMode.hardlink_or_copy)
+    assert errors == []
+    assert len(hashed) == 1
+    assert not any(p.is_relative_to(dirs.working) for p in hashed[0].fspaths)
+    assert not any(p.is_relative_to(dirs.inbox) for p in hashed[0].fspaths)
