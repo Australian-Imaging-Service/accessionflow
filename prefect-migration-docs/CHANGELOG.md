@@ -248,6 +248,10 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, documents: the roadmap's finished Phase 1 sections moved to the Step API
+  section: the Combine design, as "Phase 1 combine", and the steps' run-order table,
+  into "Phase 1 collate steps". The roadmap keeps short pointers. No code changes. PR:
+  pending.
 - 2026-11-26, Phase 1, Combine:
   - **Names that end in a primary label** (`<labels>_<primary_label>`) are read with
     the labels saved in the accession's metadata (`__labels__`), as the name alone
@@ -531,6 +535,38 @@ A reference for the collate step functions, moved from `ROADMAP.md` when they we
 done (2026-11-24). The dated entries below record how each was added and changed. The
 "From" column gives the code each step was taken from, as of commit `670a0e4` on `main`:
 line numbers are in `accessionflow/model/accession.py` unless another file is named.
+
+The run order, moved from `ROADMAP.md` (2026-11-26), with the kind of each step:
+
+| # | Step | Module | Kind |
+| --- | --- | --- | --- |
+| 0 | `list_input_files` | `discover.py` | before collate, used by the CLI |
+| 1 | `check_datatypes` | `classify.py` | checks the arguments, the first step of the API |
+| 2 | `plan_recursion` | `classify.py` | checks the arguments |
+| 3 | `load_metadata_tables` | `metadata.py` | reads and checks the metadata tables |
+| – | `merge_path_metadata` | `metadata.py` | checks and translates the path-metadata patterns, for step 11 |
+| 4 | `make_run_uid` | `claim.py` | batch |
+| 5 | `prepare_build_dir` | `api/staging.py` | batch |
+| 6 | `claim_input_files` | `claim.py` | batch, the first step that changes the input |
+| 7 | `expand_claimed_paths` | `classify.py` | batch |
+| 8 | `classify_paths` | `classify.py` | batch |
+| 9 | `drop_ignored_filesets` | `classify.py` | batch |
+| 10 | `disable_metadata_reading` | `classify.py` | batch |
+| 11 | `apply_path_metadata` | `metadata.py` | batch |
+| 12 | `tag_fileset_types` | `metadata.py` | batch |
+| 13 | `inject_fileset_tables` | `metadata.py` | batch |
+| 14 | `group_into_accessions` | `group.py` | batch |
+| 15 | `inject_accession_tables` | `metadata.py` | batch |
+| 16 | `warn_if_hardlinks_unavailable` | `save.py` | batch |
+| 17 | `assign_labels` | `assign.py` | **per accession** |
+| 18 | `move_to_target` | `save.py` | **per accession** |
+| 19 | `finish_claim` | `claim.py` | batch |
+| 20 | `remove_build_dir` | `api/staging.py` | batch |
+
+Modules are in `accessionflow/api/collate/` unless shown otherwise. Steps 1–16, 19 and 20
+run once per collation. Steps 17 and 18 run once per accession, and are the unit that a
+flow maps over. Steps 1–3 and `merge_path_metadata` only read and check the arguments, so
+they run before any step that changes the file system (principle 12).
 
 The steps fall into eight groups. In the table, `#` is the step's number in the run
 order; the steps in a group marked `–` are helpers that the numbered step uses,
@@ -1048,6 +1084,95 @@ Status: **Done** (2026-11-26). The regression net, before anything is removed.
 - **Ported tests**, keeping their assertions as the regression net (C5): the 15 calls
   to `Accession.from_paths` in `model/tests/test_accession.py` and the 2 in
   `api/tests/test_collate.py`, which now run on both `from_paths` and the steps.
+
+#### Phase 1 combine
+
+The accession combiner, moved from `ROADMAP.md` when it was done (2026-11-26). The dated
+entries record its changes.
+
+Status: **Done** (2026-11-26). The accession combiner, the second part of collate, in
+`accessionflow/api/collate/combine.py` (steps) and `api/collate/composites.py` (the
+composite). Wiring it into `collate folder`, with `--wait-period` as the quiet period,
+is part of the CLI step (see `ROADMAP.md`).
+
+**Run accessions** are what `collate_files` delivers: one accession per
+project.subject.session per run, named `<labels>_<run_uid>`. The `output_dir` given to
+`collate_files` is the run-accessions directory. Since every run's accessions have
+their own names, collate never merges two runs' data. Only the combiner does.
+
+**The quiet period.** A session's run accessions are combined once the newest of them
+is older than the quiet period. The age comes from the time in the run UID
+(`run_uid_time`, `helpers/run_uid.py`), not from file times, so a retried delivery
+doesn't reset it.
+
+**The combined accession** is named `<labels>_<primary_label>`. The caller gives
+`primary_label` as a fixed string (e.g. `combined`): letters, digits and `-`, and not
+in the form of a run UID. Its metadata records the run accessions it was combined from
+(`__combined_from__`).
+
+**Names.** A name such as `P.S.sess_combined` can't be told from a session label
+`sess_combined` by the name alone, so the name is read with the labels every accession
+saves in its metadata (`__labels__`):
+
+- `split_name_suffix` (`helpers/run_uid.py`) splits off a run UID or a primary label.
+- `Accession._labels_from_dirname` and `SessionListing.ids` (local and S3) use the
+  saved labels. Names without them parse as before.
+- `staging_dirname` joins a suffix that is a run UID or a valid primary label with `_`.
+  Any other suffix is joined with `.`, as before.
+
+**Merging.**
+
+- **Resources:** every run accession's resources are added, oldest first, with
+  `Accession.add_resource`. An identical resource (the same checksums) is kept once,
+  and any other clash follows `on_resource_clash`.
+- **Metadata:** the metadata each level holds of its own (e.g. from a metadata table)
+  is carried over. Values collated from the level below are collated again. A key that
+  two run accessions give different values is an error, as are different store types
+  or fields.
+
+**The steps:**
+
+| # | Step | Kind |
+| --- | --- | --- |
+| – | `check_primary_label(primary_label)` | checks the arguments |
+| 1 | `list_run_accessions(runs_dir) -> list[RunAccessionGroup]`: groups the run accessions by their labels, oldest first | batch |
+| 2 | `select_quiet_groups(groups, quiet_period, now=None)` | batch |
+| 3 | `create_run_directory(output_dir)` (`claim.py`, shared with `collate_files`) | batch |
+| 4 | `combine_accessions(group, on_resource_clash="error") -> Accession` | **per group** |
+| 5 | `deliver_combined(accession, group, build_dir, output_dir, primary_label, copy_mode=...) -> Path` | **per group** |
+| 6 | `remove_run_accessions(group)` | **per group** |
+| – | `abandon_group(group, error_dir, error, run_uid) -> Path`, for a group that fails | **per group** |
+| 7 | `remove_build_dir` (`api/staging.py`) | batch |
+
+- `RunAccessionGroup(name, run_dirs, newest)` is a frozen attrs record that pickles,
+  and is the unit a flow maps over.
+- **An existing combined accession is an error.** `deliver_combined` never changes an
+  accession already in the output directory, so the group goes to the error directory.
+  The exception is a retry: when the existing accession's `__combined_from__` names
+  the same run accessions, an earlier attempt delivered it and crashed before
+  `remove_run_accessions`. It is kept, and only the run accessions are removed.
+- `abandon_group` moves the group's run accessions to `<error_dir>/<labels>_<run_uid>/`,
+  where `run_uid` is the combine run's. It writes an `error.json` like `abandon_claim`
+  (`write_error_record`).
+
+**The composite** is `combine_run_accessions(runs_dir, output_dir, error_dir,
+quiet_period, primary_label, *, on_resource_clash="error", copy_mode=...,
+now=None, raise_errors=False) -> list[str]`.
+
+- It checks the arguments, then lists and selects the groups. If none is quiet, it
+  creates nothing.
+- Otherwise it makes a build directory and runs steps 4–6 per group through
+  `for_each_accession`, abandoning a group that fails. It removes the build directory
+  in a `finally`.
+- It returns the error messages for the caller to log.
+
+**Races.** A run accession delivered while the combiner runs is either newer than the
+quiet period, so its group isn't selected, or it arrived after the listing, so it is
+left for the next combine.
+
+**Tests:** `api/tests/collate/test_combine.py`, which makes run accessions with
+`collate_files` on small JSON trees. The name handling is tested in
+`helpers/tests/test_run_uid.py` and `model/tests/test_labels.py`.
 
 #### Dated entries
 
