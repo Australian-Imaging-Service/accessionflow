@@ -56,12 +56,40 @@ The whole suite passes after Phase 0 (2026-11-24), with `.venv` synced:
 - The XNAT store tests (`accessionflow/stores/xnat`) are mocked and don't use the live
   server, so they take seconds.
 
-For a quick check while working, skip the slowest tests and run the full suite at the
-end of each phase:
+### What to run until Phase 7
+
+Until Phase 7 (deidentify), the XNAT server tests and the deidentification tests
+aren't needed: nothing in Phases 1–6 changes them (decided 2026-11-26). Leave them out
+of every run, including the run at the end of a phase:
 
 ```bash
 .venv/bin/python -m pytest -q -p no:cacheprovider \
-    -k "not stage_and_upload and not deidentify_cli_dicom and not churn_probe" accessionflow
+    -k "not deid and not stage_and_upload and not check_upload and not upload_snapshots" \
+    accessionflow
+```
+
+On 2026-11-26 this ran 1003 tests in 9 min 37 s, all passing, with the two
+`test_dicom_deid_*` probes still in. `not deid` leaves them out too, which saves about
+1.5 minutes. Put the temporary files on the main disk as well (see
+[`/tmp` fills up](#tmp-fills-up)): after a few runs, `/tmp` is full again.
+
+- **The XNAT server tests** are the 10 tests that use the `xnat_repository` fixture, all
+  in `cli/tests/test_cli.py`: `test_stage_and_upload`, the `test_check_upload_*` tests
+  (`local` and `s3`) and `test_upload_snapshots_display_in_xnat`. Without them, the
+  `xnat4tests` container isn't started.
+- **The deidentification tests**, 91 of them, are every test with `deid` in its module
+  or test name, e.g. `api/tests/test_deidentify.py`,
+  `api/tests/test_deidentify_retirement.py`, `cli/tests/test_deidentify_cli.py` and
+  `cli/tests/test_cli.py::test_deidentify_cli_dicom*` and the two
+  `api/tests/test_dicom_churn_probe.py::test_dicom_deid_*` probes.
+- Phase 7 and the wrap-up in Phase 10 run them again.
+
+For a quicker check while working, skip the slowest tests as well:
+
+```bash
+.venv/bin/python -m pytest -q -p no:cacheprovider \
+    -k "not deid and not stage_and_upload and not check_upload and not upload_snapshots and not churn_probe" \
+    accessionflow
 ```
 
 `--durations=20` lists the slowest tests of a run. The full suite takes longer than a
@@ -139,6 +167,10 @@ same tests, and `git stash pop`.
   `cli/tests/test_runner.py`.
 - **Collate steps (Phase 1)**: `api/tests/collate/`, one test module per step module,
   using small trees of plain files in `tmp_path`, so they run in about a second.
+- **Collate composites (Phase 1)**: `api/tests/collate/test_composites.py`
+  (`collect_accessions`, `deliver_accessions`) and
+  `sources/folder/tests/test_collate_files.py` (`collate_files`), which holds the
+  end-to-end race test: files that arrive during a run wait for the next.
 - `real-tests/` scripts drive collate through the CLI, so Python API changes don't
   affect them.
 

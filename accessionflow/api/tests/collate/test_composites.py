@@ -1,4 +1,6 @@
+import json
 import pickle
+import typing as ty
 from pathlib import Path
 
 import pytest
@@ -9,13 +11,21 @@ from fileformats.generic import DirectoryOf, File
 from fileformats.text import Csv, Plain
 
 from accessionflow.api.collate import (
+    CLAIMED_FILES_DIRNAME,
+    UNPROCESSED_MANIFEST,
     ClaimedFiles,
     CollectedAccessions,
     claim_input_files,
     collect_accessions,
+    deliver_accessions,
+    finish_claim,
     load_metadata_tables,
     plan_recursion,
 )
+from accessionflow.api.collate import composites as composites_module
+from accessionflow.api.collate import save as save_module
+from accessionflow.api.staging import prepare_build_dir, remove_build_dir
+from accessionflow.exceptions import LabelsNotAssignedError
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable, PathMetadataRegex
 from accessionflow.model.accession import Accession
 
@@ -104,9 +114,8 @@ def test_like_from_paths_recursive(tmp_path: Path) -> None:
     )
     (accession,) = collected.accessions
     assert set(accession.acquisitions) == {"analysis", "deep"}
-    # The loose text file was classified and dropped. The CSV directory is skipped
-    # whole by the walk (expand_claimed_paths), so it is never classified
-    assert [type(f) for f in collected.ignored] == [Plain]
+    # The CSV directory and the loose text file were classified and dropped
+    assert [type(f) for f in collected.ignored] == [DirectoryOf[Csv], Plain]
 
 
 # Ignored file-sets -----------------------------------------------------------------
@@ -252,3 +261,162 @@ def test_collected_accessions_pickle(tmp_path: Path) -> None:
     assert [list(f.fspaths) for f in restored.ignored] == [
         list(f.fspaths) for f in collected.ignored
     ]
+
+
+# deliver_accessions ----------------------------------------------------------------
+
+LABEL_FIELDS = {"project": "project", "subject": "sess", "session": "visit"}
+
+
+def _collect_sessions(
+    tmp_path: Path, *sessions: str, extra: dict[str, str] | None = None
+) -> tuple[ClaimedFiles, list[Accession], Path, Path]:
+    """Claims and collects one accession per session, each with a visit unless its
+    name ends in '-novisit', and prepares the build directory"""
+    files = {f"{s}/{s[:2]}a.json": f'{{"{s}": 1}}' for s in sessions}
+    files.update(extra or {})
+    claimed = _claim(tmp_path, files)
+    collected = _collect(
+        claimed,
+        [Json],
+        accession_uid_field=[IDSpec("sess")],
+        acquisition_id_field=[IDSpec("name")],
+        path_metadata_regex=SESS_NAME_REGEX,
+        allow_unrecognised=[r".*\.txt"],
+        run_uid=RUN_UID,
+    )
+    for accession in collected.accessions:
+        if not accession.uid.endswith("-novisit"):
+            accession.metadata["visit"] = "v1"
+    output_dir = tmp_path / "out"
+    return (
+        claimed,
+        collected.accessions,
+        output_dir,
+        prepare_build_dir(output_dir, RUN_UID),
+    )
+
+
+def test_deliver_one_of_each_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Moved from test_claim.py::test_steps_end_to_end_with_a_leftover: one accession
+    is delivered, one fails to save, one can't be labelled, and a file no datatype
+    took is left"""
+    claimed, accessions, output_dir, build_dir = _collect_sessions(
+        tmp_path, "s1", "s2", "s3-novisit", extra={"s1/notes.txt": "x"}
+    )
+    s1, s2, s3 = accessions
+    real_save = save_module.save_to_build_dir
+
+    def save_fails_for_s2(accession: Accession, *args: ty.Any, **kw: ty.Any) -> Path:
+        if accession is s2:
+            raise RuntimeError("disk full")
+        return real_save(accession, *args, **kw)
+
+    monkeypatch.setattr(save_module, "save_to_build_dir", save_fails_for_s2)
+    failed = deliver_accessions(
+        accessions,
+        build_dir,
+        output_dir,
+        claimed,
+        LABEL_FIELDS,
+        constant_labels={"project": "P"},
+    )
+
+    assert len(failed) == 2
+    assert all(a is b for (a, _), b in zip(failed, [s2, s3], strict=True))
+    assert "disk full" in failed[0][1]
+    assert "LabelsNotAssignedError" in failed[1][1]
+    assert "['visit']" in failed[1][1]
+    delivered = output_dir / f"P.s1.v1_{RUN_UID}"
+    assert sorted(Accession.load(delivered).acquisitions) == ["s1a"]
+    assert not (claimed.files_dir / "s1" / "s1a.json").exists()
+
+    unprocessed = tmp_path / "unprocessed"
+    moved = finish_claim(claimed, unprocessed, failed=failed)
+    files_dir = unprocessed / RUN_UID / CLAIMED_FILES_DIRNAME
+    assert moved == [
+        files_dir / "s1" / "notes.txt",
+        files_dir / "s2" / "s2a.json",
+        files_dir / "s3-novisit" / "s3a.json",
+    ]
+    reasons = _reasons(unprocessed / RUN_UID)
+    assert reasons["files/s1/notes.txt"]["reason"] == "unrecognised"
+    assert reasons["files/s2/s2a.json"]["reason"] == "failed"
+    assert "disk full" in reasons["files/s2/s2a.json"]["error"]
+    assert reasons["files/s3-novisit/s3a.json"]["accession"] == "s3-novisit"
+    assert "['visit']" in reasons["files/s3-novisit/s3a.json"]["error"]
+    assert remove_build_dir(build_dir) == []
+    assert not any((tmp_path / "inbox").rglob("*.*"))  # all were claimed
+
+
+def _reasons(moved_run_dir: Path) -> dict[str, dict[str, ty.Any]]:
+    entries = json.loads((moved_run_dir / UNPROCESSED_MANIFEST).read_text())
+    return {e["file"]: e for e in entries}
+
+
+def test_deliver_all(tmp_path: Path) -> None:
+    claimed, accessions, output_dir, build_dir = _collect_sessions(tmp_path, "s1", "s2")
+    failed = deliver_accessions(
+        accessions,
+        build_dir,
+        output_dir,
+        claimed,
+        LABEL_FIELDS,
+        constant_labels={"project": "P"},
+    )
+    assert failed == []
+    assert sorted(p.name for p in output_dir.iterdir() if p != build_dir.parent) == [
+        f"P.s1.v1_{RUN_UID}",
+        f"P.s2.v1_{RUN_UID}",
+    ]
+    assert remove_build_dir(build_dir) == []
+    assert not claimed.files_dir.exists() or not any(
+        p.is_file() for p in claimed.files_dir.rglob("*")
+    )
+
+
+def test_deliver_raise_errors(tmp_path: Path) -> None:
+    claimed, accessions, output_dir, build_dir = _collect_sessions(
+        tmp_path, "s1", "s3-novisit"
+    )
+    with pytest.raises(LabelsNotAssignedError, match="visit"):
+        deliver_accessions(
+            accessions,
+            build_dir,
+            output_dir,
+            claimed,
+            LABEL_FIELDS,
+            constant_labels={"project": "P"},
+            raise_errors=True,
+        )
+    assert (output_dir / f"P.s1.v1_{RUN_UID}").is_dir()
+    assert (claimed.files_dir / "s3-novisit" / "s3a.json").exists()
+
+
+def test_deliver_warns_once_before_delivering(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    claimed, accessions, output_dir, build_dir = _collect_sessions(tmp_path, "s1", "s2")
+    calls: list[tuple[ty.Any, ...]] = []
+
+    def record(*args: ty.Any) -> list[Path]:
+        calls.append(args)
+        assert not (output_dir / f"P.s1.v1_{RUN_UID}").exists()
+        return []
+
+    monkeypatch.setattr(composites_module, "warn_if_hardlinks_unavailable", record)
+    copy_mode = FileSet.CopyMode.copy
+    deliver_accessions(
+        accessions,
+        build_dir,
+        output_dir,
+        claimed,
+        LABEL_FIELDS,
+        constant_labels={"project": "P"},
+        copy_mode=copy_mode,
+    )
+    assert len(calls) == 1
+    assert list(calls[0][0]) == accessions
+    assert calls[0][1:3] == (build_dir, copy_mode)

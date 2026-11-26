@@ -2,11 +2,13 @@
 (see ``prefect-migration-docs/ROADMAP.md``, Phase 1, Composites)"""
 
 import typing as ty
+from pathlib import Path
 
 import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 
+from accessionflow.api.staging import for_each_accession
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -16,6 +18,7 @@ from accessionflow.helpers.arg_types import (
 )
 from accessionflow.model.accession import Accession
 
+from .assign import assign_labels
 from .claim import ClaimedFiles
 from .classify import (
     RecursionPlan,
@@ -31,8 +34,9 @@ from .metadata import (
     inject_fileset_tables,
     tag_fileset_types,
 )
+from .save import move_to_target, warn_if_hardlinks_unavailable
 
-__all__ = ["CollectedAccessions", "collect_accessions"]
+__all__ = ["CollectedAccessions", "collect_accessions", "deliver_accessions"]
 
 
 @attrs.frozen
@@ -142,6 +146,92 @@ def collect_accessions(
     )
     accessions = inject_accession_tables(accessions, metadata_tables)
     return CollectedAccessions(accessions=accessions, ignored=ignored)
+
+
+def deliver_accessions(
+    accessions: ty.Sequence[Accession],
+    build_dir: Path,
+    output_dir: Path,
+    claimed: ClaimedFiles,
+    label_fields: ty.Mapping[str, str],
+    *,
+    acquisition_field: str | None = None,
+    constant_labels: ty.Mapping[str, str] | None = None,
+    store_type: str | None = None,
+    copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
+    collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None,
+    conversion_map: (
+        dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None
+    ) = None,
+    raise_errors: bool = False,
+) -> list[tuple[Accession, str]]:
+    """Labels the accessions and delivers them to the target directory: steps 16 to 18
+
+    Runs `warn_if_hardlinks_unavailable` once, then, for each accession in turn,
+    `assign_labels` followed by `move_to_target` (with `for_each_accession`). An
+    accession that fails, e.g. with `LabelsNotAssignedError` or an error saving it, is
+    skipped and its files stay in the run directory. Pass the failures to
+    `finish_claim` as ``failed``, so that their files are recorded as failed in the
+    unprocessed directory.
+
+    Parameters
+    ----------
+    accessions : Sequence[Accession]
+        the accessions to deliver, from `collect_accessions`
+    build_dir : Path
+        the run's build directory, from `prepare_build_dir`
+    output_dir : Path
+        the target directory the accessions are moved into
+    claimed : ClaimedFiles
+        the run's claim, from `claim_input_files`
+    label_fields : Mapping[str, str]
+        the metadata field each label is made from, keyed by level (see
+        `assign_labels`)
+    acquisition_field : str, optional
+        the metadata field each acquisition's description is made from
+    constant_labels : Mapping[str, str], optional
+        labels used as given, keyed by level
+    store_type : str, optional
+        the data store the labels are for, e.g. 'xnat'
+    copy_mode : FileSet.CopyMode, optional
+        how the files are saved, by default hard-linked if possible, otherwise copied
+    collation_map : dict[type[FileSet], FileSet.CopyCollation], optional
+        the collation used to save each datatype
+    conversion_map : dict[type[FileSet], tuple[type[FileSet], dict[str, str]]], optional
+        the datatypes converted as they are saved, to a datatype and its options
+    raise_errors : bool, optional
+        whether to raise the first failure instead of skipping the accession. The
+        accessions before it have already been delivered
+
+    Returns
+    -------
+    list[tuple[Accession, str]]
+        each accession that failed, with its error message (traceback included), in
+        order. Empty if all were delivered
+    """
+    warn_if_hardlinks_unavailable(accessions, build_dir, copy_mode, conversion_map)
+
+    def deliver(accession: Accession) -> Path:
+        assign_labels(
+            accession,
+            label_fields,
+            acquisition_field=acquisition_field,
+            constant_labels=constant_labels,
+            store_type=store_type,
+        )
+        return move_to_target(
+            accession,
+            build_dir,
+            output_dir,
+            claimed,
+            copy_mode=copy_mode,
+            collation_map=collation_map,
+            conversion_map=conversion_map,
+        )
+
+    return for_each_accession(
+        accessions, deliver, "Delivering accessions", raise_errors=raise_errors
+    )
 
 
 def _note_original_paths(

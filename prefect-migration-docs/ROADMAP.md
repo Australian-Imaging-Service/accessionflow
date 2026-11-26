@@ -285,11 +285,11 @@ collect_accessions(
 - Tests: `api/tests/collate/test_composites.py`, which took over the tests that
   chained steps 7–14 by hand from `test_group.py` and `test_metadata.py`.
 - **Found:** with `--recursive`, a directory that matches an ignored directory format
-  (e.g. `DirectoryOf[Csv]`) is skipped whole by `expand_claimed_paths`. It is never
-  classified, so it isn't in `ignored`, and `finish_claim` records its files as
-  `unrecognised` instead of `ignored`. See [Open questions](#open-questions).
+  (e.g. `DirectoryOf[Csv]`) was skipped whole by `expand_claimed_paths`, so
+  `finish_claim` recorded its files as `unrecognised` instead of `ignored`. Fixed in
+  C4.
 
-**C3. `deliver_accessions`, steps 16–18**, in `composites.py`:
+**C3. `deliver_accessions`, steps 16–18**, in `composites.py`. **Done (2026-11-26).**
 
 ```python
 deliver_accessions(
@@ -304,39 +304,62 @@ deliver_accessions(
   followed by `move_to_target`.
 - Returns the accessions that failed, with their errors, including
   `LabelsNotAssignedError`, ready for `finish_claim`.
-- Tests: one accession delivered, one that can't be labelled, one whose save fails, and
-  `raise_errors=True` raising the first failure.
+- Tests, in `api/tests/collate/test_composites.py`:
+  - one accession delivered, one that can't be labelled and one whose save fails. This
+    is `test_claim.py`'s end-to-end test, moved and run on `collect_accessions` and
+    `deliver_accessions`.
+  - all delivered
+  - `raise_errors=True` raising the first failure
+  - the hard-link warning given once, before anything is delivered
 
 **C4. The new folder composite, `collate_files`**, in
-`sources/folder/api/collate_api.py`, alongside today's `collate()`:
+`sources/folder/api/collate_api.py`, alongside today's `collate()`. **Done
+(2026-11-26).**
 
 ```python
 collate_files(
-    input_files: list[Path], output_dir, working_dir, unprocessed_dir, error_dir,
-    label_fields, *, datatypes=..., source_roots=None,
-    <the collect and deliver options>, raise_errors=False,
+    input_files, output_dir, working_dir, unprocessed_dir, error_dir, label_fields, *,
+    datatypes=(DicomSeries,), ignore_datatypes=(), source_roots=None, recursive=False,
+    allow_unrecognised=(), dont_read_metadata=(),
+    accession_uid_field=DEFAULT_ACCESSION_UID_FIELD,
+    acquisition_id_field=DEFAULT_ACQUISITION_ID_FIELD,
+    resource_field=DEFAULT_RESOURCE_FIELD, path_metadata=(), path_metadata_regex=(),
+    metadata_tables=None, on_resource_clash="error", acquisition_field=None,
+    constant_labels=None, store_type=None, copy_mode=hardlink_or_copy,
+    collation_map=None, conversion_map=None, raise_errors=False,
 ) -> list[str]
 ```
 
-- Runs `check_datatypes`, `plan_recursion` and `load_metadata_tables`; then
-  `make_run_uid` with `prepare_build_dir(output_dir, run_uid, exclusive=True)`,
-  repeated while the UID is taken; then
-  `claim_input_files(input_files, working_dir, run_uid, source_roots)`.
-- Then, in a `try`: `collect_accessions` (with the patterns from
-  `merge_path_metadata`), `deliver_accessions`, and
-  `finish_claim(claimed, unprocessed_dir, failed, collected.ignored)`. Its `except`
-  calls `abandon_claim(claimed, error_dir, e)` and re-raises; its `finally` calls
-  `remove_build_dir(build_dir)`.
-- Logs the outcome with `log_stage_summary` and returns the error messages, as the CLI
-  expects.
-- Tests, through `collate_files` on small JSON trees:
+- The ID-spec parameters take the steps' names (`accession_uid_field`, ...), not the
+  old `collate()`'s (`accession_uid`, ...).
+- Checks first, before anything is changed: `check_datatypes`, `plan_recursion`,
+  `load_metadata_tables` and `merge_path_metadata`. Then `_start_run(output_dir)`, the
+  `make_run_uid` / `prepare_build_dir(exclusive=True)` loop, now shared with
+  `collate()`.
+- Then, in a `try`: `claim_input_files`, `collect_accessions`, `deliver_accessions` and
+  `finish_claim(claimed, unprocessed_dir, failed, collected.ignored)`. Its
+  `except Exception` calls `abandon_claim(claimed, error_dir, e)` and re-raises. A
+  claim that raised partway is reloaded from its plan (`ClaimedFiles.load`) to be
+  abandoned. Its `finally` calls `remove_build_dir(build_dir)`. An interrupt leaves the
+  claim in the working directory.
+- Returns the error messages. It doesn't log them: summarising is a CLI concern
+  (`cli/runner.py`), so the CLI step calls `log_stage_summary` (see [CLI](#cli)).
+- Tests, in `sources/folder/tests/test_collate_files.py`, on small JSON trees:
   - a run that delivers, with a leftover moved to `unprocessed_dir`
+  - an accession that can't be labelled, recorded as failed
   - a run that raises (an unrecognised file), whose claim goes to `error_dir`
+  - `raise_errors=True`, which abandons the run
+  - a claim that raises partway
   - the **race test** (see [Tests](#tests)): files added to the input directory during
-    a run stay there for the next run
-  - a clash of run UIDs
-  - `source_roots` set to the input directories, so the top-level entries match
-    today's
+    a run stay there for the next run, which collates them
+  - a clash of run UIDs, and every UID taken
+  - `source_roots` set to the input directory, so its top-level entries are classified
+    whole, as today
+  - with `--recursive`, an ignored directory recorded as ignored
+  - no input files, and a bad path-metadata pattern that changes nothing
+- **Also fixed:** with `--recursive`, `expand_claimed_paths` now yields a directory that
+  matches an ignored directory format, rather than skipping it. It is classified and
+  dropped as ignored, so `finish_claim` records its files as `ignored` (found in C2).
 
 **C5. Port the `from_paths` tests**, the regression net, before anything is removed:
 
@@ -374,8 +397,9 @@ variables. The body of `collate_cmd` becomes:
 5. `run_on_interval(run_once, loop, "collate")`, where each run calls
    `list_input_files(INPUT_PATHS, exclude_paths, metadata_table_paths=[t.table_file.fspath
    for t in metadata_tables])` and then `collate(...)`
-   with the files it listed and the arguments built by the option converters. Listing
-   again on every run picks up the files that arrived since the last one.
+   with the files it listed and the arguments built by the option converters, and logs
+   the errors it returns with `log_stage_summary(errors, "Collating")`. Listing again
+   on every run picks up the files that arrived since the last one.
 
 New options:
 
@@ -453,8 +477,9 @@ staged doesn't need draining.
   snapshot to their commands.
 - **A race test**: files are added to the input directory while a collation runs. Only
   the files listed at the start are collated, and the new ones stay for the next run.
-  The claim's part is already tested; this is the end-to-end test, through
-  `collate_files` (composites step C4).
+  The claim's part is already tested; the end-to-end test, through `collate_files`, is
+  `test_files_that_arrive_during_a_run_wait_for_the_next` in
+  `sources/folder/tests/test_collate_files.py` (done in composites step C4).
 - **Ported tests** (composites step C5), keeping their assertions as the regression
   net:
   - the 15 calls to `Accession.from_paths` in `model/tests/test_accession.py` and the 2
@@ -629,10 +654,6 @@ Status: Planned.
   (which needs them to pickle, and somewhere to store results), or should the batch
   steps also have variants that take and return paths? `Accession` objects do pickle
   (checked by C2's tests).
-- Should `expand_claimed_paths` return the ignored directories it skips with
-  `--recursive`, so that `collect_accessions` can classify them into `ignored` and
-  `finish_claim` records their files as `ignored` rather than `unrecognised` (found in
-  composites step C2)?
 - Can the Orthanc source reuse `save_accessions_to_dir` (see Phase 3)?
 - How does the flows repository pin its `accessionflow` version, and which release first
   publishes the collate step API?

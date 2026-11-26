@@ -142,14 +142,14 @@ def test_expand_recursion_prunes_on_directory_datatypes(tmp_path: Path) -> None:
         [
             "analysis/result.json",  # the wanted directory, yielded whole
             "analysis/notes.txt",
-            "lesion/data.csv",  # an ignored directory, skipped whole
+            "lesion/data.csv",  # an ignored directory, yielded whole
             "plain/deep/result.json",  # found by descending 'plain'
             "scan.txt",  # a loose file
         ],
     )
     assert _expand(
         claimed, [DirectoryOf[Json]], [DirectoryOf[Csv]], recursive=True
-    ) == ["analysis", "plain/deep", "scan.txt"]
+    ) == ["analysis", "lesion", "plain/deep", "scan.txt"]
 
 
 def test_expand_returns_only_claimed_entries(tmp_path: Path) -> None:
@@ -263,6 +263,7 @@ def test_classify_after_recursive_expansion(tmp_path: Path) -> None:
         (type(f).__name__, f.fspath.relative_to(claimed.files_dir).as_posix())
         for f in filesets
     ) == [
+        ("DirectoryOf[Csv]", "lesion"),
         ("DirectoryOf[Json]", "analysis"),
         ("DirectoryOf[Json]", "plain/deep"),
         ("Plain", "scan.txt"),

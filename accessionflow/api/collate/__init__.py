@@ -23,7 +23,11 @@ from .classify import (
     expand_claimed_paths,
     plan_recursion,
 )
-from .composites import CollectedAccessions, collect_accessions
+from .composites import (
+    CollectedAccessions,
+    collect_accessions,
+    deliver_accessions,
+)
 from .discover import list_input_files
 from .group import (
     acquisition_id_for,
@@ -65,6 +69,7 @@ __all__ = [
     "clash_hint_for",
     "classify_paths",
     "collect_accessions",
+    "deliver_accessions",
     "disable_metadata_reading",
     "drop_ignored_filesets",
     "expand_claimed_paths",

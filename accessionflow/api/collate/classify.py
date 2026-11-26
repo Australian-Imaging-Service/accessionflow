@@ -255,8 +255,9 @@ def expand_claimed_paths(
     - With ``recursive`` and only file datatypes: every claimed file under each root.
     - With ``recursive`` and a directory format among the wanted or ignored datatypes
       (``recursion.recurse_into_dirs``): a walk that keeps a directory matching a
-      wanted datatype whole, skips one matching an ignored directory format, and
-      descends into any other.
+      wanted datatype whole, also keeps one matching an ignored directory format
+      whole (to be classified and then dropped as ignored, so that `finish_claim`
+      records its files as ignored), and descends into any other.
 
     Only claimed files, and the directories that hold them, are ever returned. Roots
     inside another root are dropped, so nothing is listed twice. To get the same
@@ -310,8 +311,9 @@ def _walk_pruning(
     """Walks ``root``, yielding the entries in ``keep`` to classify
 
     A directory that validates as one of ``datatypes`` is yielded whole and not
-    descended into. A directory that validates only as an ``ignore_datatypes``
-    directory format is skipped whole. Any other directory is descended into. Every
+    descended into. So is a directory that validates only as an ``ignore_datatypes``
+    directory format, so that it is classified as that format and dropped as ignored
+    (``Accession.from_paths`` skips it instead). Any other directory is descended into. Every
     file is yielded, so an unlisted file type still raises when it is classified.
     Copied from ``accessionflow.model.accession._recursive_collect``, which
     ``Accession.from_paths`` uses until it is removed, with the filter on ``keep``
@@ -330,9 +332,11 @@ def _walk_pruning(
         for child in sorted(current.iterdir()):
             if child not in keep:
                 continue
-            if not child.is_dir() or any(dt.matches(child) for dt in want):
+            if (
+                not child.is_dir()
+                or any(dt.matches(child) for dt in want)
+                or any(dt.matches(child) for dt in skip)
+            ):
                 yield child
-            elif any(dt.matches(child) for dt in skip):
-                continue
             else:
                 stack.append(child)

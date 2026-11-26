@@ -23,6 +23,32 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-26, Phase 1, composites step C4, `sources/folder/api/collate_api.py`:
+  `collate_files`, the folder source's whole run on the collate steps, built alongside
+  today's `collate()`, which the CLI still runs.
+  - It checks the arguments before changing anything (`check_datatypes`,
+    `plan_recursion`, `load_metadata_tables`, `merge_path_metadata`).
+  - It makes the run UID and build directory, claims the given files, and runs
+    `collect_accessions` and `deliver_accessions`.
+  - It moves the files that weren't delivered to `<unprocessed_dir>/<run_uid>/`
+    (`finish_claim`), or, if a step raises, the whole claim to `<error_dir>/<run_uid>/`
+    (`abandon_claim`), including a claim that raised partway.
+  - It returns the error messages without logging them, as the CLI step will do with
+    `log_stage_summary`.
+
+  Its ID-spec parameters take the steps' names (`accession_uid_field`,
+  `acquisition_id_field`, `resource_field`). Tests in
+  `sources/folder/tests/test_collate_files.py`, including the end-to-end race test.
+  Nothing calls it yet. CLI unchanged. PR: pending.
+- 2026-11-26, Phase 1, composites step C3, `accessionflow/api/collate/composites.py`:
+  `deliver_accessions`. It runs `warn_if_hardlinks_unavailable` once, then
+  `assign_labels` and `move_to_target` on each accession, through
+  `for_each_accession`. It returns the accessions that failed with their error
+  messages, ready for `finish_claim`. An accession that can't be labelled
+  (`LabelsNotAssignedError`) or saved is skipped, and its files stay in the run
+  directory. With `raise_errors`, the first failure is raised. Tests in
+  `api/tests/collate/test_composites.py`. Nothing calls it yet. CLI unchanged. PR:
+  pending.
 - 2026-11-26, Phase 1, composites step C2, `accessionflow/api/collate/composites.py`:
   `collect_accessions`, which runs steps 7–15 in the order of the steps table and
   returns a `CollectedAccessions` record. The record holds the accessions and the
@@ -190,6 +216,22 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1, composites step C4:
+  - `expand_claimed_paths` (`api/collate/classify.py`): with `--recursive`, a
+    directory that matches an ignored directory format (e.g. `DirectoryOf[Csv]`) is
+    yielded whole instead of skipped. It is classified and then dropped as ignored, so
+    `collect_accessions` returns it in `ignored` and `finish_claim` records its files
+    as `ignored`, where it recorded them as `unrecognised`. The accessions don't change.
+    Tests updated in `test_classify.py` and `test_composites.py`.
+  - The folder `collate()` makes its run UID and build directory with
+    `_start_run(output_dir)`, shared with `collate_files`. No change in behaviour.
+
+  CLI unchanged. PR: pending.
+- 2026-11-26, Phase 1, composites step C3, tests only:
+  `test_steps_end_to_end_with_a_leftover` moved from `api/tests/collate/test_claim.py`
+  to `test_composites.py` as `test_deliver_one_of_each_case`. It now runs on
+  `collect_accessions` and `deliver_accessions`, and keeps its assertions on
+  `finish_claim`. CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1, composites step C2, tests only: the tests that chained steps 7–14
   by hand (`test_steps_7_to_14_like_from_paths_datatype_field` and `..._recursive` in
   `test_group.py`, and `test_steps_7_to_11_together` in `test_metadata.py`) moved to
@@ -719,6 +761,12 @@ To confirm:
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, composites step C4:
+  - added, in `accessionflow.sources.folder.api.collate_api`:
+    `collate_files(input_files, output_dir, working_dir, unprocessed_dir, error_dir, label_fields, *, datatypes=(DicomSeries,), ignore_datatypes=(), source_roots=None, recursive=False, allow_unrecognised=(), dont_read_metadata=(), accession_uid_field=..., acquisition_id_field=..., resource_field=..., path_metadata=(), path_metadata_regex=(), metadata_tables=None, on_resource_clash="error", acquisition_field=None, constant_labels=None, store_type=None, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None, raise_errors=False) -> list[str]`
+  - changed: `expand_claimed_paths` yields the ignored directories it used to skip
+- 2026-11-26, Phase 1, composites step C3, added in `accessionflow.api.collate`:
+  - `deliver_accessions(accessions, build_dir, output_dir, claimed, label_fields, *, acquisition_field=None, constant_labels=None, store_type=None, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None, raise_errors=False) -> list[tuple[Accession, str]]`
 - 2026-11-26, Phase 1, composites step C2, added in `accessionflow.api.collate`:
   - `collect_accessions(claimed, datatypes, recursion, *, accession_uid_field, recursive=False, allow_unrecognised=(), dont_read_metadata=(), path_metadata_regex=(), metadata_tables=(), acquisition_id_field=(), resource_field=(), on_resource_clash="error", run_uid=None) -> CollectedAccessions`
   - `CollectedAccessions(accessions, ignored)`, a frozen attrs record that pickles
