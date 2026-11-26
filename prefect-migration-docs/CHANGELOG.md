@@ -280,6 +280,13 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, documents, `ROADMAP.md` only: adds the Phase 1 section "Store-neutral
+  labels" (steps N1–N5), the next step of Phase 1, before Phase 2. Collate will label
+  every accession with project, subject and session only, with no `--store` and no
+  `store_type`, and each store will build its own naming from the labels and the
+  metadata at the start of the store stage. The `--store` and per-store label options
+  that the CLI step added to `collate folder` are to be removed in N1, before they are
+  released. Phase 1 is in progress again. No code changes. PR: pending.
 - 2026-11-26, Phase 1, tests follow-up:
   - The help of the `collate` group no longer says the accessions are "ready to be
     labelled": `collate folder` labels them, and the accessions of other sources are

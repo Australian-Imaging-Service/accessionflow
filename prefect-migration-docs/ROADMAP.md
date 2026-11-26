@@ -141,7 +141,7 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: **Done** (2026-11-26). Recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API):
+Status: In progress. Done, and recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API):
 the step functions (steps 0–20), the three design changes made since ("Phase 1 design
 records"), the composites (C1–C5), the accession combiner, the option converters, the
 CLI, the removals and the tests. Collate is split into two parts:
@@ -152,6 +152,9 @@ CLI, the removals and the tests. Collate is split into two parts:
 2. **The accession combiner** ([Combine](#combine)). When a project.subject.session has
    had no new run accession for a given time, it combines that session's run
    accessions into a single accession and writes it to the output directory.
+
+What is left: [Store-neutral labels](#store-neutral-labels) (N1–N5), which comes before
+Phase 2, since it changes the step API that Phase 2 releases.
 
 The call chain before the CLI step was:
 
@@ -251,7 +254,9 @@ and environment variables, which the CLI contract snapshot checks. The decisions
   `collate folder` has every installed store's label options, with the same names and
   environment variables as `label <store>` (built by `cli/label_options.py`), except
   that the folder store's `--acquisition` is `--folder-acquisition`, since
-  `--acquisition` is already the acquisition ID.
+  `--acquisition` is already the acquisition ID. **Replaced by
+  [Store-neutral labels](#store-neutral-labels), N1**: these options were never
+  released, and collate will label project, subject and session only.
 - **`--primary-label`** (by default `combined`) names the combined accessions,
   `<labels>_<primary_label>`.
 - **`--runs-dir`, `--working-dir`, `--unprocessed-dir` and `--error-dir`** default to
@@ -303,6 +308,102 @@ layout) with the CLI step.
   on today's commands, and `usyd_transfer.py` is deleted, since its command was
   removed (see `CHANGELOG.md`, Changed). The XNAT server and deidentify tests in
   `cli/tests/test_cli.py` are left for Phase 7.
+
+### Store-neutral labels
+
+Status: Planned (2026-11-26). The next step of Phase 1.
+
+Since the [CLI](#cli) step, collate labels the accessions for a store. `collate folder`
+takes `--store` and every installed store's label options, and the accessions carry the
+store's names:
+
+- **The labels are keyed by the store's levels:** XNAT's project, subject and session,
+  or the folder store's arbitrary `--level`s.
+- **The accession records a `store_type`,** and the stores and the combiner refuse an
+  accession labelled for another store.
+
+That is premature at collate. Every field the names are made from is in the
+accession's metadata. A store-neutral `{project}.{subject}.{session}` identifies an
+accession through every stage, and each store can build its own naming from the labels
+and the metadata at the start of the store stage. So collate needs to know about
+project, subject and session, and nothing about stores.
+
+**The model.**
+
+- Every staged accession is labelled with the same three levels, `project`, `subject`
+  and `session`, whatever store it is going to. Its directory is
+  `<project>.<subject>.<session>_<suffix>`, as now.
+- Its acquisitions keep their store-neutral descriptions, resolved in collate with
+  `--scan` (by default `SeriesDescription`). The staging layout is unchanged.
+- It no longer records a `store_type`.
+- Each store turns the three labels, and the accession's metadata, into its own naming
+  at the start of the store stage:
+  - XNAT uses them as its project, subject and session.
+  - The folder store deposits `<root>/<project>/<subject>/<session>/...`, or the
+    hierarchy a deprecated `label folder --level` asked for, built from the
+    accession's metadata.
+
+**Steps.** Each one is reviewed and recorded on its own, and leaves the tests passing:
+
+- **N1. Collate labels project, subject and session only.**
+  - In `collate folder`, the options the CLI step added are removed: `--store`, the
+    folder store's `--level`, `--constant-label` and `--folder-acquisition`. They were
+    never released. So is the per-store generation and refusal of options in
+    `sources/folder/cli/collate_cli.py`.
+  - Fixed options take their place, with the names and environment variables of
+    `label xnat`: `--project`, `--subject` and `--session` (by default
+    `StudyComments`, `PatientID` and `AccessionNumber`), `--scan` (by default
+    `SeriesDescription`) and `--constant-project-id`.
+  - `cli/label_options.py` shrinks to that one fixed set.
+  - `store_type` leaves `assign_labels`, `move_accessions` and the folder `collate`,
+    and the combiner no longer compares it.
+  - The contract snapshot's `ADDED` set for `collate folder` shrinks to match. No
+    released parameter changes.
+- **N2. The store stage names the accession.**
+  - Each store gets a step, run first for each accession, that gives the accession's
+    name in the store:
+    - XNAT: its project, subject and session.
+    - Folder: the path of its folders, by default `<project>/<subject>/<session>`.
+  - `store` and `check-store` use the step for both stores, so the two always agree.
+  - The `store_type` refusals in `stores/xnat/api/store_api.py` and
+    `stores/folder/layout.py` go.
+- **N3. `label <store>` becomes store-neutral.**
+  - `label xnat` keeps its options, and labels project, subject and session.
+  - `label folder --level NAME FIELD ...`, `--constant-label` and `--acquisition`
+    (released in v0.20.5) stay accepted, with a deprecation warning (principle 11).
+    The levels and constants are saved in the accession's metadata, not as its labels,
+    and N2's folder step builds the hierarchy from them and the accession's metadata.
+  - For the project, subject and session `label folder` gives, see the open questions
+    below.
+- **N4. The model has fixed levels.**
+  - `Accession.labels` holds exactly project, subject and session, and
+    `Accession.label` checks this.
+  - `store_type` and the writing of `__store_type__` go. An accession saved by an
+    earlier version still loads, and its `__store_type__` is ignored.
+  - `Store.labels` and `Store.acquisition` (`model/store.py`), and the per-store label
+    commands built from them (`cli/label_cli.py::make_label_command`), give way to
+    what each store needs at the store stage.
+  - Deidentify selects recipes by the project label, which it does today through the
+    first label (`api/deidentify_api.py`).
+- **N5. Docs and the staging layout.**
+  - The user docs: `docs/source/concepts.rst`, `docs/source/stages/label.rst`,
+    `docs/source/sources/folder.rst` and the folder store's page.
+  - A [`CHANGELOG.md`](CHANGELOG.md) Staging layout entry: `__store_type__` is no
+    longer written, and accessions labelled by an earlier `label folder` with levels
+    other than project, subject and session must be stored before upgrading.
+  - `MIGRATING.md` is updated in Phase 10.
+
+**Open questions**, each settled in the step named:
+
+- **N3:** what project, subject and session does a deprecated
+  `label folder --level ...` give an accession? Recipes are selected by the project,
+  so this matters to `deidentify`. Two candidates:
+  - (a) its own `--project`, `--subject` and `--session` options, added to it, with
+    the XNAT defaults
+  - (b) its first level as the project, its last as the session, and the levels in
+    between joined as the subject
+- **N2:** does the folder step escape a label or field value that isn't a valid folder
+  name, as XNAT IDs are escaped (`IDSpec.xnat_id_escape_re`)?
 
 ## Phase 2: Collate step API hand-off
 
@@ -366,6 +467,9 @@ nested closures. The expected steps are:
 Orthanc's storage files don't change once written, so the Phase 1 claim step isn't
 needed: the study labels already mark which studies a run has taken.
 
+Like `collate folder` after [Store-neutral labels](#store-neutral-labels) N1,
+`collate orthanc` labels project, subject and session, with no store options.
+
 Open: whether Orthanc staging can reference the files in place and reuse the Phase 1
 save steps (`save_to_build_dir`, `move_to_target`), as the comment at
 `sources/orthanc/api/collate_api.py:101` asks of `save_accessions_to_dir`, which the
@@ -386,7 +490,9 @@ attached source files. The second loop then goes away.
 
 Status: Planned. Outline. **To be replanned:** labelling has moved into collate
 (`assign_labels`, Phase 1), so the `label` command is deprecated once every source
-labels in collate, and kept until then (the Orthanc source, Phase 3). The split below
+labels in collate, and kept until then (the Orthanc source, Phase 3). `label <store>`
+becomes store-neutral first, in Phase 1 ([Store-neutral labels](#store-neutral-labels),
+N3). The split below
 applies only if `label` is still needed by then.
 
 The current entry point is `api/label_api.py::label()` (L65-333), called by each store's
@@ -436,7 +542,8 @@ selecting, converting and saving the resources.
 Status: Planned. Outline.
 
 The current entry points are the `store()` and `check_store()` functions of each store
-plugin:
+plugin. Each starts with the step that names an accession in the store, added in
+Phase 1 ([Store-neutral labels](#store-neutral-labels), N2).
 
 - `stores/xnat/api/store_api.py::store()` (L108-721) is the largest function in the
   code base. Its existing helpers (`select_files_to_upload`, `session_upload_verdict`,
