@@ -209,21 +209,21 @@ def test_files_that_arrive_during_a_run_wait_for_the_next(
     """The race test: a file added to the input directory after the listing stays there
     and is collated by the next run"""
     _write(dirs.inbox, {"s1/a.json": "{}"})
-    real_collect = collate_api.collect_accessions
+    real_collect = collate_api.build_filesets
 
     def arrive_then_collect(*args: ty.Any, **kwargs: ty.Any) -> ty.Any:
         _write(dirs.inbox, {"s2/late.json": "{}"})
         return real_collect(*args, **kwargs)
 
     table = _visit_table(tmp_path, "s1", "s2")
-    monkeypatch.setattr(collate_api, "collect_accessions", arrive_then_collect)
+    monkeypatch.setattr(collate_api, "build_filesets", arrive_then_collect)
     assert _run(dirs, metadata_tables=[table]) == []
     assert [p.relative_to(dirs.inbox).as_posix() for p in _files_under(dirs.inbox)] == [
         "s2/late.json"
     ]
     assert [n.split("_")[0] for n in _delivered(dirs)] == ["P.s1.v1"]
 
-    monkeypatch.setattr(collate_api, "collect_accessions", real_collect)
+    monkeypatch.setattr(collate_api, "build_filesets", real_collect)
     assert _run(dirs, metadata_tables=[table]) == []
     assert sorted(n.split("_")[0] for n in _delivered(dirs)) == ["P.s1.v1", "P.s2.v1"]
     assert _files_under(dirs.inbox) == []

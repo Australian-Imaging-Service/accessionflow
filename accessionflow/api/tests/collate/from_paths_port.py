@@ -9,9 +9,11 @@ from pathlib import Path
 from fileformats.core import FileSet
 
 from accessionflow.api.collate import (
+    apply_fileset_metadata,
+    build_accessions,
+    build_filesets,
     check_datatypes,
     claim_input_files,
-    collect_accessions,
     list_input_files,
     load_metadata_tables,
     make_run_uid,
@@ -73,18 +75,26 @@ def collect_like_from_paths(
 
     run_uid = make_run_uid()
     claimed = claim_input_files(files, working_dir, run_uid, roots)
-    return collect_accessions(
+    classified = build_filesets(
         claimed,
         datatypes,
         recursion,
-        accession_uid_field=accession_uid_field,
         recursive=recursive,
         allow_unrecognised=allow_unrecognised or (),
+    )
+    filesets = apply_fileset_metadata(
+        classified.filesets,
+        claimed,
         dont_read_metadata=dont_read_metadata,
         path_metadata_regex=path_metadata_regex,
         metadata_tables=tables,
+    )
+    return build_accessions(
+        filesets,
+        accession_uid_field=accession_uid_field,
         acquisition_id_field=acquisition_id_field,
         resource_field=resource_field,
         on_resource_clash=on_resource_clash,
         run_uid=run_uid,
-    ).accessions
+        metadata_tables=tables,
+    )

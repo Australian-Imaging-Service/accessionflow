@@ -231,6 +231,28 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1, `accessionflow/api/collate/composites.py`: the composites are
+  restructured, one per stage of a run, following the groups of the step reference.
+  - `build_filesets` (steps 7–9) runs `expand_claimed_paths`, `classify_paths` and
+    `drop_ignored_filesets`. It returns a `ClassifiedFilesets(filesets, ignored)`
+    record, and keeps the original-path note on `FormatMismatchError`.
+  - `apply_fileset_metadata` (steps 10–13) runs `disable_metadata_reading`,
+    `apply_path_metadata`, `tag_fileset_types` and `inject_fileset_tables`.
+  - `build_accessions` (steps 14–15) runs `group_into_accessions` and
+    `inject_accession_tables`.
+  - `move_accessions` (steps 16–18) is `deliver_accessions`, renamed.
+  - `drop_ignored_filesets` now runs before `disable_metadata_reading`, so they are
+    steps 9 and 10. Disabling only sets a flag, so results don't change.
+  - Removed: `collect_accessions`, `CollectedAccessions` and `deliver_accessions`.
+    `collate_files` and `api/tests/collate/from_paths_port.py` call the four
+    composites.
+  - Tests: `api/tests/collate/test_composites.py` chains the first three where it
+    called `collect_accessions`, with its assertions unchanged. The `deliver_*` tests
+    are renamed `test_move_accessions_*`, and there is a new test for each of the
+    first three composites on its own. The race test in `test_collate_files.py`
+    patches `build_filesets`.
+
+  CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1: `merge_path_metadata` moves from the folder source into the core
   collate API, so the core no longer depends on a source for it.
   - `merge_path_metadata` is now in `accessionflow/api/collate/metadata.py`, and is
@@ -273,7 +295,7 @@ contract, so each entry says "CLI unchanged".
     as `ignored`, where it recorded them as `unrecognised`. The accessions don't change.
     Tests updated in `test_classify.py` and `test_composites.py`.
   - The folder `collate()` makes its run UID and build directory with
-    `_start_run(output_dir)`, shared with `collate_files`. No change in behaviour.
+    `_create_run_directory(output_dir)`, shared with `collate_files`. No change in behaviour.
 
   CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1, composites step C3, tests only:
@@ -478,15 +500,16 @@ The steps fall into eight groups. In the table, `#` is the step's number in the 
 order; the steps in a group marked `–` are helpers that the numbered step uses,
 or the record a step returns. Each group's table gives each step's signature, its
 module in `accessionflow/api/collate/` (unless another path is shown), where it was
-taken from, and what it does.
+taken from, and what it does. Steps 9 and 10 were swapped on 2026-11-26, when the
+composites were restructured to follow these groups (see the dated entries).
 
 | Group | Steps |
 | --- | --- |
 | List input files | 0 `list_input_files` |
 | Check parameters | 1 `check_datatypes`, 2 `plan_recursion`, 3 `load_metadata_tables` |
 | Set up the run directory | 4 `make_run_uid`, 5 `prepare_build_dir`, 6 `claim_input_files` |
-| Determine the file-sets | 7 `expand_claimed_paths`, 8 `classify_paths`, 10 `drop_ignored_filesets` |
-| Apply metadata | 9 `disable_metadata_reading`, 11 `apply_path_metadata`, 12 `tag_fileset_types`, 13 `inject_fileset_tables` |
+| Determine the file-sets | 7 `expand_claimed_paths`, 8 `classify_paths`, 9 `drop_ignored_filesets` |
+| Apply metadata | 10 `disable_metadata_reading`, 11 `apply_path_metadata`, 12 `tag_fileset_types`, 13 `inject_fileset_tables` |
 | Form accessions | 14 `group_into_accessions`, 15 `inject_accession_tables` |
 | Assign and deliver | 16 `warn_if_hardlinks_unavailable`, 17 `assign_labels`, 18 `move_to_target` |
 | Clean up | 19 `finish_claim`, 20 `remove_build_dir` |
@@ -543,7 +566,7 @@ Turn the claimed files into file-sets of the wanted datatypes.
 | --- | --- | --- | --- | --- |
 | 7 | `expand_claimed_paths(claimed, datatypes, recursion, recursive=False) -> list[Path]` | `classify.py` | L920-968 | Takes the `RecursionPlan` from step 2. Applies today's expansion rules to the outermost claimed roots: without `recursive`, each root's top-level entries (so a subdirectory such as a DICOM directory is classified whole); with `recursive` and only file datatypes, every claimed file (the directories that today's glob also lists, only for `Directory` to drop them, are left out); with `recursive` and a directory format among the wanted or ignored datatypes, the prune-on-match walk, copied from `_recursive_collect` (L265) as `_walk_pruning`, so `--recursive` and directory datatypes behave as they do now. Only claimed files and the directories that hold them are returned, so a leftover temporary file or anything else in the run directory is never classified. A root inside another root is dropped, so nothing is listed twice; the caller claims with its input directories as the source roots to get today's top-level entries. `from_paths` keeps `_recursive_collect` until it is removed |
 | 8 | `classify_paths(fspaths, datatypes, ignore_datatypes=(), allow_unrecognised=()) -> list[FileSet]` | `classify.py` | L990-999 | `fileformats.core.from_paths` with the wanted datatypes before the ignored ones, so the first match wins and a wanted datatype beats an ignored one. The file-sets are returned sorted by path, because `fileformats` returns them in an order that changes from run to run, and with it the order of the accessions. `ignore_datatypes` is `RecursionPlan.ignore_datatypes` from step 2. File-sets of ignored datatypes are returned; step 10 drops them. The `allow_unrecognised` regular expressions are matched from the start of each path's base name, and any other unrecognised path raises `FormatMismatchError` |
-| 10 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes=()) -> list[FileSet]` | `classify.py` | L1009-1019 | Returns a new list without the file-sets of the ignored datatypes (`RecursionPlan.ignore_datatypes`), matched with `isinstance`. A wanted datatype wins, so a wanted `DirectoryOf[Json]` isn't dropped because `Directory` is ignored. The dropped file-sets' files stay in the processing area, for `finish_claim` to report |
+| 9 | `drop_ignored_filesets(filesets, datatypes, ignore_datatypes=()) -> list[FileSet]` | `classify.py` | L1009-1019 | Returns a new list without the file-sets of the ignored datatypes (`RecursionPlan.ignore_datatypes`), matched with `isinstance`. A wanted datatype wins, so a wanted `DirectoryOf[Json]` isn't dropped because `Directory` is ignored. The dropped file-sets' files stay in the processing area, for `finish_claim` to report |
 
 ##### Apply metadata
 
@@ -551,7 +574,7 @@ Add metadata to the file-sets from their paths, their types and the metadata tab
 
 | # | Step | Module | From | Notes |
 | --- | --- | --- | --- | --- |
-| 9 | `disable_metadata_reading(filesets, dont_read_metadata=()) -> list[FileSet]` | `classify.py` | L1000-1007 | Sets the public `fileset.metadata.read_disabled` (in `fileformats` 0.22.8, the minimum version) on each file-set that is an instance of one of the datatypes, so a subclass matches too. Changes the file-sets in place and returns the same ones. `from_paths` now uses the public setter too, which resolves its TODO |
+| 10 | `disable_metadata_reading(filesets, dont_read_metadata=()) -> list[FileSet]` | `classify.py` | L1000-1007 | Sets the public `fileset.metadata.read_disabled` (in `fileformats` 0.22.8, the minimum version) on each file-set that is an instance of one of the datatypes, so a subclass matches too. Changes the file-sets in place and returns the same ones. `from_paths` now uses the public setter too, which resolves its TODO |
 | 11 | `apply_path_metadata(filesets, path_metadata_regex=(), claimed=None) -> list[FileSet]` | `metadata.py` | L1021-1035 | Matches each regular expression, in order, against the path of each file-set of its datatype (`fspath`, or `parent` for a file-set of several files such as a DICOM series), mapped back to its **original** path with `claimed.original_of`, so `--path-metadata` and `--path-metadata-regex` patterns, including ones anchored with `/`, match the same paths as today. A later pattern wins for the same field. A pattern that doesn't match raises `ValueError` naming the original path. Changes the file-sets' metadata in place and returns them. No progress bar. Without `claimed`, the file-sets' own paths are matched |
 | 12 | `tag_fileset_types(filesets) -> list[FileSet]` | `metadata.py` | L1037-1041 | Sets each file-set's `__datatype__` field (`Accession.TYPE_METADATA_KEY`) to its `type_name`, e.g. `DicomSeries`, for use in `--accession`, `--acquisition` and `--resource` specs. Uses `setdefault`, so a value already set is kept: a path-metadata group of the same name (step 11 runs first) or a header field. The metadata tables (step 13) come after it and can override it. Changes the file-sets in place and returns them |
 | 13 | `inject_fileset_tables(filesets, metadata_tables=None) -> list[FileSet]` | `metadata.py` | L1043 | `MetadataTable.inject_list` on the file-sets: only `fileset` tables apply, joined on the file-sets' metadata (e.g. a path-metadata field), and every column of the one matching row is merged; several matching rows raise `ValueError`. Changes the file-sets in place and returns them |
@@ -813,7 +836,12 @@ To confirm:
 
 The composites of the collate steps, moved from `ROADMAP.md` when they were done
 (2026-11-26), with the two Phase 1 test items they completed. The dated entries record
-each step's changes. As planned:
+each step's changes.
+
+Later the same day, C2's `collect_accessions` and C3's `deliver_accessions` were
+restructured into four composites, one per stage of a run: `build_filesets`,
+`apply_fileset_metadata`, `build_accessions` and `move_accessions` (see the dated
+entries). The record below is as C1–C5 were built. As planned:
 
 > Plain-Python sequences of the steps, which the CLI runs; the flows
 > repository wraps the same steps in the same order (principle 10). Their signatures can
@@ -910,7 +938,7 @@ collate_files(
 - The ID-spec parameters take the steps' names (`accession_uid_field`, ...), not the
   old `collate()`'s (`accession_uid`, ...).
 - Checks first, before anything is changed: `check_datatypes`, `plan_recursion`,
-  `load_metadata_tables` and `merge_path_metadata`. Then `_start_run(output_dir)`, the
+  `load_metadata_tables` and `merge_path_metadata`. Then `_create_run_directory(output_dir)`, the
   `make_run_uid` / `prepare_build_dir(exclusive=True)` loop, now shared with
   `collate()`.
 - Then, in a `try`: `claim_input_files`, `collect_accessions`, `deliver_accessions` and
@@ -987,6 +1015,13 @@ Status: **Done** (2026-11-26). The regression net, before anything is removed.
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, the composites restructured, in `accessionflow.api.collate`:
+  - added: `build_filesets(claimed, datatypes, recursion, *, recursive=False, allow_unrecognised=()) -> ClassifiedFilesets`
+  - added: `apply_fileset_metadata(filesets, claimed, *, dont_read_metadata=(), path_metadata_regex=(), metadata_tables=()) -> list[FileSet]`
+  - added: `build_accessions(filesets, *, accession_uid_field, acquisition_id_field=(), resource_field=(), on_resource_clash="error", run_uid=None, metadata_tables=()) -> list[Accession]`
+  - added: `ClassifiedFilesets(filesets, ignored)`, a frozen attrs record that pickles
+  - renamed: `deliver_accessions` to `move_accessions`, with the same signature
+  - removed: `collect_accessions`, `CollectedAccessions`
 - 2026-11-26, Phase 1, moved:
   - `merge_path_metadata(path_metadata=(), path_metadata_regex=()) -> list[PathMetadataRegex]`,
     to `accessionflow.api.collate` (`metadata.py`)

@@ -36,48 +36,45 @@ from .metadata import (
 )
 from .save import move_to_target, warn_if_hardlinks_unavailable
 
-__all__ = ["CollectedAccessions", "collect_accessions", "deliver_accessions"]
+__all__ = [
+    "ClassifiedFilesets",
+    "apply_fileset_metadata",
+    "build_accessions",
+    "build_filesets",
+    "move_accessions",
+]
 
 
 @attrs.frozen
-class CollectedAccessions:
-    """What `collect_accessions` returns
+class ClassifiedFilesets:
+    """What `build_filesets` returns
 
     Attributes
     ----------
-    accessions : list[Accession]
-        the accessions formed from the claimed files, with their metadata
+    filesets : list[FileSet]
+        the file-sets of the wanted datatypes, for `apply_fileset_metadata`
     ignored : list[FileSet]
         the file-sets of ignored datatypes, which `drop_ignored_filesets` dropped. Pass
         them to `finish_claim`, which records their files as ignored
     """
 
-    accessions: list[Accession] = attrs.field(converter=list)
+    filesets: list[FileSet] = attrs.field(converter=list)
     ignored: list[FileSet] = attrs.field(converter=list)
 
 
-def collect_accessions(
+def build_filesets(
     claimed: ClaimedFiles,
     datatypes: ty.Sequence[type[FileSet]],
     recursion: RecursionPlan,
     *,
-    accession_uid_field: ty.Sequence[IDSpec],
     recursive: bool = False,
     allow_unrecognised: ty.Sequence[str] = (),
-    dont_read_metadata: ty.Sequence[type[FileSet]] = (),
-    path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
-    metadata_tables: ty.Sequence[MetadataTable] = (),
-    acquisition_id_field: ty.Sequence[IDSpec] = (),
-    resource_field: ty.Sequence[IDSpec] = (),
-    on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
-    run_uid: str | None = None,
-) -> CollectedAccessions:
-    """Forms the accessions from the claimed files: steps 7 to 15
+) -> ClassifiedFilesets:
+    """Turns the claimed files into file-sets: steps 7 to 9
 
-    Runs, in order, `expand_claimed_paths`, `classify_paths`,
-    `disable_metadata_reading`, `drop_ignored_filesets`, `apply_path_metadata`,
-    `tag_fileset_types`, `inject_fileset_tables`, `group_into_accessions` and
-    `inject_accession_tables`. See each step for its arguments.
+    Runs, in order, `expand_claimed_paths`, `classify_paths` and
+    `drop_ignored_filesets`. No metadata is read or applied: that is
+    `apply_fileset_metadata`.
 
     Parameters
     ----------
@@ -87,33 +84,15 @@ def collect_accessions(
         the datatypes to collate, checked by `check_datatypes`
     recursion : RecursionPlan
         from `plan_recursion`, whose ``ignore_datatypes`` are the datatypes dropped
-    accession_uid_field : Sequence[IDSpec]
-        how each file-set's accession is identified
     recursive : bool, optional
         whether to classify the files in the claimed directories one by one
     allow_unrecognised : Sequence[str], optional
         patterns of the base names that no datatype needs to recognise
-    dont_read_metadata : Sequence[type[FileSet]], optional
-        the datatypes whose files aren't read for metadata
-    path_metadata_regex : Sequence[PathMetadataRegex], optional
-        the path-metadata regexes, already merged with the glob-like patterns
-        (`merge_path_metadata`)
-    metadata_tables : Sequence[MetadataTable], optional
-        the metadata tables, already loaded (`load_metadata_tables`), because a table
-        delivered with the data may have been claimed
-    acquisition_id_field : Sequence[IDSpec], optional
-        how each file-set's acquisition is identified
-    resource_field : Sequence[IDSpec], optional
-        how each file-set's resource is labelled
-    on_resource_clash : OnResourceClash | Sequence[ClashSpec], optional
-        what to do when two file-sets have the same acquisition and resource
-    run_uid : str, optional
-        the run's UID, given to the accessions
 
     Returns
     -------
-    CollectedAccessions
-        the accessions, and the ignored file-sets for `finish_claim`
+    ClassifiedFilesets
+        the file-sets to collate, and the ignored file-sets for `finish_claim`
 
     Raises
     ------
@@ -129,13 +108,88 @@ def collect_accessions(
     except FormatMismatchError as e:
         _note_original_paths(e, fspaths, claimed)
         raise
-    classified = disable_metadata_reading(classified, dont_read_metadata)
     filesets = drop_ignored_filesets(classified, datatypes, recursion.ignore_datatypes)
     kept_ids = {id(f) for f in filesets}
     ignored = [f for f in classified if id(f) not in kept_ids]
+    return ClassifiedFilesets(filesets=filesets, ignored=ignored)
+
+
+def apply_fileset_metadata(
+    filesets: ty.Sequence[FileSet],
+    claimed: ClaimedFiles,
+    *,
+    dont_read_metadata: ty.Sequence[type[FileSet]] = (),
+    path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
+    metadata_tables: ty.Sequence[MetadataTable] = (),
+) -> list[FileSet]:
+    """Adds the file-sets' metadata: steps 10 to 13
+
+    Runs, in order, `disable_metadata_reading`, `apply_path_metadata`,
+    `tag_fileset_types` and `inject_fileset_tables`. The file-sets are changed in
+    place, and returned.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets, from `build_filesets`
+    claimed : ClaimedFiles
+        the run's claim, whose original paths the path metadata is read from
+    dont_read_metadata : Sequence[type[FileSet]], optional
+        the datatypes whose files aren't read for metadata
+    path_metadata_regex : Sequence[PathMetadataRegex], optional
+        the path-metadata regexes, already merged with the glob-like patterns
+        (`merge_path_metadata`)
+    metadata_tables : Sequence[MetadataTable], optional
+        the metadata tables, already loaded (`load_metadata_tables`)
+
+    Returns
+    -------
+    list[FileSet]
+        the same file-sets, with their metadata, for `build_accessions`
+    """
+    filesets = disable_metadata_reading(filesets, dont_read_metadata)
     filesets = apply_path_metadata(filesets, path_metadata_regex, claimed)
     filesets = tag_fileset_types(filesets)
-    filesets = inject_fileset_tables(filesets, metadata_tables)
+    return inject_fileset_tables(filesets, metadata_tables)
+
+
+def build_accessions(
+    filesets: ty.Sequence[FileSet],
+    *,
+    accession_uid_field: ty.Sequence[IDSpec],
+    acquisition_id_field: ty.Sequence[IDSpec] = (),
+    resource_field: ty.Sequence[IDSpec] = (),
+    on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
+    run_uid: str | None = None,
+    metadata_tables: ty.Sequence[MetadataTable] = (),
+) -> list[Accession]:
+    """Groups the file-sets into accessions: steps 14 and 15
+
+    Runs `group_into_accessions`, then `inject_accession_tables`.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets with their metadata, from `apply_fileset_metadata`
+    accession_uid_field : Sequence[IDSpec]
+        how each file-set's accession is identified
+    acquisition_id_field : Sequence[IDSpec], optional
+        how each file-set's acquisition is identified
+    resource_field : Sequence[IDSpec], optional
+        how each file-set's resource is labelled
+    on_resource_clash : OnResourceClash | Sequence[ClashSpec], optional
+        what to do when two file-sets have the same acquisition and resource
+    run_uid : str, optional
+        the run's UID, given to the accessions
+    metadata_tables : Sequence[MetadataTable], optional
+        the metadata tables, already loaded (`load_metadata_tables`), whose accession,
+        acquisition and resource rows are joined
+
+    Returns
+    -------
+    list[Accession]
+        the accessions, for `move_accessions`
+    """
     accessions = group_into_accessions(
         filesets,
         accession_uid_field,
@@ -144,11 +198,10 @@ def collect_accessions(
         on_resource_clash,
         run_uid,
     )
-    accessions = inject_accession_tables(accessions, metadata_tables)
-    return CollectedAccessions(accessions=accessions, ignored=ignored)
+    return inject_accession_tables(accessions, metadata_tables)
 
 
-def deliver_accessions(
+def move_accessions(
     accessions: ty.Sequence[Accession],
     build_dir: Path,
     output_dir: Path,
@@ -165,7 +218,7 @@ def deliver_accessions(
     ) = None,
     raise_errors: bool = False,
 ) -> list[tuple[Accession, str]]:
-    """Labels the accessions and delivers them to the target directory: steps 16 to 18
+    """Labels the accessions and moves them to the target directory: steps 16 to 18
 
     Runs `warn_if_hardlinks_unavailable` once, then, for each accession in turn,
     `assign_labels` followed by `move_to_target` (with `for_each_accession`). An
@@ -177,7 +230,7 @@ def deliver_accessions(
     Parameters
     ----------
     accessions : Sequence[Accession]
-        the accessions to deliver, from `collect_accessions`
+        the accessions to deliver, from `build_accessions`
     build_dir : Path
         the run's build directory, from `prepare_build_dir`
     output_dir : Path

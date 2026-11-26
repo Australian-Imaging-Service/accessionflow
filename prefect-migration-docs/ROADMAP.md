@@ -218,8 +218,8 @@ The order, which the composites follow:
 | 6 | `claim_input_files` | `claim.py` | batch, the first step that changes the input |
 | 7 | `expand_claimed_paths` | `classify.py` | batch |
 | 8 | `classify_paths` | `classify.py` | batch |
-| 9 | `disable_metadata_reading` | `classify.py` | batch |
-| 10 | `drop_ignored_filesets` | `classify.py` | batch |
+| 9 | `drop_ignored_filesets` | `classify.py` | batch |
+| 10 | `disable_metadata_reading` | `classify.py` | batch |
 | 11 | `apply_path_metadata` | `metadata.py` | batch |
 | 12 | `tag_fileset_types` | `metadata.py` | batch |
 | 13 | `inject_fileset_tables` | `metadata.py` | batch |
@@ -265,11 +265,12 @@ stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
 ### Composites
 
 Status: **Done** (2026-11-26). The composites, built in steps C1–C5, are recorded in
-[`CHANGELOG.md`](CHANGELOG.md) (Step API, "Phase 1 composites"):
-`collect_accessions` and `deliver_accessions` in `api/collate/composites.py`, and the
-folder composite `collate_files` in `sources/folder/api/collate_api.py`, alongside
-today's `collate()`. The tests of `from_paths` and of the old `collate()` have been
-ported to them, as the regression net.
+[`CHANGELOG.md`](CHANGELOG.md) (Step API, "Phase 1 composites"): the four composites in
+`api/collate/composites.py`, each one stage of a run (`build_filesets`: steps 7–9,
+`apply_fileset_metadata`: 10–13, `build_accessions`: 14–15, `move_accessions`: 16–18),
+and the folder composite `collate_files` in `sources/folder/api/collate_api.py`,
+alongside today's `collate()`. The tests of `from_paths` and of the old `collate()` have
+been ported to them, as the regression net.
 
 Next, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
 `collate_files`, and the removals step deletes `from_paths`, the old `collate()` and

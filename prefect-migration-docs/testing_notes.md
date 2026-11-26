@@ -168,7 +168,8 @@ same tests, and `git stash pop`.
 - **Collate steps (Phase 1)**: `api/tests/collate/`, one test module per step module,
   using small trees of plain files in `tmp_path`, so they run in about a second.
 - **Collate composites (Phase 1)**: `api/tests/collate/test_composites.py`
-  (`collect_accessions`, `deliver_accessions`) and
+  (`build_filesets`, `apply_fileset_metadata`, `build_accessions`,
+  `move_accessions`) and
   `sources/folder/tests/test_collate_files.py` (`collate_files`), which holds the
   end-to-end race test: files that arrive during a run wait for the next.
 - **`from_paths` parity (Phase 1, C5)**: the tests in `model/tests/test_accession.py`

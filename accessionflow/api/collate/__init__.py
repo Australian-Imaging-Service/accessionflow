@@ -24,9 +24,11 @@ from .classify import (
     plan_recursion,
 )
 from .composites import (
-    CollectedAccessions,
-    collect_accessions,
-    deliver_accessions,
+    ClassifiedFilesets,
+    apply_fileset_metadata,
+    build_accessions,
+    build_filesets,
+    move_accessions,
 )
 from .discover import list_input_files
 from .group import (
@@ -58,9 +60,12 @@ __all__ = [
     "ERROR_MANIFEST",
     "UNPROCESSED_MANIFEST",
     "abandon_claim",
+    "apply_fileset_metadata",
+    "build_accessions",
+    "build_filesets",
     "PROCESSING_NAME_DEFAULT",
     "ClaimedFiles",
-    "CollectedAccessions",
+    "ClassifiedFilesets",
     "claim_input_files",
     "RecursionPlan",
     "acquisition_id_for",
@@ -69,8 +74,6 @@ __all__ = [
     "check_datatypes",
     "clash_hint_for",
     "classify_paths",
-    "collect_accessions",
-    "deliver_accessions",
     "disable_metadata_reading",
     "drop_ignored_filesets",
     "expand_claimed_paths",
@@ -81,6 +84,7 @@ __all__ = [
     "list_input_files",
     "load_metadata_tables",
     "make_run_uid",
+    "move_accessions",
     "merge_path_metadata",
     "move_to_target",
     "plan_recursion",
