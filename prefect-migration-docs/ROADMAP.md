@@ -75,8 +75,8 @@ These apply to every stage.
 11. **Only the CLI is backwards compatible.** Commands, arguments, options, `ACFLOW_*`
     environment variables and defaults stay the same, and a snapshot test guards them.
     An option whose behaviour has to change stays accepted and is documented as
-    deprecated (Phase 1 does this for `collate folder --wait-period` and
-    `--unlink-source`). Every change in CLI behaviour is recorded in `CHANGELOG.md`.
+    deprecated (Phase 1 does this for `collate folder --unlink-source`). Every change
+    in CLI behaviour is recorded in `CHANGELOG.md`.
     Nothing else is kept:
     - Python functions, signatures and import paths. A large function is replaced by
       its steps, not wrapped, and its callers and tests are updated in the same change
@@ -146,9 +146,21 @@ Status: In progress. The step functions (steps 0–20) are done; see
 there under "Phase 1 design records": a random run UID, the revised flow (labelling and
 delivery to `<labels>_<run_uid>`), and moving leftover files to an unprocessed
 directory.
-What is left: the [composites](#composites), in steps C1–C5, then the option converters,
-moving the folder `collate()` and the CLI onto the steps (with the label options and
-the new directories), the removals, and the tests listed below.
+The [composites](#composites) (C1–C5) are done too.
+
+Collate is now split into two parts:
+
+1. **Collate runs into run accessions.** Each run delivers the accessions it formed
+   from the files it claimed, labelled and named `<project>.<subject>.<session>_<run_uid>`
+   (`run_uid` is `YYYYMMDDHHMMSS_<6 hex>`). This is `collate_files`, which is done.
+2. **The accession combiner** ([Combine](#combine)), a separate action. When a
+   project.subject.session has had no new run accession for a given time, it combines
+   that session's run accessions into a single accession and writes it to the output
+   directory. This is planned.
+
+What is left: the combiner, the option converters, moving the CLI onto `collate_files`
+and the combiner (with the label options and the new directories), the removals, and
+the tests listed below.
 
 The current call chain is:
 
@@ -172,14 +184,21 @@ written. To stop these races, Phase 1 changes what collate works on:
   later step works on that fixed, known set of files. Later stages don't see the
   processing area, because `list_session_dirs` (`helpers/remotes.py:554`) skips
   directories whose names start with `__`.
-- **No wait period in the API.** `wait_period` was there to tell whether an accession
-  had finished arriving. That check becomes a separate, explicit step later in the
-  workflow, so `is_settled` and `select_settled` aren't needed.
+- **No wait period in collate.** `wait_period` was there to tell whether an accession
+  had finished arriving. Collate no longer waits: each run delivers what has arrived as
+  a run accession. Telling whether an accession is complete is the combiner's quiet
+  period (see [Combine](#combine)), so `is_settled` and `select_settled` aren't
+  needed.
+- **Run accessions and combined accessions are kept apart.** Collate delivers its run
+  accessions to a run-accessions directory, and the combiner writes the combined
+  accessions to the output directory, which later stages read. The proposed default for
+  the run-accessions directory is `<output_dir>/__runs__`. Later stages don't see it,
+  because `list_session_dirs` skips directories whose names start with `__`.
 - **Collated files are always consumed.** Once an accession is staged, its files are
   deleted from the processing area. The API has no `unlink_source` argument.
 
-The CLI keeps its interface (see [CLI](#cli)), including `--wait-period` and
-`--unlink-source`, which become deprecated options that have no effect.
+The CLI keeps its interface (see [CLI](#cli)). `--wait-period` becomes the combiner's
+quiet period, and `--unlink-source` becomes a deprecated option that has no effect.
 
 ### Steps
 
@@ -244,161 +263,79 @@ stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
 
 ### Composites
 
-Status: Done (2026-11-26); the [CLI](#cli) step is next. Plain-Python sequences of the steps, which the CLI runs; the flows
-repository wraps the same steps in the same order (principle 10). Their signatures can
-change. They are built in five steps, each one PR that keeps the suite green and adds
-its own `CHANGELOG.md` entry. The folder `collate()` keeps its many callers (the CLI and
-about 20 tests, all with `input_paths=...`) until the CLI step, so the new composite is
-built alongside it, and the name `save_accessions_to_dir` stays with the old function in
-`api/collate_api.py` until the removals step.
+Status: **Done** (2026-11-26). The composites, built in steps C1–C5, are recorded in
+[`CHANGELOG.md`](CHANGELOG.md) (Step API, "Phase 1 composites"):
+`collect_accessions` and `deliver_accessions` in `api/collate/composites.py`, and the
+folder composite `collate_files` in `sources/folder/api/collate_api.py`, alongside
+today's `collate()`. The tests of `from_paths` and of the old `collate()` have been
+ported to them, as the regression net.
 
-**C1. Collect the failures, not only their messages.** **Done (2026-11-25).**
-
-- `for_each_accession(accessions, step, desc, raise_errors=False, name_of=...)`
-  (`api/staging.py`) returns `list[tuple[T, str]]`, each failed item with its error
-  message, instead of `list[str]`, because `finish_claim` needs the failed accessions.
-  `log_stage_summary` is given the messages. Nothing but its tests calls it yet; they
-  are updated in `api/tests/test_staging.py`.
-
-**C2. `collect_accessions`, steps 7–15**, in a new
-`accessionflow/api/collate/composites.py`. **Done (2026-11-26).**
-
-```python
-collect_accessions(
-    claimed, datatypes, recursion, *, accession_uid_field, recursive=False,
-    allow_unrecognised=(), dont_read_metadata=(), path_metadata_regex=(),
-    metadata_tables=(), acquisition_id_field=(), resource_field=(),
-    on_resource_clash="error", run_uid=None,
-) -> CollectedAccessions
-```
-
-- Runs `expand_claimed_paths`, `classify_paths`, `disable_metadata_reading`,
-  `drop_ignored_filesets`, `apply_path_metadata` (with `claimed`),
-  `tag_fileset_types`, `inject_fileset_tables`, `group_into_accessions` and
-  `inject_accession_tables`, in the order of the steps table.
-- `CollectedAccessions` is a frozen attrs record that pickles: the `accessions`, and the
-  `ignored` file-sets (the classified file-sets `drop_ignored_filesets` dropped), which
-  `finish_claim` needs.
-- A `FormatMismatchError` from classification names the claimed paths, so a note
-  (`add_note`) lists the unrecognised files' original paths (`claimed.original_of`)
-  and the run directory.
-- Tests: `api/tests/collate/test_composites.py`, which took over the tests that
-  chained steps 7–14 by hand from `test_group.py` and `test_metadata.py`.
-- **Found:** with `--recursive`, a directory that matches an ignored directory format
-  (e.g. `DirectoryOf[Csv]`) was skipped whole by `expand_claimed_paths`, so
-  `finish_claim` recorded its files as `unrecognised` instead of `ignored`. Fixed in
-  C4.
-
-**C3. `deliver_accessions`, steps 16–18**, in `composites.py`. **Done (2026-11-26).**
-
-```python
-deliver_accessions(
-    accessions, build_dir, output_dir, claimed, label_fields, *,
-    acquisition_field=None, constant_labels=None, store_type=None,
-    copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None,
-    raise_errors=False,
-) -> list[tuple[Accession, str]]
-```
-
-- `warn_if_hardlinks_unavailable`, then `for_each_accession` over `assign_labels`
-  followed by `move_to_target`.
-- Returns the accessions that failed, with their errors, including
-  `LabelsNotAssignedError`, ready for `finish_claim`.
-- Tests, in `api/tests/collate/test_composites.py`:
-  - one accession delivered, one that can't be labelled and one whose save fails. This
-    is `test_claim.py`'s end-to-end test, moved and run on `collect_accessions` and
-    `deliver_accessions`.
-  - all delivered
-  - `raise_errors=True` raising the first failure
-  - the hard-link warning given once, before anything is delivered
-
-**C4. The new folder composite, `collate_files`**, in
-`sources/folder/api/collate_api.py`, alongside today's `collate()`. **Done
-(2026-11-26).**
-
-```python
-collate_files(
-    input_files, output_dir, working_dir, unprocessed_dir, error_dir, label_fields, *,
-    datatypes=(DicomSeries,), ignore_datatypes=(), source_roots=None, recursive=False,
-    allow_unrecognised=(), dont_read_metadata=(),
-    accession_uid_field=DEFAULT_ACCESSION_UID_FIELD,
-    acquisition_id_field=DEFAULT_ACQUISITION_ID_FIELD,
-    resource_field=DEFAULT_RESOURCE_FIELD, path_metadata=(), path_metadata_regex=(),
-    metadata_tables=None, on_resource_clash="error", acquisition_field=None,
-    constant_labels=None, store_type=None, copy_mode=hardlink_or_copy,
-    collation_map=None, conversion_map=None, raise_errors=False,
-) -> list[str]
-```
-
-- The ID-spec parameters take the steps' names (`accession_uid_field`, ...), not the
-  old `collate()`'s (`accession_uid`, ...).
-- Checks first, before anything is changed: `check_datatypes`, `plan_recursion`,
-  `load_metadata_tables` and `merge_path_metadata`. Then `_start_run(output_dir)`, the
-  `make_run_uid` / `prepare_build_dir(exclusive=True)` loop, now shared with
-  `collate()`.
-- Then, in a `try`: `claim_input_files`, `collect_accessions`, `deliver_accessions` and
-  `finish_claim(claimed, unprocessed_dir, failed, collected.ignored)`. Its
-  `except Exception` calls `abandon_claim(claimed, error_dir, e)` and re-raises. A
-  claim that raised partway is reloaded from its plan (`ClaimedFiles.load`) to be
-  abandoned. Its `finally` calls `remove_build_dir(build_dir)`. An interrupt leaves the
-  claim in the working directory.
-- Returns the error messages. It doesn't log them: summarising is a CLI concern
-  (`cli/runner.py`), so the CLI step calls `log_stage_summary` (see [CLI](#cli)).
-- Tests, in `sources/folder/tests/test_collate_files.py`, on small JSON trees:
-  - a run that delivers, with a leftover moved to `unprocessed_dir`
-  - an accession that can't be labelled, recorded as failed
-  - a run that raises (an unrecognised file), whose claim goes to `error_dir`
-  - `raise_errors=True`, which abandons the run
-  - a claim that raises partway
-  - the **race test** (see [Tests](#tests)): files added to the input directory during
-    a run stay there for the next run, which collates them
-  - a clash of run UIDs, and every UID taken
-  - `source_roots` set to the input directory, so its top-level entries are classified
-    whole, as today
-  - with `--recursive`, an ignored directory recorded as ignored
-  - no input files, and a bad path-metadata pattern that changes nothing
-- **Also fixed:** with `--recursive`, `expand_claimed_paths` now yields a directory that
-  matches an ignored directory format, rather than skipping it. It is classified and
-  dropped as ignored, so `finish_claim` records its files as `ignored` (found in C2).
-
-**C5. Port the `from_paths` tests**, the regression net, before anything is removed.
-**Done (2026-11-26).**
-
-- **Both paths run the same tests.** `api/tests/collate/from_paths_port.py` holds
-  `collect_like_from_paths`. It takes `from_paths`' arguments, plus a `working_dir`,
-  then lists, claims and runs `collect_accessions`.
-  - `model/tests/test_accession.py` and `api/tests/test_collate.py` each have a
-    `collect` fixture parametrized over `from_paths` and `steps`.
-  - The 16 tests that called `Accession.from_paths` call `collect` instead and keep
-    their assertions, so each one checks that both paths agree. They all do.
-  - The `patient_id` fixture uses the steps on a copy of the DICOM directory.
-  - `test_recursive_collect_prunes_on_match` stays on `_recursive_collect` until it is
-    removed. Its port is `test_expand_recursion_prunes_on_directory_datatypes`.
-- **The DICOM tests of the folder `collate()` have `collate_files` counterparts**, in
-  `sources/folder/tests/test_collate_files.py`. They check what changes: labelling and
-  the delivered names.
-
-  | Old `collate()` test | Counterpart |
-  | --- | --- |
-  | `test_collate_creates_pre_label_session_dir` | `test_dicom_delivered_labelled` |
-  | `test_collate_output_reloadable_with_no_labelled_ids` | `test_dicom_delivered_reloads_with_labels` |
-  | `test_collate_injects_session_metadata_from_table` | `test_dicom_accession_metadata_from_table` |
-  | `test_collate_converts_directory_to_zip` | `test_dicom_directory_converted_to_zip` |
-  | `test_collate_warns_when_hardlinks_unavailable` | `test_dicom_warns_when_hardlinks_unavailable` |
-  | `test_collate_hashes_each_resource_once` | `test_dicom_hashes_each_resource_once` |
-  | `test_collate_collects_errors_without_raising` | `test_no_input_files` |
-  | `test_collate_unrecognised_file_raises_without_allow_unrecognised`, `..._allow_unrecognised_pattern_not_matching_still_raises` | `test_run_that_raises_is_moved_to_the_error_dir` |
-  | `test_collate_allow_unrecognised_skips_matching_files` | `test_delivers_and_leaves_the_rest` |
-  | `test_collate_ignore_datatypes_excludes_recognised_but_unwanted_files` | `test_recursive_ignored_directory_recorded_as_ignored`, `test_classify.py` |
-  | `test_collate_without_ignore_datatypes_raises_on_recognised_extra_type` | `test_classify.py` (`classify_paths` raising) |
-  | `test_collate_ignore_datatypes_contradicting_datatype_raises`, `test_collate_recursive_generic_directory_raises` | `test_classify.py` (`check_datatypes`, `plan_recursion`) |
-  | `test_collate_makes_a_new_run_uid_on_a_clash` | `test_run_uid_clash_makes_another` |
-  | `test_collate_creates_build_dir`, `test_collate_removes_build_dir_when_raising` | `test_delivers_and_leaves_the_rest`, `test_run_that_raises_is_moved_to_the_error_dir` |
-
-After C5, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
+Next, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
 `collate_files`, and the removals step deletes `from_paths`, the old `collate()` and
 `api/collate_api.py`, and renames `collate_files` to `collate` (see
 [Removed](#removed)).
+
+### Combine
+
+Status: Planned. The accession combiner, the second part of collate. Names and
+signatures are provisional, and are settled when it is reviewed.
+
+**Run accessions** are what `collate_files` delivers: one accession per
+project.subject.session per run, named `<labels>_<run_uid>`. The `output_dir` given to
+`collate_files` becomes the run-accessions directory. Since every run's accessions have
+their own names, collate never merges two runs' data. Only the combiner does.
+
+**The quiet period.** A project.subject.session is combined once its newest run
+accession is older than the quiet period. The age is taken from the time in the run
+UID (`split_run_uid`, `helpers/run_uid.py`), not from file modification times. So it
+doesn't depend on the file system, and a retried delivery doesn't reset it.
+
+**The combined accession** is named `<labels>_<primary_label>`. `primary_label` is a
+parameter of the combiner, and replaces the run UID.
+
+**Clashes.** When two run accessions have the same acquisition and resource, the
+`on_resource_clash` policies (`error`, `avoid`, `merge`, `overwrite`, optionally per
+datatype) decide, as an option of the combiner.
+
+The steps, in order:
+
+| # | Step | Kind |
+| --- | --- | --- |
+| 1 | `list_run_accessions(runs_dir)`: groups the run-accession directories by their labels | batch |
+| 2 | `select_quiet_groups(groups, quiet_period, now=None)`: the groups with no run accession newer than the quiet period | batch |
+| 3 | `prepare_build_dir` (`api/staging.py`) | batch |
+| 4 | `combine_accessions(run_dirs, on_resource_clash, ...)`: loads them (`Accession.load`) and merges their acquisitions and resources under the clash policy | **per group** |
+| 5 | `deliver_combined(accession, build_dir, output_dir, primary_label)`: saves it into the build directory and moves it into place as `<labels>_<primary_label>`, as `move_to_target` does | **per group** |
+| 6 | `remove_run_accessions(run_dirs)`: removes the run accessions that were combined | **per group** |
+| 7 | `remove_build_dir` (`api/staging.py`) | batch |
+
+Steps 4–6 run once per group, through `for_each_accession`, and are the unit a flow
+maps over.
+
+**The composite** `combine_run_accessions(runs_dir, output_dir, error_dir, quiet_period,
+primary_label, *, on_resource_clash="error", raise_errors=False) -> list[str]` follows
+the pattern of `collate_files`: checks, then a build directory, then the steps.
+
+- A group that fails (e.g. a clash that the policy makes an error) has its run
+  accessions moved to `<error_dir>/<labels>/`, with a record of the error, as
+  `abandon_claim` does for a claim.
+- It returns the error messages for the caller to log.
+- The flows repository can run it as its own flow, on its own schedule.
+
+**Races.** A run accession delivered while the combiner runs is either newer than the
+quiet period, so its group isn't quiet, or it arrived after the listing, so it is left
+for the next combine.
+
+**Tests** (planned):
+
+- grouping by labels
+- quiet and not-quiet groups, with an injected `now`
+- merging under each clash policy
+- delivery as `<labels>_<primary_label>`, with the run accessions removed
+- a failed group moved to the error directory
+- a run accession that arrives during a combine
+- through `collate folder`: the run accessions are delivered at once, and the combined
+  accession only after the quiet period
 
 ### Option converters
 
@@ -416,18 +353,23 @@ variables. The body of `collate_cmd` becomes:
 1. resolve the deprecated `--accession-uid` and `--acquisition-id` aliases
 2. `check_loop_options`
 3. `set_logger_handling`
-4. warn once if `--wait-period` (`ACFLOW_WAIT_PERIOD`) is above 0 or
-   `--unlink-source` (`ACFLOW_UNLINK_SOURCE`) is given: both are deprecated and have no
-   effect
-5. `run_on_interval(run_once, loop, "collate")`, where each run calls
-   `list_input_files(INPUT_PATHS, exclude_paths, metadata_table_paths=[t.table_file.fspath
-   for t in metadata_tables])` and then `collate(...)`
-   with the files it listed and the arguments built by the option converters, and logs
-   the errors it returns with `log_stage_summary(errors, "Collating")`. Listing again
-   on every run picks up the files that arrived since the last one.
+4. warn once if `--unlink-source` (`ACFLOW_UNLINK_SOURCE`) is given: it is deprecated
+   and has no effect
+5. `run_on_interval(run_once, loop, "collate")`, where each run:
+   1. calls `list_input_files(INPUT_PATHS, exclude_paths,
+      metadata_table_paths=[t.table_file.fspath for t in metadata_tables])`. Listing
+      again on every run picks up the files that arrived since the last one.
+   2. calls `collate(...)` with the files it listed, the run-accessions directory as its
+      output directory, and the arguments built by the option converters
+   3. calls `combine_run_accessions(runs_dir, OUTPUT_DIR, ...,
+      quiet_period=wait_period, primary_label=...)`
+   4. logs the errors each returns with `log_stage_summary`
 
 New options:
 
+- `--runs-dir`, the run-accessions directory (by default `<output_dir>/__runs__`), and
+  an option for the combiner's `primary_label`. Their names and defaults are settled
+  with the CLI step.
 - `--working-dir`, `--unprocessed-dir` and `--error-dir`, for the run directories, and
   the directories `finish_claim` and `abandon_claim` move them to. The working
   directory defaults to `<output_dir>/__processing__`; the other defaults are settled
@@ -443,9 +385,11 @@ New options:
 These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
 `MIGRATING.md`:
 
-- **`--wait-period` no longer delays collation.** An accession is collated with
-  whichever of its files have arrived. Telling whether an accession is complete is left
-  to a later, explicit workflow step.
+- **`--wait-period` is now the combiner's quiet period.** The files are collated on
+  every run, whether or not more are still arriving, into run accessions. An accession
+  is combined and delivered to `OUTPUT_DIR` once no new data has arrived for it for
+  `--wait-period`. Before, collate skipped an accession whose files had changed within
+  the period.
 - **Collated files are always removed from the input directory**, whether or not
   `--unlink-source` is given. A run without it used to leave them there, to be collated
   again on every run.
@@ -470,8 +414,8 @@ These are changes in behaviour, recorded in `CHANGELOG.md` and, in Phase 10,
   longer holds collation logic, so the model doesn't import from the API.
   `_glob_to_regex` has already moved, as
   `accessionflow.helpers.glob2re.glob_to_regex` (step 0).
-- From the API: `wait_period`, `unlink_source` and `exclude_paths`, and directories and
-  glob patterns as input.
+- From the collate API: `wait_period` (it becomes the combiner's `quiet_period`),
+  `unlink_source` and `exclude_paths`, and directories and glob patterns as input.
 - `accessionflow/api/collate_api.py`. References to it are updated to
   `accessionflow.api.collate` in `accessionflow/api/__init__.py`,
   `accessionflow/sources/README.md:23`, `docs/source/developer/plugins.rst:56` and
@@ -501,26 +445,19 @@ staged doesn't need draining.
 
 - **CLI contract snapshot**, taken before the refactor starts: the option names, types,
   defaults and environment variables of `collate folder` and `collate orthanc`. They
-  must still match afterwards. Only the help text of `--wait-period` and
-  `--unlink-source` changes, to say that they are deprecated. Later phases extend the
+  must still match afterwards. Only the help text changes: `--unlink-source` says it is
+  deprecated, and `--wait-period` describes the combiner's quiet period. Later phases extend the
   snapshot to their commands.
-- **A race test**: files are added to the input directory while a collation runs. Only
-  the files listed at the start are collated, and the new ones stay for the next run.
-  The claim's part is already tested; the end-to-end test, through `collate_files`, is
-  `test_files_that_arrive_during_a_run_wait_for_the_next` in
-  `sources/folder/tests/test_collate_files.py` (done in composites step C4).
-- **Ported tests** (composites step C5), keeping their assertions as the regression
-  net:
-  - the 15 calls to `Accession.from_paths` in `model/tests/test_accession.py` and the 2
-    in `api/tests/test_collate.py`, which list and claim the files, then call
-    `collect_accessions`
-  - the tests of `_recursive_collect` and `_datatype_resource_label` in
-    `model/tests/test_accession.py`, which move with those helpers
+- **The tests of `_recursive_collect` and `_datatype_resource_label`** in
+  `model/tests/test_accession.py` move with those helpers at the removals step
+  (`_recursive_collect`'s is already ported as
+  `test_expand_recursion_prunes_on_directory_datatypes`).
 - **Tests that change because the behaviour changes**:
   - `cli/tests/test_cli.py::test_stage_wait_period` (L721), which checks that a recent
-    accession is skipped. It is rewritten to check that `--wait-period` is accepted,
-    warns that it is deprecated, and doesn't delay collation. Its patch of
-    `accessionflow.api.collate_api.time` (L746) goes.
+    accession is skipped. It is rewritten to check that the run accessions are
+    delivered at once, and the combined accession only after `--wait-period`. Its patch
+    of `accessionflow.api.collate_api.time` (L746) goes, and the combiner is given
+    `now` instead.
   - tests that collate the same input more than once, or reuse it after collating it,
     now find it consumed. In particular, `api/tests/test_collate.py` shares a
     module-scoped `dicom_dir` fixture (L25-29) between its tests. Each test copies the
@@ -574,9 +511,9 @@ nested closures. The expected steps are:
 - `reset_changed_studies(client, processed_label, ...)`: removes the labels of processed
   studies that changed after they were staged (L187-241)
 - per study, the unit a flow maps over:
-  1. check that the study has settled (L270-288). The API's `wait_period` is
-     deprecated, as for the folder source (Phase 1), and the completeness check moves
-     to the same later workflow step. But the processed-label change detection relies
+  1. check that the study has settled (L270-288). Whether this becomes the combiner
+     (see Phase 1, [Combine](#combine)), as for the folder source, is decided in
+     Phase 3. But the processed-label change detection relies
      on a study having been quiet for at least a second (L169-179), so that minimum
      stays inside the step, or the change detection is redesigned.
   2. map its series to acquisitions and resources, with the fallbacks and clash checks
@@ -686,12 +623,15 @@ Status: Planned.
 - Can the Orthanc source reuse `save_accessions_to_dir` (see Phase 3)?
 - How does the flows repository pin its `accessionflow` version, and which release first
   publishes the collate step API?
-- Where does the step that checks whether an accession is complete live, now that
-  collate has no wait period: in the flows repository, or as a step in this repository
-  that runs on the staging directory after collate?
-- Two runs at the same time now build in separate directories, but if both stage the
-  same accession, `move_into_place` still merges them in the output directory. Is that
-  acceptable, or does staging need a lock per accession?
+- Two runs at the same time now build in separate directories and deliver run
+  accessions with their own names, so collate never merges. Two combiners running at
+  the same time could still combine the same group. Does the combiner need a lock per
+  group, or is one combiner at a time a requirement?
+- If `<labels>_<primary_label>` already exists in the output directory (data that
+  arrived after a combine), does the combiner merge into it, raise and leave the group
+  in place, or write under another name?
+- Is `primary_label` fixed for a run of the combiner (e.g. a constant), or worked out
+  per group (e.g. from metadata, or from the newest run UID)?
 - Should the processing area's location be configurable (a new optional CLI option
   such as `--processing-dir`), for input directories on a different file system from
   the staging directory?
