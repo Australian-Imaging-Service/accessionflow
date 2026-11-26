@@ -53,8 +53,9 @@ A source plugin
 * saves the accessions it collates into the staging directory in the layout the later
   stages read (see :ref:`concepts-staging`), e.g. by building
   :class:`~accessionflow.model.accession.Accession` objects that reference the files at
-  the source and passing them to :func:`accessionflow.api.save_accessions_to_dir`, which
-  builds each one under ``__build__`` and moves it into place once it is complete
+  the source, building each one under ``__build__`` with
+  :func:`accessionflow.api.collate.save_to_build_dir`, and moving it into place once it
+  is complete with :func:`accessionflow.api.staging.move_into_place`
 
 For example:
 

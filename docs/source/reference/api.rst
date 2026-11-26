@@ -14,7 +14,7 @@ Sources
 
 .. autofunction:: accessionflow.sources.orthanc.api.collate
 
-.. autofunction:: accessionflow.api.save_accessions_to_dir
+.. autofunction:: accessionflow.api.collate.combine_run_accessions
 
 
 Stages
@@ -52,7 +52,7 @@ DICOM files and a derived NIfTI conversion (see :ref:`concepts-model`).
 
 .. autoclass:: accessionflow.model.accession.Accession
     :members: uid, labels, store_type, name, acquisitions, session_resources, run_uid,
-        metadata, fields, from_paths, label, deidentify, attach_files, save, load
+        metadata, fields, label, deidentify, attach_files, save, load
 
 .. autoclass:: accessionflow.model.acquisition.Acquisition
     :members: id, type, resources, attached, metadata, save, load

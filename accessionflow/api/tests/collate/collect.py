@@ -1,7 +1,7 @@
-"""Runs the collate steps the way ``Accession.from_paths`` is called, so that its tests
-can check that both give the same accessions (see ``prefect-migration-docs/ROADMAP.md``,
-Phase 1, Composites step C5). Deleted, with ``from_paths``, at the removals step,
-when the tests call the steps directly."""
+"""Test helpers that run the collate steps up to the accessions, without labelling or
+delivering them: `collect_files`, for the tests of what the steps collect, and
+`stage_unlabelled`, for the tests of the later stages that need accessions saved before
+they are labelled"""
 
 import typing as ty
 from pathlib import Path
@@ -30,7 +30,7 @@ from accessionflow.helpers.arg_types import (
 from accessionflow.model.accession import Accession
 
 
-def collect_like_from_paths(
+def collect_files(
     files_path: str | Path | ty.Sequence[str | Path],
     datatypes: type[FileSet] | ty.Sequence[type[FileSet]],
     accession_uid_field: ty.Sequence[IDSpec],
@@ -47,9 +47,8 @@ def collect_like_from_paths(
     metadata_tables: list[MetadataTable] | None = None,
     dont_read_metadata: ty.Sequence[type[FileSet]] = (),
 ) -> list[Accession]:
-    """Lists, claims and collects the files as ``Accession.from_paths`` does, taking the
-    same arguments, plus the ``working_dir`` the files are claimed into. The input
-    files are moved there, as in a real run"""
+    """Lists, claims and collects the files into accessions, which aren't labelled. The
+    input files are moved into ``working_dir``, as in a real run"""
     if isinstance(files_path, (str, Path)):
         files_path = [files_path]
     if isinstance(datatypes, type):
@@ -62,7 +61,7 @@ def collect_like_from_paths(
     tables = load_metadata_tables(metadata_tables)
 
     # The input directories are the roots, so their top-level entries are classified
-    # as from_paths classifies them
+    # as they were in them
     roots = list_source_roots(list(files_path), files)
 
     run_uid = make_run_uid()
@@ -90,3 +89,36 @@ def collect_like_from_paths(
         run_uid=run_uid,
         metadata_tables=tables,
     )
+
+
+def stage_unlabelled(
+    files_path: str | Path | ty.Sequence[str | Path],
+    output_dir: Path,
+    datatypes: type[FileSet] | ty.Sequence[type[FileSet]],
+    accession_uid_field: ty.Sequence[IDSpec],
+    acquisition_id_field: ty.Sequence[IDSpec] = (),
+    resource_field: ty.Sequence[IDSpec] = (),
+    *,
+    working_dir: Path,
+    **kwargs: ty.Any,
+) -> list[Path]:
+    """Collects the files with `collect_files` and saves each accession, unlabelled, to
+    ``output_dir/_.<uid>``, as the folder source staged them for the 'label' stage
+    before collate labelled them (the Orthanc source still does)
+
+    Returns
+    -------
+    list[Path]
+        the saved accessions' directories
+    """
+    accessions = collect_files(
+        files_path,
+        datatypes,
+        accession_uid_field,
+        acquisition_id_field,
+        resource_field,
+        working_dir=working_dir,
+        **kwargs,
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return [accession.save(output_dir)[1] for accession in accessions]

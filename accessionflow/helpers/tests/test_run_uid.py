@@ -14,6 +14,7 @@ from accessionflow.helpers.run_uid import (
 )
 
 NEW_UID = "20261125073856_a3f09c"
+# The run UID Accession.from_paths made (a hash, then the time), no longer recognised
 OLD_UID = "abc12320261124010203"
 
 
@@ -21,7 +22,6 @@ OLD_UID = "abc12320261124010203"
     "name, expected",
     [
         (f"proj.subj.sess_{NEW_UID}", ("proj.subj.sess", NEW_UID)),
-        (f"proj.subj.sess_{OLD_UID}", ("proj.subj.sess", OLD_UID)),
         # labels containing '_' and '-'
         (f"proj.subj-01.S1_scan_{NEW_UID}", ("proj.subj-01.S1_scan", NEW_UID)),
         # a single level, which has no '.'
@@ -30,7 +30,8 @@ OLD_UID = "abc12320261124010203"
         ("proj.subj.sess", ("proj.subj.sess", None)),
         ("proj.subj.sess_v2", ("proj.subj.sess_v2", None)),
         ("proj.subj.sess_20261125073856", ("proj.subj.sess_20261125073856", None)),
-        # the run UID joined by '.', as names written before were
+        # from_paths' run UID, joined by '_' or by '.', as names written before were
+        (f"proj.subj.sess_{OLD_UID}", (f"proj.subj.sess_{OLD_UID}", None)),
         (f"proj.subj.sess.{OLD_UID}", (f"proj.subj.sess.{OLD_UID}", None)),
     ],
 )
@@ -77,9 +78,9 @@ def test_split_name_suffix(
 def test_run_uid_time() -> None:
     expected = datetime(2026, 11, 25, 7, 38, 56, tzinfo=UTC)
     assert run_uid_time(NEW_UID) == expected
-    assert run_uid_time("abc12320261125073856") == expected
-    with pytest.raises(ValueError, match="isn't a run UID"):
-        run_uid_time("combined")
+    for not_a_run_uid in ("combined", OLD_UID):
+        with pytest.raises(ValueError, match="isn't a run UID"):
+            run_uid_time(not_a_run_uid)
 
 
 @pytest.mark.parametrize("label", ["combined", "v2", "Combined-1", "abc123"])

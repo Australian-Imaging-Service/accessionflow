@@ -4,17 +4,15 @@
 import typing as ty
 
 from fileformats.core import FileSet
+from fileformats.core.exceptions import FormatDefinitionError, FormatRecognitionError
+from fileformats.core.identification import to_mime_format_name
 from fileformats.medimage import DicomCollection
 from tqdm import tqdm
 
 from accessionflow.helpers.arg_types import ClashSpec, IDSpec, OnResourceClash
 from accessionflow.helpers.logging import logger
-
-# Until Accession.from_paths is removed, these stay in the model, which uses them too
 from accessionflow.model.accession import (
-    _DERIVED_ID,
     Accession,
-    _datatype_resource_label,
     dicom_image_type_to_resource_label,
 )
 
@@ -24,6 +22,32 @@ __all__ = [
     "group_into_accessions",
     "resource_label_for",
 ]
+
+# Sentinel returned by ``IDSpec.get_value_from_matching_spec`` when no acquisition spec
+# applies to a file-set's type, signalling that the acquisition should take the
+# resource's name
+_DERIVED_ID: ty.Any = object()
+
+
+def _datatype_resource_label(datatype: type[FileSet]) -> str:
+    """Fallback resource label for a fileset with no ``--resource`` spec: the format
+    part of its type's mime-like string (i.e. without the namespace and vendor), e.g.
+    'vectra-export', 'sqlite3-db', run through the same ID/label escaping as
+    session/scan IDs (:attr:`IDSpec.xnat_id_escape_re`) so the '.', '+' and '[]' in
+    vendor and classified types (``SyngoMi_Vr20b_ListMode`` ->
+    ``syngo-mi.vr20b.list-mode``, ``SetOf[Png]`` -> ``png+set-of``) collapse to '_'
+    while '-' is kept.
+    """
+    try:
+        mime_like = datatype.mime_like
+    except (FormatDefinitionError, FormatRecognitionError):
+        # e.g. types defined outside of the fileformats namespace
+        format_name = to_mime_format_name(datatype.__name__)
+    else:
+        format_name = mime_like.split("/", 1)[1]
+        if datatype.vendor:
+            format_name = format_name.removeprefix(f"vnd.{datatype.vendor}.")
+    return IDSpec.xnat_id_escape_re.sub("_", format_name)
 
 
 def resource_label_for(

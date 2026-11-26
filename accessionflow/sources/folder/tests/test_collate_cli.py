@@ -186,7 +186,7 @@ def test_collate_folder_warns_that_unlink_source_has_no_effect(
 def mocked_api(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
     collate = MagicMock(return_value=[])
     combine = MagicMock(return_value=[])
-    monkeypatch.setattr(collate_cli, "collate_files", collate)
+    monkeypatch.setattr(collate_cli, "collate", collate)
     monkeypatch.setattr(collate_cli, "combine_run_accessions", combine)
     return collate, combine
 

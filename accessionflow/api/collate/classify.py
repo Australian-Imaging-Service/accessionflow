@@ -312,12 +312,9 @@ def _walk_pruning(
 
     A directory that validates as one of ``datatypes`` is yielded whole and not
     descended into. So is a directory that validates only as an ``ignore_datatypes``
-    directory format, so that it is classified as that format and dropped as ignored
-    (``Accession.from_paths`` skips it instead). Any other directory is descended into. Every
-    file is yielded, so an unlisted file type still raises when it is classified.
-    Copied from ``accessionflow.model.accession._recursive_collect``, which
-    ``Accession.from_paths`` uses until it is removed, with the filter on ``keep``
-    added.
+    directory format, so that it is classified as that format and dropped as ignored.
+    Any other directory is descended into. Every file is yielded, so an unlisted file
+    type still raises when it is classified.
     """
     want = tuple(d for d in datatypes if issubclass(d, Directory))
     skip = tuple(d for d in ignore_datatypes if issubclass(d, Directory))

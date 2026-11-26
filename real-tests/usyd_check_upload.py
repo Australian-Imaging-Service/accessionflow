@@ -1,9 +1,18 @@
 import os
+import traceback
 
+import click
 from click.testing import CliRunner
 
 from accessionflow.stores.xnat.cli import check_store_cmd
-from accessionflow.utils import show_cli_trace
+
+
+def show_cli_trace(result: click.testing.Result) -> str:
+    """Show the exception traceback from CLIRunner results"""
+    assert result.exc_info is not None
+    exc_type, exc, tb = result.exc_info
+    return "".join(traceback.format_exception(exc_type, value=exc, tb=tb))
+
 
 runner = CliRunner()
 

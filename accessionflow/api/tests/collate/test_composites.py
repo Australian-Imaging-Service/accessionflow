@@ -74,7 +74,7 @@ def _collect(
     run_uid: str | None = None,
 ) -> _Collected:
     """Runs build_filesets, apply_fileset_metadata and build_accessions in turn, as
-    collate_files does"""
+    collate does"""
     recursion = plan_recursion(datatypes, ignore_datatypes, recursive)
     classified = build_filesets(
         claimed,

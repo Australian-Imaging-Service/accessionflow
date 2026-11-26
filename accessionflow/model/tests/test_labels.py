@@ -108,7 +108,6 @@ def test_primary_label_with_underscore_in_labels(tmp_path: Path) -> None:
     "run_uid, dirname",
     [
         ("20261125073856_a3f09c", "a.b.c.d_20261125073856_a3f09c"),
-        ("abc12320261124010203", "a.b.c.d_abc12320261124010203"),
     ],
 )
 def test_run_uid_is_joined_with_an_underscore(

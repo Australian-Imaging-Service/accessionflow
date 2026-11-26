@@ -23,9 +23,8 @@ __all__ = [
     "split_run_uid",
 ]
 
-# A run UID made by make_run_uid (the UTC time, '_' and 6 random hex characters), or by
-# Accession.from_paths until it is removed (6 hex characters of a hash, then the time)
-RUN_UID_RE = re.compile(r"\d{14}_[0-9a-f]{6}|[0-9a-f]{6}\d{14}")
+# A run UID made by make_run_uid (the UTC time, '_' and 6 random hex characters)
+RUN_UID_RE = re.compile(r"\d{14}_[0-9a-f]{6}")
 
 # Joins the labels and the suffix (a run UID or a primary label) in a labelled
 # accession's directory name
@@ -35,8 +34,7 @@ RUN_UID_SEPARATOR = "_"
 # '.' (which joins the labels) and no '_' (which joins the suffix)
 PRIMARY_LABEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*")
 
-_NEW_RUN_UID = re.compile(r"(?P<time>\d{14})_[0-9a-f]{6}")
-_OLD_RUN_UID = re.compile(r"[0-9a-f]{6}(?P<time>\d{14})")
+_RUN_UID_TIME = re.compile(r"(?P<time>\d{14})_[0-9a-f]{6}")
 
 _TRAILING_RUN_UID = re.compile(
     rf"(?P<base>.+){RUN_UID_SEPARATOR}(?P<run_uid>{RUN_UID_RE.pattern})\Z"
@@ -100,8 +98,7 @@ def run_uid_time(run_uid: str) -> datetime:
     Parameters
     ----------
     run_uid : str
-        a run UID, ``YYYYMMDDHHMMSS_<6 hex>`` (`make_run_uid`) or, from
-        ``Accession.from_paths``, ``<6 hex>YYYYMMDDHHMMSS``
+        a run UID, ``YYYYMMDDHHMMSS_<6 hex>`` (`make_run_uid`)
 
     Returns
     -------
@@ -113,7 +110,7 @@ def run_uid_time(run_uid: str) -> datetime:
     ValueError
         if ``run_uid`` isn't a run UID
     """
-    match = _NEW_RUN_UID.fullmatch(run_uid) or _OLD_RUN_UID.fullmatch(run_uid)
+    match = _RUN_UID_TIME.fullmatch(run_uid)
     if match is None:
         raise ValueError(f"'{run_uid}' isn't a run UID")
     return datetime.strptime(match["time"], "%Y%m%d%H%M%S").replace(tzinfo=UTC)

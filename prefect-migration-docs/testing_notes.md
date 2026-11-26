@@ -135,7 +135,7 @@ to the change being tested:
   FileSet.load and the implementing function load_text_file`: `api/tests/test_package.py`
   and `cli/tests/test_store_commands.py`
 - `FormatRecognitionError` raised where `FormatMismatchError` is expected: 3 tests in
-  `api/tests/test_collate.py`
+  `api/tests/test_collate.py` (since deleted, in the Phase 1 removals)
 
 If you see these, compare the installed versions with `pyproject.toml`:
 
@@ -150,9 +150,7 @@ same tests, and `git stash pop`.
 
 ## Tests that guard the migration
 
-- **Collate**: `api/tests/test_collate.py`, `model/tests/test_accession.py` (its
-  `Accession.from_paths` tests become the regression net for Phase 1),
-  `sources/folder/tests/test_collate_api.py`, `sources/orthanc/tests/`.
+- **Collate**: `api/tests/collate/`, `sources/folder/tests/`, `sources/orthanc/tests/`.
 - **CLI contract**: `cli/tests/test_cli_contract.py`, a snapshot
   (`cli/tests/snapshots/cli_contract.json`) of the parameters of `collate folder`,
   `collate orthanc`, `label xnat` and `label folder`, taken before Phase 1 changed them:
@@ -187,18 +185,28 @@ same tests, and `git stash pop`.
 - **Collate composites (Phase 1)**: `api/tests/collate/test_composites.py`
   (`build_filesets`, `apply_fileset_metadata`, `build_accessions`,
   `move_accessions`) and
-  `sources/folder/tests/test_collate_files.py` (`collate_files`), which holds the
-  end-to-end race test: files that arrive during a run wait for the next.
+  `sources/folder/tests/test_collate.py` (the folder `collate`), which holds the
+  end-to-end race test: files that arrive during a run wait for the next. Its DICOM
+  tests take about 4 minutes in all.
 - **The combiner (Phase 1)**: `api/tests/collate/test_combine.py`, which makes real run
-  accessions with `collate_files` on small JSON trees, with `claim.make_run_uid`
+  accessions with the folder `collate` on small JSON trees, with `claim.make_run_uid`
   patched to fix each run's time, and passes `now` to the combiner.
-- **`from_paths` parity (Phase 1, C5)**: the tests in `model/tests/test_accession.py`
-  and `api/tests/test_collate.py` that took a `collect` fixture run twice, as
-  `[from_paths]` and `[steps]`, so the slow PET raw-data ones take twice as long. The
-  `[steps]` run claims (moves) its input, so a test on a shared fixture directory gives
-  it a copy. The DICOM tests of `collate_files` take about 4 minutes in all.
+- **What the steps collect (Phase 1)**: `api/tests/collate/test_collect.py`, the tests
+  that ran on both `Accession.from_paths` and the steps (C5) until `from_paths` was
+  removed. They call `collect_files` (`api/tests/collate/collect.py`), which lists,
+  claims and collects the files into unlabelled accessions. It claims (moves) its
+  input, so a test on a shared fixture directory gives it a copy.
+- **Unlabelled input for `label`**: `stage_unlabelled` (`api/tests/collate/collect.py`)
+  saves the accessions `collect_files` gives, unlabelled, as `_.<uid>`, as the old
+  folder `collate()` did. `api/tests/test_label.py` and the load tests use it, since the
+  folder `collate` now labels.
 - `real-tests/` scripts drive collate through the CLI, so Python API changes don't
-  affect them.
+  affect them. They read data on the machine they were written on.
+  `uq_acemid_collate.py` and `usyd_stage.py` take the export's directory from
+  `UQ_ACEMID_DIR` and `USYD_TBP_DIR`, and collate a hard-linked copy of it, since
+  collate consumes its input. `usyd_upload.py` and `usyd_check_upload.py` need the
+  XNAT server and the S3 bucket, with `ACFLOW_USER`, `ACFLOW_PASS`, `ACFLOW_LOGGERS`
+  and `ACFLOW_STORE_CREDENTIALS` set.
 
 ## Linting Markdown
 

@@ -1,4 +1,16 @@
+"""Collates and labels the UQ ACEMID test export with 'collate folder'
+
+The export in ``<WORK_DIR>/input`` (dermoscopy images, Canfield whole-body analysis and
+DexiData directories, and the dermoscopy metadata table) is collated into labelled
+accessions, ``ACEMID.<SubjectID>.<SubjectID>_<CaptureDate>_combined``, in
+``<WORK_DIR>/collated``. Collate consumes its input, so each run collates a hard-linked
+copy of the export, ``<WORK_DIR>/inbox``, and the export itself is left as it is.
+
+Set ``UQ_ACEMID_DIR`` to run it on another copy of the export.
+"""
+
 import logging
+import os
 import shutil
 import traceback
 
@@ -17,16 +29,19 @@ def show_cli_trace(result: click.testing.Result) -> str:
 
 runner = CliRunner()
 
-WORK_DIR = "/Users/tclo7153/Data/ACEMID/uq-test"
+WORK_DIR = os.environ.get("UQ_ACEMID_DIR", "/Users/tclo7153/Data/ACEMID/uq-test")
 
 logging.basicConfig(level=logging.DEBUG)
 
-shutil.rmtree(f"{WORK_DIR}/collated")
+shutil.rmtree(f"{WORK_DIR}/collated", ignore_errors=True)
+shutil.rmtree(f"{WORK_DIR}/inbox", ignore_errors=True)
+# The hard-linked copy is moved by collate, not the export
+shutil.copytree(f"{WORK_DIR}/input", f"{WORK_DIR}/inbox", copy_function=os.link)
 
 result = runner.invoke(
     collate_cmd,
     [
-        f"{WORK_DIR}/input",
+        f"{WORK_DIR}/inbox",
         f"{WORK_DIR}/collated",
         "--recursive",
         "--datatype",
@@ -77,10 +92,18 @@ result = runner.invoke(
         f"{WORK_DIR}/input/Dermoscopy/LesionDermoscopyData_20260805155613.csv",
         "fileset[image/png|image/jpeg]",
         'ImagePath==HYPERLINK("{subject_uid}/{filename}")',
+        # The labels, which the 'label' stage used to give the collated accessions
+        "--subject",
+        "SubjectID",
+        "--session",
+        "{SubjectID}_{CaptureDate:%Y%m%d}",
+        "--constant-project-id",
+        "ACEMID",
     ],  # ACFLOW_DIR
     catch_exceptions=False,
 )
 
 
 if result.exit_code != 0:
-    show_cli_trace(result)
+    print(result.output)
+    print(show_cli_trace(result))

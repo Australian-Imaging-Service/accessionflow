@@ -141,19 +141,17 @@ own phase, starting with collate in Phase 1:
 
 ## Phase 1: Collate, core and folder source
 
-Status: In progress. Done, and recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API):
+Status: **Done** (2026-11-26). Recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API):
 the step functions (steps 0–20), the three design changes made since ("Phase 1 design
-records"), the composites (C1–C5), the accession combiner, the option converters and
-the CLI. Collate is split into two parts:
+records"), the composites (C1–C5), the accession combiner, the option converters, the
+CLI, the removals and the tests. Collate is split into two parts:
 
 1. **Collate runs into run accessions.** Each run delivers the accessions it formed
    from the files it claimed, labelled and named `<project>.<subject>.<session>_<run_uid>`
-   (`run_uid` is `YYYYMMDDHHMMSS_<6 hex>`). This is `collate_files`.
+   (`run_uid` is `YYYYMMDDHHMMSS_<6 hex>`). This is the folder `collate`.
 2. **The accession combiner** ([Combine](#combine)). When a project.subject.session has
    had no new run accession for a given time, it combines that session's run
    accessions into a single accession and writes it to the output directory.
-
-What is left: the removals and the tests listed below.
 
 The call chain before the CLI step was:
 
@@ -162,15 +160,16 @@ The call chain before the CLI step was:
 3. `Accession.from_paths()` (`model/accession.py:792-1129`)
 4. `api/collate_api.py::save_accessions_to_dir()` (`api/collate_api.py:18-119`)
 
-Since the CLI step, `collate_cmd` calls `list_input_files`, `collate_files` and
-`combine_run_accessions`. 2–4 are only called by tests, until the removals step.
+Since the CLI step, `collate_cmd` calls `list_input_files`, the folder `collate` (named
+`collate_files` until the removals step) and `combine_run_accessions`. The removals
+step deleted 2–4.
 
 ### The input model
 
 The directory that collate reads from is written to all the time by external sources.
-Today `Accession.from_paths` lists it with directory listings and globs, and then reads
-and copies the files it found while new files keep arriving and others are still being
-written. To stop these races, Phase 1 changes what collate works on:
+Before Phase 1, `Accession.from_paths` listed it with directory listings and globs, and
+then read and copied the files it found while new files kept arriving and others were
+still being written. To stop these races, Phase 1 changes what collate works on:
 
 - **The API is given the files to collate**, as `input_files: list[pathlib.Path]`, not
   directories or glob patterns. Choosing the files is the caller's job: the CLI does it
@@ -203,29 +202,8 @@ recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API, "Phase 1 collate steps").
 
 ### Interim state
 
-Until the folder `collate()` moves onto the steps, the old path still runs, and these
-stopgaps are in place. Each goes with the removal of `Accession.from_paths` (see
-[Removed](#removed)):
-
-- `from_paths` keeps its own copies of `check_datatypes`, `plan_recursion`, the
-  exclusion filter (`_drop_excluded_paths`) and the prune-on-match walk
-  (`_recursive_collect`), and its own grouping loop, run UID and unsorted file-set
-  order, because the model can't import from the API.
-- `group.py` imports `_datatype_resource_label` and `_DERIVED_ID` from the model, which
-  still uses them; they move into `group.py`.
-- The folder `collate()` already calls `check_datatypes` and `plan_recursion` first
-  (discarding the plan), makes a random run UID (`make_run_uid()`) and creates its
-  build directory, `__build__/<run_uid>/`, exclusively, making another UID if it is
-  taken, and removes it in a `finally`. The accessions still get `from_paths`' own run
-  UID, a hash of the paths and the time, until it is removed.
-- `api/collate_api.py::save_accessions_to_dir` imports `warn_if_hardlinks_unavailable`
-  from `save.py`, and keeps today's loop with `wait_period` and `unlink_source`.
-- The folder `collate()` still saves unlabelled accessions as `_.<uid>` for the `label`
-  stage, which still labels them; `assign_labels` and `move_to_target` take over when
-  the folder `collate()` moves onto the steps.
-- `helpers/run_uid.py`'s `RUN_UID_RE` also matches `from_paths`' old run-UID form
-  (a hash, then the time), so that the labelled names the `label` stage writes from
-  those accessions are joined with `_` and parse back.
+Status: **Done** (2026-11-26). The stopgaps kept while the old path ran went with the
+removals (see [Removed](#removed)).
 
 ### Composites
 
@@ -237,9 +215,9 @@ and the folder composite `collate_files` in `sources/folder/api/collate_api.py`,
 alongside today's `collate()`. The tests of `from_paths` and of the old `collate()` have
 been ported to them, as the regression net.
 
-Next, the [CLI](#cli) step switches `collate folder` to `list_input_files` and
-`collate_files`, and the removals step deletes `from_paths`, the old `collate()` and
-`api/collate_api.py`, and renames `collate_files` to `collate` (see
+The [CLI](#cli) step switched `collate folder` to `list_input_files` and
+`collate_files`, and the removals step deleted `from_paths`, the old `collate()` and
+`api/collate_api.py`, and renamed `collate_files` to `collate` (see
 [Removed](#removed)).
 
 ### Combine
@@ -283,26 +261,12 @@ and environment variables, which the CLI contract snapshot checks. The decisions
 
 ### Removed
 
-- `Accession.from_paths` and `Accession.last_modified`, with the private helpers that
-  move to the new modules: `_drop_excluded_paths`, `_recursive_collect`, `_datatype_resource_label` and `_DERIVED_ID`. The model no
-  longer holds collation logic, so the model doesn't import from the API.
-  `_glob_to_regex` has already moved, as
-  `accessionflow.helpers.glob2re.glob_to_regex` (step 0).
-- From the collate API: `wait_period` (it becomes the combiner's `quiet_period`),
-  `unlink_source` and `exclude_paths`, and directories and glob patterns as input.
-- `accessionflow/api/collate_api.py`. References to it are updated to
-  `accessionflow.api.collate` in `accessionflow/api/__init__.py`,
-  `accessionflow/sources/README.md:23`, `docs/source/developer/plugins.rst:56` and
-  `docs/source/reference/api.rst:17`. References to `Accession.from_paths` are updated
-  in `docs/source/reference/api.rst:55` and `docs/source/developer/data_model.rst:19`.
-  `MIGRATING.md:293` is updated in Phase 10.
-- The old folder `collate(input_paths, ...)`. `collate_files` (composites step C4) is
-  renamed `collate`. The tests that call the old one with `input_paths=...` are
-  dropped: C5 recorded each one's counterpart (see [Composites](#composites)).
-- The `from_paths` parameter of the `collect` fixtures in `model/tests/test_accession.py`
-  and `api/tests/test_collate.py`, and `test_recursive_collect_prunes_on_match`. The
-  tests then call `collect_like_from_paths` only. It can be renamed, or the tests moved
-  to `api/tests/collate/`.
+Status: **Done** (2026-11-26), recorded in [`CHANGELOG.md`](CHANGELOG.md) (Removed,
+Changed and Staging layout): `Accession.from_paths`, `Accession.last_modified`, the old
+folder `collate()`, `api/collate_api.py` and `from_paths`' run-UID form. The folder
+`collate_files` is renamed `collate`. The tests that ran on both `from_paths` and the
+steps run on the steps, in `api/tests/collate/test_collect.py`. `MIGRATING.md:293` is
+updated in Phase 10.
 
 ### Staging layout
 
@@ -314,25 +278,31 @@ layout) with the CLI step.
 - **CLI contract snapshot**: done (2026-11-26), `cli/tests/test_cli_contract.py`, of
   `collate folder`, `collate orthanc`, `label xnat` and `label folder`. Later phases
   extend the snapshot to their commands.
-- **The tests of `_recursive_collect` and `_datatype_resource_label`** in
-  `model/tests/test_accession.py` move with those helpers at the removals step
-  (`_recursive_collect`'s is already ported as
-  `test_expand_recursion_prunes_on_directory_datatypes`).
+- **The tests of `_recursive_collect` and `_datatype_resource_label`**: done with the
+  removals (2026-11-26). `_recursive_collect`'s was dropped, since it is ported as
+  `test_expand_recursion_prunes_on_directory_datatypes`, and
+  `_datatype_resource_label`'s moved to `api/tests/collate/test_group.py`.
 - **Tests that change because the behaviour changes**:
   - done with the CLI step (2026-11-26): `cli/tests/test_cli.py::test_stage_wait_period`
     is rewritten, the collate runs in `test_cli.py` give the label options, and
     `test_label_missing_id_field_collects_error` became
     `test_collate_missing_label_field_collects_error` (see `CHANGELOG.md`, Changed).
   - tests that collate the same input more than once, or reuse it after collating it,
-    now find it consumed. In particular, `api/tests/test_collate.py` shares a
-    module-scoped `dicom_dir` fixture (L25-29) between its tests. Each test copies the
-    fixture's files into its own `tmp_path` first.
-- **Unchanged otherwise**: `cli/tests/test_collate_commands.py`,
+    now find it consumed: done with the removals (2026-11-26). The tests that collect
+    from a module-scoped DICOM directory (`api/tests/collate/test_collect.py`,
+    `api/tests/test_label.py`) copy it into their own `tmp_path` first.
+- **Unchanged otherwise**: done (2026-11-26). `cli/tests/test_collate_commands.py`,
   `sources/orthanc/tests/test_orthanc_cli.py` and the rest of `cli/tests/test_cli.py`
-  pass with their assertions as they were. `cli/tests/test_loop_interval.py` follows
-  the folder command onto `collate_files` and `run_on_interval`'s logger. The scripts in
-  `real-tests/` use the CLI. `real-tests/uq_acemid_collate.py` should be checked, since
-  collating now consumes its input and labels for XNAT by default.
+  pass with their assertions as they were: the filtered full suite after the removals
+  gave 1078 passed, 101 deselected (the XNAT server and deidentify tests), in 9
+  minutes. `cli/tests/test_loop_interval.py` follows the folder command onto
+  `collate` and `run_on_interval`'s logger. `real-tests/uq_acemid_collate.py` gives
+  `collate folder` the label options that `real-tests/uq_acemid_label.py` gave
+  `label`, and collates a hard-linked copy of its input, since collate consumes it.
+  `uq_acemid_label.py` is deleted. The USyd scripts, which had stopped importing, run
+  on today's commands, and `usyd_transfer.py` is deleted, since its command was
+  removed (see `CHANGELOG.md`, Changed). The XNAT server and deidentify tests in
+  `cli/tests/test_cli.py` are left for Phase 7.
 
 ## Phase 2: Collate step API hand-off
 
@@ -396,9 +366,10 @@ nested closures. The expected steps are:
 Orthanc's storage files don't change once written, so the Phase 1 claim step isn't
 needed: the study labels already mark which studies a run has taken.
 
-Open: whether Orthanc staging can reference the files in place and reuse
-`save_accessions_to_dir`, as the comment at `sources/orthanc/api/collate_api.py:101`
-asks.
+Open: whether Orthanc staging can reference the files in place and reuse the Phase 1
+save steps (`save_to_build_dir`, `move_to_target`), as the comment at
+`sources/orthanc/api/collate_api.py:101` asks of `save_accessions_to_dir`, which the
+removals step deleted.
 
 ## Phase 4: Attach
 
@@ -484,6 +455,12 @@ Status: Planned.
 - Rewrite the "Python API" and "Data that is already staged" sections of `MIGRATING.md`
   for the step API and any changes to the staging layout.
 - Remove any internal helpers that are no longer used.
+- Update the user docs of `collate folder` (`docs/source/sources/folder.rst`,
+  `docs/source/concepts.rst`) for Phase 1: its label options, `--store`,
+  `--primary-label`, the combiner and `--wait-period` as its quiet period, the
+  directories it writes (`__runs__`, `__processing__`, `__unprocessed__`,
+  `__error__`), and that it consumes its input. The 2026-11-26 tests follow-up only
+  corrected the sentences that had become wrong.
 
 ## Open questions
 
@@ -491,7 +468,7 @@ Status: Planned.
   (which needs them to pickle, and somewhere to store results), or should the batch
   steps also have variants that take and return paths? `Accession` objects do pickle
   (checked by C2's tests).
-- Can the Orthanc source reuse `save_accessions_to_dir` (see Phase 3)?
+- Can the Orthanc source reuse the Phase 1 save steps (see Phase 3)?
 - How does the flows repository pin its `accessionflow` version, and which release first
   publishes the collate step API?
 - Two runs at the same time now build in separate directories and deliver run

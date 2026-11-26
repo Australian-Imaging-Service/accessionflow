@@ -268,7 +268,7 @@ def test_classify_after_recursive_expansion(tmp_path: Path) -> None:
         ("DirectoryOf[Json]", "plain/deep"),
         ("Plain", "scan.txt"),
     ]
-    # Dropping the ignored leaves the acquisitions that from_paths collates
+    # Dropping the ignored leaves the acquisitions that are collated
     kept = drop_ignored_filesets(filesets, datatypes, plan.ignore_datatypes)
     assert sorted(f.fspath.name for f in kept) == ["analysis", "deep"]
 

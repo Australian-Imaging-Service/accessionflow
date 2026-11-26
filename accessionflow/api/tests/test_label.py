@@ -13,18 +13,39 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
 )
 
 from accessionflow.api.label_api import INVALID_DIRNAME, label
+from accessionflow.api.tests.collate.collect import stage_unlabelled
 from accessionflow.helpers.arg_types import IDSpec
 from accessionflow.helpers.metadata import Metadata
 from accessionflow.helpers.remotes import list_session_dirs
 from accessionflow.model.accession import Accession
 from accessionflow.model.acquisition import Acquisition
 from accessionflow.model.resource import Resource
-from accessionflow.sources.folder.api import collate
 
 PROJECT_FIELD = "StudyID"
 SUBJECT_FIELD = "PatientID"
 ACCESSION_UID_FIELD = "AccessionNumber"
 ACQUISITION_ID_FIELD = "SeriesDescription"
+
+
+# The ID specs the accessions are collated with
+ACCESSION_UID_SPEC = [IDSpec("StudyInstanceUID", "medimage/dicom-collection")]
+ACQUISITION_ID_SPEC = [IDSpec("SeriesNumber", "medimage/dicom-collection")]
+RESOURCE_SPEC = [IDSpec("ImageType[2:]", "medimage/dicom-collection")]
+
+
+def _stage_unlabelled(dicom_dir: Path, collated_dir: Path, tmp_path: Path) -> None:
+    """Stages the DICOM series in a copy of ``dicom_dir`` as unlabelled accessions in
+    ``collated_dir``, as the 'label' stage takes them. The collate steps claim (move)
+    their input, so the module's shared directory is copied first"""
+    stage_unlabelled(
+        shutil.copytree(dicom_dir, tmp_path / "input"),
+        collated_dir,
+        [DicomSeries],
+        ACCESSION_UID_SPEC,
+        ACQUISITION_ID_SPEC,
+        RESOURCE_SPEC,
+        working_dir=tmp_path / "__processing__",
+    )
 
 
 @pytest.fixture
@@ -437,15 +458,7 @@ def test_label_end_to_end_resolves_ids_from_collated_metadata(
 ) -> None:
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
-    collate_errors = collate(
-        input_paths=[str(dicom_dir)],
-        output_dir=collated_dir,
-        datatypes=[DicomSeries],
-        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-        resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
-    )
-    assert collate_errors == []
+    _stage_unlabelled(dicom_dir, collated_dir, tmp_path)
 
     output_dir = tmp_path / "labelled"
     output_dir.mkdir()
@@ -481,18 +494,18 @@ def test_label_loads_dicomdir_resource(dicom_dir: Path, tmp_path: Path) -> None:
     source_dir = input_dir / "dicom0"
     shutil.copytree(dicom_dir, source_dir)
 
+    num_files = len(list(source_dir.iterdir()))
+
     collated_dir = tmp_path / "collated"
-    assert (
-        collate(
-            input_paths=[str(input_dir)],
-            output_dir=collated_dir,
-            datatypes=[DicomDir],
-            recursive=True,
-            accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-            acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-            resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
-        )
-        == []
+    stage_unlabelled(
+        input_dir,
+        collated_dir,
+        [DicomDir],
+        ACCESSION_UID_SPEC,
+        ACQUISITION_ID_SPEC,
+        RESOURCE_SPEC,
+        working_dir=tmp_path / "__processing__",
+        recursive=True,
     )
 
     output_dir = tmp_path / "labelled"
@@ -514,7 +527,7 @@ def test_label_loads_dicomdir_resource(dicom_dir: Path, tmp_path: Path) -> None:
     assert isinstance(resource.fileset, DicomDir)
     assert resource.fileset.fspath.name == source_dir.name
     assert resource.fileset.fspath.is_dir()
-    assert len(resource.checksums) == len(list(source_dir.iterdir()))
+    assert len(resource.checksums) == num_files
 
 
 def test_label_end_to_end_routes_datatypes_to_separate_projects(
@@ -522,17 +535,7 @@ def test_label_end_to_end_routes_datatypes_to_separate_projects(
 ) -> None:
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
-    assert (
-        collate(
-            input_paths=[str(dicom_dir)],
-            output_dir=collated_dir,
-            datatypes=[DicomSeries],
-            accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-            acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-            resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
-        )
-        == []
-    )
+    _stage_unlabelled(dicom_dir, collated_dir, tmp_path)
 
     collated_session = Accession.load(next(iter(list_session_dirs(collated_dir))))
     collated_session.add_session_resource("report", File.sample(seed=42))
@@ -589,15 +592,7 @@ def test_label_end_to_end_unresolvable_project_field_goes_to_invalid_dir(
     saved with a placeholder ID under __invalid__, not dropped"""
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
-    collate_errors = collate(
-        input_paths=[str(dicom_dir)],
-        output_dir=collated_dir,
-        datatypes=[DicomSeries],
-        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-        resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
-    )
-    assert collate_errors == []
+    _stage_unlabelled(dicom_dir, collated_dir, tmp_path)
 
     output_dir = tmp_path / "labelled"
     output_dir.mkdir()
@@ -631,15 +626,7 @@ def test_label_skips_duplicate_invalid_sessions(
     a second directory in __invalid__."""
     collated_dir = tmp_path / "collated"
     collated_dir.mkdir()
-    collate_errors = collate(
-        input_paths=[str(dicom_dir)],
-        output_dir=collated_dir,
-        datatypes=[DicomSeries],
-        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-        resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
-    )
-    assert collate_errors == []
+    _stage_unlabelled(dicom_dir, collated_dir, tmp_path)
 
     output_dir = tmp_path / "labelled"
     output_dir.mkdir()

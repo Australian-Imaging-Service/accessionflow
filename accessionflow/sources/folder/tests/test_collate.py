@@ -1,4 +1,4 @@
-"""Tests of `collate_files`, the folder source's run on the collate steps (see
+"""Tests of `collate`, the folder source's run on the collate steps (see
 ``prefect-migration-docs/ROADMAP.md``, Phase 1, Composites step C4)"""
 
 import json
@@ -31,7 +31,7 @@ from accessionflow.helpers.run_uid import RUN_UID_RE
 from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
 from accessionflow.sources.folder.api import collate_api
-from accessionflow.sources.folder.api.collate_api import collate_files
+from accessionflow.sources.folder.api.collate_api import collate
 
 LABEL_FIELDS = {"project": "project", "subject": "sess", "session": "visit"}
 SESS_NAME = [PathMetadataPattern("{sess}/{name}.json", Json)]
@@ -84,7 +84,7 @@ def _run(dirs: Dirs, **kwargs: ty.Any) -> list[str]:
         constant_labels={"project": "P"},
     )
     options.update(kwargs)
-    return collate_files(
+    return collate(
         list_input_files([dirs.inbox]),
         dirs.output,
         dirs.working,
@@ -340,7 +340,7 @@ def _run_dicom(dirs: Dirs, dicom_source: Path, **kwargs: ty.Any) -> list[str]:
         acquisition_field="SeriesDescription",
     )
     options.update(kwargs)
-    return collate_files(
+    return collate(
         list_input_files([dirs.inbox]),
         dirs.output,
         dirs.working,

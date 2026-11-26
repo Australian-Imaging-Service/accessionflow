@@ -1,65 +1,107 @@
-import logging
+"""Collates and labels a USyd TBP raw-data export with 'collate folder'
 
+The DICOM series and Siemens Biograph Vision raw data in the export are collated into
+accessions labelled for XNAT, ``<PatientComments>.<PatientID>.<AccessionNumber>_combined``,
+in ``<WORK_DIR>/TEST-STAGED``, which ``usyd_upload.py`` and ``usyd_check_upload.py``
+read once it has been copied to the S3 bucket. Collate consumes its input, so each run
+collates a hard-linked copy of the export, ``<WORK_DIR>/INBOX``, and the export itself
+is left as it is.
+
+This replaces the old 'sort' command, which also uploaded to S3. The 'transfer' command
+that did that later has been removed, so copy the staged accessions to the bucket
+yourself, e.g. with ``aws s3 sync``. Deidentification is its own stage, not run here.
+
+Set ``USYD_TBP_DIR`` to run it on another copy of the export.
+"""
+
+import logging
+import os
+import shutil
+import traceback
+
+import click
 from click.testing import CliRunner
 
-from accessionflow.cli import sort
-from accessionflow.utils import show_cli_trace
+from accessionflow.sources.folder.cli import collate_cmd
+
+
+def show_cli_trace(result: click.testing.Result) -> str:
+    """Show the exception traceback from CLIRunner results"""
+    assert result.exc_info is not None
+    exc_type, exc, tb = result.exc_info
+    return "".join(traceback.format_exception(exc_type, value=exc, tb=tb))
+
 
 runner = CliRunner()
 
-WORK_DIR = "/Users/tclo7153/Data/TBP"
+WORK_DIR = os.environ.get("USYD_TBP_DIR", "/Users/tclo7153/Data/TBP")
+EXPORT = "VENTURE_P001_Galligas_Post-RT"
+
+DATATYPES = [
+    "medimage/dicom-series",
+    "medimage/vnd.siemens.syngo-mi.vr20b.count-rate",
+    "medimage/vnd.siemens.syngo-mi.vr20b.list-mode",
+    "medimage/vnd.siemens.syngo-mi.vr20b.normalisation",
+    "medimage/vnd.siemens.syngo-mi.vr20b.sinogram",
+    "medimage/vnd.siemens.syngo-mi.vr20b.dynamic-sinogram-series",
+    "medimage/vnd.siemens.syngo-mi.vr20b.parameterisation",
+    "medimage/vnd.siemens.syngo-mi.vr20b.ct-spl",
+    "medimage/vnd.siemens.syngo-mi.vr20b.physio",
+]
 
 logging.basicConfig(level=logging.DEBUG)
 
+shutil.rmtree(f"{WORK_DIR}/TEST-STAGED", ignore_errors=True)
+shutil.rmtree(f"{WORK_DIR}/INBOX", ignore_errors=True)
+# The hard-linked copy is moved by collate, not the export
+shutil.copytree(
+    f"{WORK_DIR}/RAW-DATA-EXPORT/{EXPORT}",
+    f"{WORK_DIR}/INBOX/{EXPORT}",
+    copy_function=os.link,
+)
+
 result = runner.invoke(
-    sort,
+    collate_cmd,
     [
-        f"{WORK_DIR}/RAW-DATA-EXPORT/VENTURE_P001_Galligas_Post-RT",
+        f"{WORK_DIR}/INBOX/{EXPORT}",
         f"{WORK_DIR}/TEST-STAGED",
-    ],  # ACFLOW_DIR
-    env={
-        "ACFLOW_ADDITIONAL_LOGGERS": "fileformats.",
-        "ACFLOW_AWS_BUCKET": "s3://ais-s3-tbp-s3bucket-1afz0bzdw5jd6/STAGING",
-        "ACFLOW_COPY_MODE": "hardlink_or_copy",
-        "ACFLOW_DATATYPES": (
-            "medimage/dicom-series;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.count-rate;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.list-mode;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.normalisation;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.sinogram;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.dynamic-sinogram-series;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.parameterisation;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.ct-spl;"
-            "medimage/vnd.siemens.syngo-mi.vr20b.physio"
-        ),
-        "ACFLOW_DEIDENTIFIED_DIR_NAME": "DEIDENTIFIED",
-        "ACFLOW_DEIDENTIFY": "0",
-        "ACFLOW_DELETE": "0",
-        "ACFLOW_INVALID_DIR_NAME": "INVALID",
-        "ACFLOW_LOGGERS": f"stream,info,stdout;file,debug,{WORK_DIR}/accessionflow-test-stage.log",
-        "ACFLOW_PRE_STAGE_DIR_NAME": "PRE-STAGE",
-        "ACFLOW_PROJECT": "PatientComments",
-        "ACFLOW_RESOURCE": "ImageType[2:],medimage/vnd.siemens.syngo-mi.vr20b.raw-data",
-        "ACFLOW_SCAN_DESC": "SeriesDescription",
-        "ACFLOW_SCAN_ID": "SeriesNumber",
-        "ACFLOW_SPACES_TO_UNDERSCORES": "0",
-        "ACFLOW_STAGED_DIR_NAME": "STAGED",
-        "ACFLOW_SUBJECT": "PatientID",
-        "ACFLOW_VISIT": "AccessionNumber",
-        "ACFLOW_WORK_DIR": "/Users/tclo7153/Data/TBP/XNAT-INGEST-WORK",
-        # "ACFLOW_DICOMS_PATH": "/vol/vmhost/kubernetes/<path>/<to>/<dicom>/<store>/**/*.IMA",
-        # "ACFLOW_DIR": "/vol/vmhost/usyd-data-export/STAGING",
-        # "ACFLOW_PROJECT": "ProtocolName",
-        # "ACFLOW_SUBJECT": "PatientID",
-        # "ACFLOW_VISIT": "AccessionNumber",
-        # "ACFLOW_ASSOCIATED": "/vol/vmhost/usyd-data-export/RAW-DATA-EXPORT/{PatientName.family_name}_{PatientName.given_name}/.ptd","./[^\\.]+.[^\\.]+.[^\\.]+.(?P\\d+).[A-Z]+_(?P[^\\.]+).",
-        # "ACFLOW_DELETE": "0",
-        # "ACFLOW_LOGFILE": "<somewhere-sensible>,INFO",
-        # "ACFLOW_DEIDENTIFY": "1",
-    },
+        *(arg for datatype in DATATYPES for arg in ("--datatype", datatype)),
+        # The raw data are collated by the same fields as the DICOM series
+        "--accession",
+        "StudyInstanceUID",
+        "all",
+        "--acquisition",
+        "SeriesNumber",
+        "all",
+        "--resource",
+        "ImageType[2:]",
+        "medimage/vnd.siemens.syngo-mi.vr20b.raw-data",
+        # The labels, which the 'sort' command gave
+        "--project",
+        "PatientComments",
+        "--subject",
+        "PatientID",
+        "--session",
+        "AccessionNumber",
+        "--scan",
+        "SeriesDescription",
+        "--copy-mode",
+        "hardlink_or_copy",
+        "--logger",
+        "stream",
+        "info",
+        "stdout",
+        "--logger",
+        "file",
+        "debug",
+        f"{WORK_DIR}/accessionflow-test-stage.log",
+        "--additional-logger",
+        "fileformats",
+    ],
     catch_exceptions=False,
 )
 
 
 if result.exit_code != 0:
-    show_cli_trace(result)
+    print(result.output)
+    print(show_cli_trace(result))

@@ -20,7 +20,8 @@ A plugin package
   every source shares (`--loop`, `--wait-period`, `--copy-mode`, `--convert`,
   `--logger`, `--additional-logger` and `--raise-errors`)
 - saves the accessions it collates into the staging directory, e.g. with
-  `accessionflow.api.save_accessions_to_dir`, which builds each one under
-  `__build__` and moves it into place once it is complete
+  `accessionflow.api.collate.save_to_build_dir`, which builds each one under
+  `__build__`, and `accessionflow.api.staging.move_into_place`, which moves it into
+  place once it is complete
 
 The store plugins in `accessionflow.stores` are found the same way.

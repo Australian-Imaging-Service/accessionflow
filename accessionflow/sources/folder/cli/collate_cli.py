@@ -49,7 +49,7 @@ from ..api.collate_api import (
     DEFAULT_ACCESSION_UID_FIELD,
     DEFAULT_ACQUISITION_ID_FIELD,
     DEFAULT_RESOURCE_FIELD,
-    collate_files,
+    collate,
 )
 
 DEFAULT_STORE = "xnat"
@@ -488,7 +488,7 @@ def collate_cmd(
             exclude_paths,
             metadata_table_paths=[t.table_file.fspath for t in metadata_tables],
         )
-        errors = collate_files(
+        errors = collate(
             input_files,
             runs_dir,
             working_dir,

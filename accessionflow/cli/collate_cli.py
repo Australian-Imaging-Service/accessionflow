@@ -15,7 +15,8 @@ collate_group = source_group(
     name="collate",
     help=(
         "Collates files from a source into accessions, acquisitions and resources in a "
-        "staging directory, ready to be labelled"
+        "staging directory. 'collate folder' also labels them for a data store; the "
+        "accessions of other sources are labelled by the 'label' stage"
     ),
 )
 

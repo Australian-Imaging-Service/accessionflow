@@ -28,7 +28,7 @@ from accessionflow.api.staging import BUILD_NAME_DEFAULT, prepare_build_dir
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable, PathMetadataPattern
 from accessionflow.helpers.remotes import LocalSessionListing
 from accessionflow.model.accession import Accession
-from accessionflow.sources.folder.api.collate_api import collate_files
+from accessionflow.sources.folder.api.collate_api import collate
 
 LABEL_FIELDS = {"project": "project", "subject": "sess", "session": "visit"}
 CONSTANT_LABELS = {"project": "P", "session": "V1"}
@@ -72,7 +72,7 @@ def _collate(
         table_path.write_text(table)
         tables = [MetadataTable(str(table_path), "accession", "Session=sess")]
     monkeypatch.setattr(claim_module, "make_run_uid", lambda: run_uid)
-    errors = collate_files(
+    errors = collate(
         paths,
         dirs.runs,
         tmp_path / "work",
@@ -114,7 +114,7 @@ def test_check_primary_label_accepts(label: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "label", ["", "a.b", "a_b", "-a", "a b", "abc12320261124010203"]
+    "label", ["", "a.b", "a_b", "-a", "a b", "20261124010203_abc123"]
 )
 def test_check_primary_label_refuses(label: str) -> None:
     with pytest.raises(ValueError):

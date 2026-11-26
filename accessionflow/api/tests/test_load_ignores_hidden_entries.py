@@ -16,10 +16,10 @@ from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b imp
     get_image as get_pet_image,
 )
 
+from accessionflow.api.tests.collate.collect import stage_unlabelled
 from accessionflow.helpers.arg_types import IDSpec
 from accessionflow.helpers.remotes import list_session_dirs
 from accessionflow.model.accession import Accession
-from accessionflow.sources.folder.api import collate
 
 
 @pytest.fixture(scope="module")
@@ -28,15 +28,15 @@ def session_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     dicom_dir = tmp_path_factory.mktemp("dicom")
     get_pet_image(out_dir=dicom_dir)
     collated_dir = tmp_path_factory.mktemp("collated")
-    errors = collate(
-        input_paths=[str(dicom_dir)],
-        output_dir=collated_dir,
-        datatypes=[DicomSeries],
-        accession_uid=[IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
-        acquisition_id=[IDSpec("SeriesNumber", "medimage/dicom-collection")],
-        resource=[IDSpec("ImageType[2:]", "medimage/dicom-collection")],
+    stage_unlabelled(
+        dicom_dir,
+        collated_dir,
+        [DicomSeries],
+        [IDSpec("StudyInstanceUID", "medimage/dicom-collection")],
+        [IDSpec("SeriesNumber", "medimage/dicom-collection")],
+        [IDSpec("ImageType[2:]", "medimage/dicom-collection")],
+        working_dir=tmp_path_factory.mktemp("processing"),
     )
-    assert errors == []
     return next(iter(list_session_dirs(collated_dir)))
 
 

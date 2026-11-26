@@ -45,7 +45,7 @@ CASES = [
         "accessionflow.sources.folder.cli.collate_cli",
         "collate_cmd",
         "accessionflow.sources.folder.cli.collate_cli",
-        "collate_files",
+        "collate",
         [],
         True,
     ),

@@ -1,9 +1,18 @@
 import os
+import traceback
 
+import click
 from click.testing import CliRunner
 
 from accessionflow.stores.xnat.cli import store_cmd
-from accessionflow.utils import show_cli_trace
+
+
+def show_cli_trace(result: click.testing.Result) -> str:
+    """Show the exception traceback from CLIRunner results"""
+    assert result.exc_info is not None
+    exc_type, exc, tb = result.exc_info
+    return "".join(traceback.format_exception(exc_type, value=exc, tb=tb))
+
 
 runner = CliRunner()
 
@@ -18,10 +27,8 @@ result = runner.invoke(
         "ACFLOW_ALWAYSINCLUDE": "medimage/dicom-series",
         "ACFLOW_STORE_CREDENTIALS": os.environ["ACFLOW_STORE_CREDENTIALS"],
         "ACFLOW_LOGGERS": os.environ["ACFLOW_LOGGERS"],
-        "ACFLOW_DELETE": "0",
         "ACFLOW_TEMPDIR": os.environ.get("ACFLOW_TEMPDIR", "/tmp"),
         "ACFLOW_REQUIRE_MANIFEST": "1",
-        "ACFLOW_CLEANUP_OLDER_THAN": "0",
     },
     catch_exceptions=False,
 )

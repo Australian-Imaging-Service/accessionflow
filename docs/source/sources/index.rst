@@ -5,7 +5,8 @@ Sources
 
 A source is where the files come from. The ``collate`` stage reads them from a source
 and collates them into accessions, acquisitions and resources (see
-:ref:`concepts-model`) in a staging directory, ready to be labelled. Each source
+:ref:`concepts-model`) in a staging directory. ``collate folder`` also labels them;
+the accessions of other sources are labelled by the ``label`` stage. Each source
 provides its own ``collate`` subcommand:
 
 :doc:`folder`

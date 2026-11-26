@@ -5,8 +5,10 @@ Folders
 
 ``collate folder`` reads files from directories on a local path or a mounted file
 system, reads each file's metadata (DICOM tags by default), and collates the files into
-accessions, acquisitions and resources in ``OUTPUT_DIR``, ready to be labelled (see
-:ref:`concepts-staging` for the layout).
+accessions, acquisitions and resources. It labels each accession for a data store
+(``--store``, XNAT by default, with the same label options as ``label <store>``), and
+writes it to ``OUTPUT_DIR`` as ``<labels>_combined`` once it has had no new data for
+``--wait-period`` seconds (see :ref:`concepts-staging` for the layout).
 
 .. code-block:: console
 
@@ -16,8 +18,8 @@ accessions, acquisitions and resources in ``OUTPUT_DIR``, ready to be labelled (
   directly (``ACFLOW_INPUT_PATHS``)
 * ``OUTPUT_DIR`` — where the collated accessions are written (``ACFLOW_OUTPUT_DIR``)
 
-Add ``--unlink-source all`` to remove each source file once it has been collated (see
-:ref:`concepts-unlink-source`).
+The input files are always consumed: each one is moved out of ``INPUT_PATHS`` when it
+is collated. ``--unlink-source`` is deprecated and has no effect.
 
 
 .. _source-folder-grouping:

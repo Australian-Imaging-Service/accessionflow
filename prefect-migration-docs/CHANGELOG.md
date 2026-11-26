@@ -280,6 +280,61 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1, tests follow-up:
+  - The help of the `collate` group no longer says the accessions are "ready to be
+    labelled": `collate folder` labels them, and the accessions of other sources are
+    labelled by `label`. `docs/source/sources/index.rst` and
+    `docs/source/sources/folder.rst` say the same, and `folder.rst` no longer suggests
+    `--unlink-source all`, which has no effect. Its full update is left to Phase 10.
+  - `real-tests/`: the USyd scripts, which had all stopped importing
+    (`accessionflow.utils.show_cli_trace` and the `sort` and `transfer` commands were
+    removed), run again:
+    - `usyd_stage.py` runs `collate folder` in place of `sort`, with the same
+      datatypes, ID fields and labels (`--project PatientComments`, `--subject
+      PatientID`, `--session AccessionNumber`) as options. It collates `INBOX/`, a
+      hard-linked copy of the export, since collate consumes its input, and
+      `USYD_TBP_DIR` points it at another copy. Checked on a dummy PET DICOM export,
+      run twice.
+    - `usyd_upload.py` and `usyd_check_upload.py` define `show_cli_trace`, and
+      `usyd_upload.py` drops `ACFLOW_DELETE` and `ACFLOW_CLEANUP_OLDER_THAN`, which
+      no option reads. They need the XNAT server and the S3 bucket, so they weren't
+      run.
+    - `usyd_transfer.py` is deleted: the `transfer` command was removed before
+      Phase 1, and nothing replaces it. `usyd_stage.py` says to copy the staged
+      accessions to the bucket instead.
+
+  `collate folder`'s parameters are unchanged. PR: pending.
+- 2026-11-26, Phase 1, tests, `real-tests/`: `uq_acemid_collate.py` gives
+  `collate folder` the label options (`--subject SubjectID`, `--session
+  "{SubjectID}_{CaptureDate:%Y%m%d}"`, `--constant-project-id ACEMID`), since collate
+  now labels for XNAT, whose default fields the export doesn't have. Collate consumes
+  its input, so each run collates `inbox/`, a hard-linked copy of `input/`, and
+  `input/` is left as it is. `UQ_ACEMID_DIR` points it at another copy of the export,
+  and it prints the traceback of a failed run. `uq_acemid_label.py` is deleted:
+  `collate folder` gives the labels it gave, and it no longer imported
+  (`accessionflow.cli.label_cmd` became `label <store>`). Checked on a small tree of
+  one image and its table, run twice. Tests: the filtered full suite after the CLI
+  and removals steps gave 1078 passed, 101 deselected, in 9 minutes. The 101 are the
+  XNAT server and deidentify tests, left for Phase 7. CLI unchanged. PR: pending.
+- 2026-11-26, Phase 1, removals, `sources/folder/api/collate_api.py`: `collate_files`
+  is renamed `collate` (`accessionflow.sources.folder.api.collate`), and takes the old
+  `collate()`'s place. Tests:
+  - The tests that ran on both `from_paths` and the steps (C5) run on the steps, in
+    `api/tests/collate/test_collect.py`, with the helper `collect_files`
+    (`api/tests/collate/collect.py`, which was `from_paths_port.py`). The
+    `test_from_paths_*` tests are named `test_collect_*`.
+  - `api/tests/test_collate.py` is deleted: C5 recorded each of its old `collate()`
+    tests' counterparts. `test_recursive_collect_prunes_on_match` is deleted (ported
+    as `test_expand_recursion_prunes_on_directory_datatypes`), and
+    `test_datatype_resource_label` moved to `api/tests/collate/test_group.py`.
+  - `api/tests/test_label.py`, `api/tests/test_load_ignores_hidden_entries.py` and
+    `model/tests/test_load_duplicate_scan_id.py` stage their input with
+    `stage_unlabelled` (`api/tests/collate/collect.py`), which saves unlabelled
+    accessions as the old `collate()` did, and keep their assertions.
+  - `sources/folder/tests/test_collate_files.py` is renamed
+    `sources/folder/tests/test_collate.py`.
+
+  CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1, CLI, `accessionflow/api/collate/combine.py`:
   `combine_accessions` uses the metadata of the run accessions' resources as collate
   saved it, and no longer reads their files again. A loaded resource's `Metadata`
@@ -611,6 +666,25 @@ contract, so each entry says "CLI unchanged".
 
 ### Removed
 
+- 2026-11-26, Phase 1, removals: the old collate path, which only tests still called
+  since the CLI step.
+  - `Accession.from_paths` and `Accession.last_modified`. Use the collate steps in
+    `accessionflow.api.collate`, or the folder `collate`.
+  - The old folder `collate(input_paths, ...)`, with its `wait_period`,
+    `unlink_source` and `exclude_paths` arguments and its directories and glob
+    patterns as input. Use `list_input_files`, the folder `collate` and
+    `combine_run_accessions`, as `collate folder` does.
+  - `accessionflow/api/collate_api.py`, with `save_accessions_to_dir`, which
+    `accessionflow.api` no longer exports. Use `save_to_build_dir` and
+    `move_to_target`.
+  - The model's private `_drop_excluded_paths` and `_recursive_collect`, which
+    `discover.py` and `classify.py` had copied. `_datatype_resource_label` and
+    `_DERIVED_ID` moved to `accessionflow/api/collate/group.py`.
+  - `from_paths`' run-UID form, `<6 hex>YYYYMMDDHHMMSS`, from
+    `accessionflow.helpers.run_uid` (`RUN_UID_RE`, `split_run_uid` and
+    `run_uid_time`).
+
+  CLI unchanged. PR: pending.
 - 2026-11-25, Phase 1: `accessionflow.api.collate.stage_accession`. Use
   `assign_labels` and then `move_to_target`. PR: pending.
 - 2026-11-24, Phase 1, step 16:
@@ -1271,6 +1345,16 @@ left for the next combine.
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, removals:
+  - renamed: `accessionflow.sources.folder.api.collate_api.collate_files` is
+    `accessionflow.sources.folder.api.collate`, with the same signature
+  - removed: `Accession.from_paths`, `Accession.last_modified`, the old folder
+    `collate(input_paths, ...)` and `accessionflow.api.save_accessions_to_dir` (see
+    Removed)
+  - changed: `RUN_UID_RE`, `split_run_uid` and `run_uid_time`
+    (`accessionflow.helpers.run_uid`) recognise only `make_run_uid`'s form,
+    `YYYYMMDDHHMMSS_<6 hex>`
+
 - 2026-11-26, Phase 1, CLI, added in `accessionflow.api.collate`:
   - `list_source_roots(input_paths, input_files) -> list[Path]`
   - `RUNS_NAME_DEFAULT` (`__runs__`), `UNPROCESSED_NAME_DEFAULT` (`__unprocessed__`)
@@ -1398,6 +1482,14 @@ left for the next combine.
 
 ### Staging layout
 
+- 2026-11-26, Phase 1, removals: `from_paths`' run-UID form, `<6 hex>YYYYMMDDHHMMSS`,
+  is no longer recognised in a directory name. Unlabelled accessions staged by an
+  earlier version (`_.<uid>`) are still labelled by `label`, and the names it gives
+  them parse back from their saved labels. But a labelled accession named
+  `<labels>_<6 hex>YYYYMMDDHHMMSS` by an earlier version, whose metadata doesn't record
+  its labels, no longer loads correctly: the run UID is taken as part of its last
+  label. Drain the labelled accessions staged by an earlier version before upgrading.
+  PR: pending.
 - 2026-11-26, Phase 1, CLI: `collate folder` uses the new layout. In OUTPUT_DIR (each
   directory can be moved with its option):
   - `__processing__/<run_uid>/`: a run's claimed files, under `files/`, with its plan,

@@ -4,8 +4,10 @@ from unittest.mock import MagicMock
 import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
-from fileformats.generic import File
+from fileformats.generic import File, SetOf
+from fileformats.image import Png
 from fileformats.medimage import DicomSeries
+from fileformats.vendor.siemens.medimage import SyngoMi_Vr20b_ListMode
 
 from accessionflow.api.collate import (
     ClaimedFiles,
@@ -21,11 +23,9 @@ from accessionflow.api.collate import (
     resource_label_for,
     tag_fileset_types,
 )
+from accessionflow.api.collate.group import _datatype_resource_label
 from accessionflow.helpers.arg_types import IDSpec, PathMetadataRegex
-from accessionflow.model.accession import (
-    _datatype_resource_label,
-    dicom_image_type_to_resource_label,
-)
+from accessionflow.model.accession import dicom_image_type_to_resource_label
 
 RUN_UID = "20261124010203_abc123"
 
@@ -80,6 +80,19 @@ def test_resource_label_for_derived_from_type(tmp_path: Path) -> None:
     (fileset,) = _filesets(tmp_path, {"a.json": "{}"}, [Json])
     assert resource_label_for(fileset) == (_datatype_resource_label(Json), True)
     assert resource_label_for(fileset) == ("json", True)
+
+
+@pytest.mark.parametrize(
+    "datatype, expected",
+    [
+        (DicomSeries, "dicom-series"),
+        (SyngoMi_Vr20b_ListMode, "syngo-mi_vr20b_list-mode"),
+        (SetOf[Png], "png_set-of"),
+        (File, "file"),
+    ],
+)
+def test_datatype_resource_label(datatype: type[FileSet], expected: str) -> None:
+    assert _datatype_resource_label(datatype) == expected
 
 
 def test_resource_label_for_from_spec(tmp_path: Path) -> None:

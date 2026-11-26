@@ -16,8 +16,7 @@ stages:
 * :class:`~accessionflow.model.accession.Accession` — a whole accession: its labels,
   acquisitions, accession-level resources, metadata and fields. Load an existing one
   from disk with :meth:`Accession.load <accessionflow.model.accession.Accession.load>`,
-  or build one from files with :meth:`Accession.from_paths
-  <accessionflow.model.accession.Accession.from_paths>`.
+  or build them from files with the collate steps in ``accessionflow.api.collate``.
 * :class:`~accessionflow.model.acquisition.Acquisition` — one acquisition (e.g. a scan)
   within an accession, and the resources attached to it.
 * :class:`~accessionflow.model.resource.Resource` — one resource: a ``FileSet``, its
