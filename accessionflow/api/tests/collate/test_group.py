@@ -4,9 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
-from fileformats.generic import DirectoryOf, File
+from fileformats.generic import File
 from fileformats.medimage import DicomSeries
-from fileformats.text import Csv
 
 from accessionflow.api.collate import (
     ClaimedFiles,
@@ -177,52 +176,3 @@ def test_group_into_accessions_no_matching_accession_spec(tmp_path: Path) -> Non
     with pytest.raises(TypeError):
         # The only spec is scoped to CSV files
         group_into_accessions(filesets, [IDSpec("sess", "text/csv")])
-
-
-def test_steps_7_to_14_like_from_paths_datatype_field(tmp_path: Path) -> None:
-    """Mirrors model/tests/test_accession.py::
-    test_from_paths_injects_datatype_metadata_field"""
-    filesets = _filesets(
-        tmp_path,
-        {"src/a.txt": "x"},
-        [File],
-        [PathMetadataRegex(r".*/(?P<sess>[^/]+)\.txt", File)],
-    )
-    (accession,) = group_into_accessions(
-        filesets,
-        [IDSpec("sess")],
-        [IDSpec("sess")],
-        [IDSpec("res_{__datatype__}")],
-    )
-    acquisition = next(iter(accession.acquisitions.values()))
-    assert list(acquisition.resources) == ["res_File"]
-    resource = next(iter(acquisition.resources.values()))
-    assert resource.fileset.metadata["__datatype__"] == "File"
-
-
-def test_steps_7_to_14_like_from_paths_recursive(tmp_path: Path) -> None:
-    """Mirrors model/tests/test_accession.py::
-    test_from_paths_recursive_pulls_nested_directory_datatype"""
-    from fileformats.text import Plain
-
-    filesets = _filesets(
-        tmp_path,
-        {
-            "analysis/result.json": "{}",
-            "analysis/notes.txt": "inside the wanted dir",
-            "lesion/data.csv": "a,b\n1,2\n",
-            "plain/deep/result.json": "{}",
-            "scan.txt": "a loose file",
-        },
-        [DirectoryOf[Json]],
-        [PathMetadataRegex(r".*/(?P<name>[^/]+)$", DirectoryOf[Json])],
-        ignore_datatypes=[DirectoryOf[Csv], Plain],
-        recursive=True,
-    )
-    (accession,) = group_into_accessions(
-        filesets,
-        [IDSpec("__datatype__")],
-        [IDSpec("name")],
-        [IDSpec("name")],
-    )
-    assert set(accession.acquisitions) == {"analysis", "deep"}

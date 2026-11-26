@@ -23,6 +23,7 @@ from .classify import (
     expand_claimed_paths,
     plan_recursion,
 )
+from .composites import CollectedAccessions, collect_accessions
 from .discover import list_input_files
 from .group import (
     acquisition_id_for,
@@ -54,6 +55,7 @@ __all__ = [
     "abandon_claim",
     "PROCESSING_NAME_DEFAULT",
     "ClaimedFiles",
+    "CollectedAccessions",
     "claim_input_files",
     "RecursionPlan",
     "acquisition_id_for",
@@ -62,6 +64,7 @@ __all__ = [
     "check_datatypes",
     "clash_hint_for",
     "classify_paths",
+    "collect_accessions",
     "disable_metadata_reading",
     "drop_ignored_filesets",
     "expand_claimed_paths",

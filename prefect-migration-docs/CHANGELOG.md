@@ -23,6 +23,13 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-26, Phase 1, composites step C2, `accessionflow/api/collate/composites.py`:
+  `collect_accessions`, which runs steps 7–15 in the order of the steps table and
+  returns a `CollectedAccessions` record. The record holds the accessions and the
+  file-sets of ignored datatypes, which `finish_claim` records as `ignored`. When a
+  claimed file isn't recognised, a note on the `FormatMismatchError` lists the file's
+  original path and the run directory. Tests in `api/tests/collate/test_composites.py`.
+  Nothing calls it yet. CLI unchanged. PR: pending.
 - 2026-11-25, Phase 1, step 17 (the next action "the revised flow"),
   `accessionflow/api/collate/assign.py`: `assign_labels`, which labels each accession
   from its metadata and raises `LabelsNotAssignedError` (new in
@@ -183,6 +190,11 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1, composites step C2, tests only: the tests that chained steps 7–14
+  by hand (`test_steps_7_to_14_like_from_paths_datatype_field` and `..._recursive` in
+  `test_group.py`, and `test_steps_7_to_11_together` in `test_metadata.py`) moved to
+  `api/tests/collate/test_composites.py`. They now call `collect_accessions` and keep
+  their assertions. CLI unchanged. PR: pending.
 - 2026-11-25, Phase 1, composites step C1: `accessionflow.api.staging.for_each_accession`
   returns `list[tuple[T, str]]`, each accession the step failed on with its error
   message (traceback included), instead of the messages alone, so that the failed
@@ -707,6 +719,9 @@ To confirm:
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, composites step C2, added in `accessionflow.api.collate`:
+  - `collect_accessions(claimed, datatypes, recursion, *, accession_uid_field, recursive=False, allow_unrecognised=(), dont_read_metadata=(), path_metadata_regex=(), metadata_tables=(), acquisition_id_field=(), resource_field=(), on_resource_clash="error", run_uid=None) -> CollectedAccessions`
+  - `CollectedAccessions(accessions, ignored)`, a frozen attrs record that pickles
 - 2026-11-25, Phase 1, composites step C1, changed in `accessionflow.api.staging`:
   - `for_each_accession(accessions, step, desc, raise_errors=False, name_of=...) -> list[tuple[T, str]]`
 - 2026-11-25, Phase 1, steps 6, 17 and 18:

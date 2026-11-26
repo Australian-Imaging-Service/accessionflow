@@ -260,28 +260,34 @@ built alongside it, and the name `save_accessions_to_dir` stays with the old fun
   `log_stage_summary` is given the messages. Nothing but its tests calls it yet; they
   are updated in `api/tests/test_staging.py`.
 
-**C2. `collect_accessions`, steps 7–15**, in a new `accessionflow/api/collate/composites.py`:
+**C2. `collect_accessions`, steps 7–15**, in a new
+`accessionflow/api/collate/composites.py`. **Done (2026-11-26).**
 
 ```python
 collect_accessions(
-    claimed, datatypes, recursion, *, recursive=False, allow_unrecognised=(),
-    dont_read_metadata=(), path_metadata_regex=(), metadata_tables=(),
-    accession_uid_field, acquisition_id_field=(), resource_field=(),
+    claimed, datatypes, recursion, *, accession_uid_field, recursive=False,
+    allow_unrecognised=(), dont_read_metadata=(), path_metadata_regex=(),
+    metadata_tables=(), acquisition_id_field=(), resource_field=(),
     on_resource_clash="error", run_uid=None,
 ) -> CollectedAccessions
 ```
 
-- Runs `expand_claimed_paths`, `classify_paths`, `drop_ignored_filesets`,
-  `disable_metadata_reading`, `apply_path_metadata` (with `claimed`),
+- Runs `expand_claimed_paths`, `classify_paths`, `disable_metadata_reading`,
+  `drop_ignored_filesets`, `apply_path_metadata` (with `claimed`),
   `tag_fileset_types`, `inject_fileset_tables`, `group_into_accessions` and
-  `inject_accession_tables`.
+  `inject_accession_tables`, in the order of the steps table.
 - `CollectedAccessions` is a frozen attrs record that pickles: the `accessions`, and the
   `ignored` file-sets (the classified file-sets `drop_ignored_filesets` dropped), which
   `finish_claim` needs.
 - A `FormatMismatchError` from classification names the claimed paths, so a note
-  (`add_note`) lists the unrecognised files' original paths (`claimed.original_of`).
-- Tests: the steps-so-far tests in `api/tests/collate/` become `collect_accessions`
-  tests, and a new one checks the original-path note.
+  (`add_note`) lists the unrecognised files' original paths (`claimed.original_of`)
+  and the run directory.
+- Tests: `api/tests/collate/test_composites.py`, which took over the tests that
+  chained steps 7–14 by hand from `test_group.py` and `test_metadata.py`.
+- **Found:** with `--recursive`, a directory that matches an ignored directory format
+  (e.g. `DirectoryOf[Csv]`) is skipped whole by `expand_claimed_paths`. It is never
+  classified, so it isn't in `ignored`, and `finish_claim` records its files as
+  `unrecognised` instead of `ignored`. See [Open questions](#open-questions).
 
 **C3. `deliver_accessions`, steps 16–18**, in `composites.py`:
 
@@ -621,7 +627,12 @@ Status: Planned.
 
 - Within a stage, will the flows repository pass `Accession` objects between tasks
   (which needs them to pickle, and somewhere to store results), or should the batch
-  steps also have variants that take and return paths?
+  steps also have variants that take and return paths? `Accession` objects do pickle
+  (checked by C2's tests).
+- Should `expand_claimed_paths` return the ignored directories it skips with
+  `--recursive`, so that `collect_accessions` can classify them into `ignored` and
+  `finish_claim` records their files as `ignored` rather than `unrecognised` (found in
+  composites step C2)?
 - Can the Orthanc source reuse `save_accessions_to_dir` (see Phase 3)?
 - How does the flows repository pin its `accessionflow` version, and which release first
   publishes the collate step API?

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
-from fileformats.generic import DirectoryOf, File, SetOf
+from fileformats.generic import DirectoryOf, SetOf
 from fileformats.text import Csv
 
 from accessionflow.api.collate import (
@@ -199,21 +199,6 @@ def test_tag_fileset_types_with_reading_disabled(tmp_path: Path) -> None:
     filesets = disable_metadata_reading(_filesets(claimed, [Json]), [Json])
     (fileset,) = tag_fileset_types(filesets)
     assert dict(fileset.metadata) == {TYPE_KEY: "Json"}
-
-
-def test_steps_7_to_11_together(tmp_path: Path) -> None:
-    """Mirrors model/tests/test_accession.py::
-    test_from_paths_injects_datatype_metadata_field up to grouping"""
-    _, claimed = _claim(tmp_path, ["src/a.txt"])
-    (fileset,) = tag_fileset_types(
-        apply_path_metadata(
-            _filesets(claimed, [File]),
-            [PathMetadataRegex(r".*/(?P<sess>[^/]+)\.txt", File)],
-            claimed,
-        )
-    )
-    assert fileset.metadata["sess"] == "a"
-    assert fileset.metadata[TYPE_KEY] == "File"
 
 
 # load_metadata_tables and inject_fileset_tables -----------------------------------
