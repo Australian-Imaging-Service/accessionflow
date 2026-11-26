@@ -12,7 +12,6 @@ from accessionflow.helpers.arg_types import (
     ON_RESOURCE_CLASH,
     CopyModeParamType,
     LoggerConfig,
-    MimeType,
     OnResourceClash,
     OutputResource,
 )
@@ -46,13 +45,13 @@ reopening the archive.
     type=OutputResource.cli_type,
     multiple=True,
     required=True,
-    nargs=2,
+    nargs=3,
     metavar="<source-spec> <target-spec> <label>",
     envvar="ACFLOW_OUTPUT_RESOURCES",
     help=(
-        "Resource label and target datatype to produce from each matching source. "
-        "May be repeated. Source specs accept path regular expression patterns after a ':',"
-        "e.g. 'medimage/dicom-series:mprage_.*'. Target specs accept converter options after ':', e.g. "
+        "Source datatype, target datatype, and output label. May be repeated."
+        "Source specs accept path regular expression patterns after a ':',"
+        "e.g. 'medimage/dicom-series:.*mprage_.*'. Target specs accept converter options after ':', e.g. "
         "'application/zip:allowZip64=false'. Target spec can also be 'copy' to copy the source"
         "files to the output location directly."
     ),
@@ -127,7 +126,6 @@ reopening the archive.
 def package_cmd(
     input_dir: Path,
     output_dir: Path,
-    source_datatype: MimeType,
     output_resources: tuple[OutputResource, ...],
     copy_mode: FileSet.CopyMode,
     unlink_source: str | None,
@@ -149,9 +147,8 @@ def package_cmd(
             param_hint="--output-resource",
         )
 
-    source = source_datatype.datatype
     resolved_outputs = {
-        output.label: output.resolve(source) for output in output_resources
+        output.label: output.resolve(FileSet) for output in output_resources
     }
 
     set_logger_handling(
@@ -166,7 +163,6 @@ def package_cmd(
         errors = package(
             input_dir=input_dir,
             output_dir=output_dir,
-            source_datatype=source,
             output_resources=resolved_outputs,
             on_resource_clash=on_resource_clash,
             raise_errors=raise_errors,

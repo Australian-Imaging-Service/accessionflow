@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -57,8 +58,7 @@ def test_package_auto_labels_sample_from_sop_class(
     with patch.object(DicomImage, "convert", return_value=image):
         packaged = _package_session(
             session,
-            DicomSeries,
-            {"auto": (DicomImage, {})},
+            {"auto": (DicomSeries, DicomImage, {}, None)},
             on_resource_clash="error",
         )
 
@@ -84,8 +84,7 @@ def test_package_rejects_samples_from_different_studies(tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="multiple StudyInstanceUIDs"):
             _package_session(
                 session,
-                DicomSeries,
-                {"auto": (DicomImage, {})},
+                {"auto": (DicomSeries, DicomImage, {}, None)},
                 on_resource_clash="error",
             )
 
@@ -108,8 +107,7 @@ def test_package_rejects_mixed_studies_inside_one_series(tmp_path: Path) -> None
         with pytest.raises(ValueError, match="exactly one StudyInstanceUID"):
             _package_session(
                 session,
-                DicomSeries,
-                {"auto": (DicomImage, {})},
+                {"auto": (DicomSeries, DicomImage, {}, None)},
                 on_resource_clash="error",
             )
 
@@ -131,8 +129,7 @@ def test_package_rejects_primary_sample_as_secondary(tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="must use XNAT resource label 'DICOM'"):
             _package_session(
                 session,
-                DicomSeries,
-                {"secondary": (DicomImage, {})},
+                {"secondary": (DicomSeries, DicomImage, {}, None)},
                 on_resource_clash="error",
             )
 
@@ -175,10 +172,9 @@ def test_package_replaces_one_source_with_multiple_named_outputs(
     errors = package(
         input_dir=input_dir,
         output_dir=output_dir,
-        source_datatype=MyFormat,
         output_resources={
-            "DICOM": (MyFormat, {}),
-            "secondary": (MyFormat, {}),
+            "DICOM": (MyFormat, MyFormat, {}, None),
+            "secondary": (MyFormat, MyFormat, {}, None),
         },
     )
 
@@ -213,8 +209,7 @@ def test_package_does_not_finalize_output_when_a_converter_fails(
         errors = package(
             input_dir=input_dir,
             output_dir=output_dir,
-            source_datatype=MyFormat,
-            output_resources={"DICOM": (MyFormat, {})},
+            output_resources={"DICOM": (MyFormat, MyFormat, {}, None)},
         )
 
     assert len(errors) == 1
@@ -232,8 +227,7 @@ def test_package_unlinks_source_only_after_success(tmp_path: Path) -> None:
     errors = package(
         input_dir=input_dir,
         output_dir=output_dir,
-        source_datatype=MyFormat,
-        output_resources={"DICOM": (MyFormat, {})},
+        output_resources={"DICOM": (MyFormat, MyFormat, {}, None)},
         unlink_source="all",
     )
 
@@ -251,8 +245,10 @@ def test_package_rejects_old_layout_in_existing_output(tmp_path: Path) -> None:
         package(
             input_dir,
             output_dir,
-            MyFormat,
-            {"DICOM": (MyFormat, {}), "secondary": (MyFormat, {})},
+            {
+                "DICOM": (MyFormat, MyFormat, {}, None),
+                "secondary": (MyFormat, MyFormat, {}, None),
+            },
         )
         == []
     )
@@ -260,8 +256,10 @@ def test_package_rejects_old_layout_in_existing_output(tmp_path: Path) -> None:
     errors = package(
         input_dir,
         output_dir,
-        MyFormat,
-        {"DICOM-zip": (MyFormat, {}), "DICOM": (MyFormat, {})},
+        {
+            "DICOM-zip": (MyFormat, MyFormat, {}, None),
+            "DICOM": (MyFormat, MyFormat, {}, None),
+        },
     )
 
     assert len(errors) == 1
@@ -281,13 +279,14 @@ def test_package_cli_accepts_multiple_named_outputs(tmp_path: Path) -> None:
         [
             str(input_dir),
             str(output_dir),
-            MyFormat.mime_like,
             "--output-resource",
-            "DICOM",
-            MyFormat.mime_like,
+            MyFormat.mime_like,  # source spec
+            MyFormat.mime_like,  # target spec
+            "DICOM",  # label
             "--output-resource",
+            MyFormat.mime_like,
+            MyFormat.mime_like,
             "secondary",
-            MyFormat.mime_like,
         ],
     )
 
@@ -310,8 +309,7 @@ def test_package_passes_a_session_without_source_resources_through(
     errors = package(
         input_dir=input_dir,
         output_dir=output_dir,
-        source_datatype=MyFormatGz,
-        output_resources={"DICOM": (MyFormat, {})},
+        output_resources={"DICOM": (MyFormatGz, MyFormat, {}, None)},
         unlink_source="all",
     )
 
@@ -336,8 +334,7 @@ def test_package_keeps_earlier_scans_when_a_late_scan_arrives(
         package(
             input_dir,
             output_dir,
-            MyFormat,
-            {"DICOM": (MyFormat, {})},
+            {"DICOM": (MyFormat, MyFormat, {}, None)},
             unlink_source="all",
         )
         == []
@@ -354,7 +351,10 @@ def test_package_keeps_earlier_scans_when_a_late_scan_arrives(
     ).save(input_dir)
 
     errors = package(
-        input_dir, output_dir, MyFormat, {"DICOM": (MyFormat, {})}, unlink_source="all"
+        input_dir,
+        output_dir,
+        {"DICOM": (MyFormat, MyFormat, {}, None)},
+        unlink_source="all",
     )
 
     assert errors == []
@@ -386,8 +386,7 @@ def test_package_keeps_an_input_that_changed_while_it_was_packaged(
         errors = package(
             input_dir,
             output_dir,
-            MyFormat,
-            {"DICOM": (MyFormat, {})},
+            {"DICOM": (MyFormat, MyFormat, {}, None)},
             unlink_source="all",
         )
 
@@ -418,8 +417,7 @@ def test_package_keeps_an_input_whose_file_was_written_again_while_it_was_packag
         errors = package(
             input_dir,
             output_dir,
-            MyFormat,
-            {"DICOM": (MyFormat, {})},
+            {"DICOM": (MyFormat, MyFormat, {}, None)},
             unlink_source="all",
         )
 
@@ -450,8 +448,7 @@ def test_package_keeps_an_input_with_a_file_its_manifest_does_not_list(
         errors = package(
             input_dir,
             output_dir,
-            MyFormat,
-            {"DICOM": (MyFormat, {})},
+            {"DICOM": (MyFormat, MyFormat, {}, None)},
             unlink_source="all",
         )
 
@@ -459,3 +456,53 @@ def test_package_keeps_an_input_with_a_file_its_manifest_does_not_list(
     assert late.exists(), "input kept"
     out = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
     assert sorted(out.acquisitions) == ["1"]
+
+
+def test_package_regex_only_converts_matching_source_resources(
+    tmp_path: Path,
+) -> None:
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    input_dir.mkdir()
+    _staged_session(input_dir)
+
+    other_path = tmp_path / "other.my"
+    other_path.write_text("unmatched source")
+    Accession(
+        uid="uid",
+        labels={"project": "PROJECT", "subject": "SUBJECT", "session": "SESSION"},
+        acquisitions=[
+            Acquisition(
+                id="2",
+                type="CT",
+                resources={"SOURCE": MyFormat(other_path)},
+            )
+        ],
+    ).save(input_dir)
+
+    converted_sources: list[Path] = []
+
+    def convert(source: MyFormat, **_options) -> MyFormat:
+        converted_sources.append(source.fspath)
+        return source
+
+    with patch.object(MyFormat, "convert", side_effect=convert):
+        errors = package(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            output_resources={
+                "CONVERTED": (
+                    MyFormat,
+                    MyFormat,
+                    {},
+                    re.compile(r".*[\\/]source\.my$"),
+                )
+            },
+        )
+
+    assert errors == []
+    packaged = Accession.load(output_dir / "PROJECT.SUBJECT.SESSION")
+    assert set(packaged.acquisitions["1"].resources) == {"CONVERTED"}
+    assert set(packaged.acquisitions["2"].resources) == {"SOURCE"}
+    assert len(converted_sources) == 1
+    assert converted_sources[0].name == "source.my"
