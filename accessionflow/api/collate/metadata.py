@@ -7,7 +7,12 @@ from pathlib import Path
 
 from fileformats.core import FileSet
 
-from accessionflow.helpers.arg_types import MetadataTable, PathMetadataRegex
+from accessionflow.helpers.arg_types import (
+    MetadataTable,
+    PathMetadataPattern,
+    PathMetadataRegex,
+)
+from accessionflow.helpers.path_pattern import path_metadata_pattern_to_regex
 from accessionflow.model.accession import Accession
 
 from .claim import ClaimedFiles
@@ -17,6 +22,7 @@ __all__ = [
     "inject_accession_tables",
     "inject_fileset_tables",
     "load_metadata_tables",
+    "merge_path_metadata",
     "tag_fileset_types",
 ]
 
@@ -60,6 +66,41 @@ def load_metadata_tables(
     return tables
 
 
+def merge_path_metadata(
+    path_metadata: ty.Sequence[PathMetadataPattern] = (),
+    path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
+) -> list[PathMetadataRegex]:
+    """Translates the glob-like path-metadata patterns into regexes and merges them
+    with the raw regexes into a single list, patterns first. Where both set the same
+    field for a resource, the later one in the list wins.
+
+    It only checks and translates, so it runs with the other checks, before the claim
+    (principle 12); `apply_path_metadata` applies the result.
+
+    Parameters
+    ----------
+    path_metadata : Sequence[PathMetadataPattern], optional
+        the glob-like patterns (``--path-metadata``), translated by
+        `accessionflow.helpers.path_pattern.path_metadata_pattern_to_regex`
+    path_metadata_regex : Sequence[PathMetadataRegex], optional
+        the regexes (``--path-metadata-regex``)
+
+    Returns
+    -------
+    list[PathMetadataRegex]
+        the translated patterns, then the regexes
+
+    Raises
+    ------
+    ValueError
+        if a pattern has an invalid field name or an unmatched brace
+    """
+    return [
+        PathMetadataRegex(path_metadata_pattern_to_regex(p.pattern), p.datatype)
+        for p in path_metadata
+    ] + list(path_metadata_regex)
+
+
 def apply_path_metadata(
     filesets: ty.Sequence[FileSet],
     path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
@@ -84,7 +125,7 @@ def apply_path_metadata(
     path_metadata_regex : Sequence[PathMetadataRegex], optional
         the regular expressions and the datatypes they apply to. Glob-like
         ``--path-metadata`` patterns are translated to regular expressions first,
-        e.g. with ``accessionflow.sources.folder.api.merge_path_metadata``
+        e.g. with `merge_path_metadata`
     claimed : ClaimedFiles, optional
         the run's claimed files, to map each file-set's path back to its original
         path. If not given, the file-sets' own paths are matched

@@ -1,14 +1,8 @@
 import re
 
 import pytest
-from fileformats.generic import File
-from fileformats.medimage import DicomSeries
 
-from accessionflow.helpers.arg_types import PathMetadataPattern, PathMetadataRegex
-from accessionflow.sources.folder.api.collate_api import (
-    merge_path_metadata,
-    path_metadata_pattern_to_regex,
-)
+from accessionflow.helpers.path_pattern import path_metadata_pattern_to_regex
 
 
 @pytest.mark.parametrize(
@@ -73,14 +67,3 @@ def test_path_metadata_pattern_no_match(pattern: str, path: str) -> None:
 def test_path_metadata_pattern_invalid(pattern: str) -> None:
     with pytest.raises(ValueError):
         path_metadata_pattern_to_regex(pattern)
-
-
-def test_merge_path_metadata() -> None:
-    merged = merge_path_metadata(
-        [PathMetadataPattern("{cohort}", "medimage/dicom-series")],
-        [PathMetadataRegex(r".*/(?P<name>[^/]+)$", "generic/file")],
-    )
-    assert merged == [
-        PathMetadataRegex(r"(?:.*/)?(?P<cohort>[^/]+)$", DicomSeries),
-        PathMetadataRegex(r".*/(?P<name>[^/]+)$", File),
-    ]

@@ -212,6 +212,7 @@ The order, which the composites follow:
 | 1 | `check_datatypes` | `classify.py` | checks the arguments, the first step of the API |
 | 2 | `plan_recursion` | `classify.py` | checks the arguments |
 | 3 | `load_metadata_tables` | `metadata.py` | reads and checks the metadata tables |
+| – | `merge_path_metadata` | `metadata.py` | checks and translates the path-metadata patterns, for step 11 |
 | 4 | `make_run_uid` | `claim.py` | batch |
 | 5 | `prepare_build_dir` | `api/staging.py` | batch |
 | 6 | `claim_input_files` | `claim.py` | batch, the first step that changes the input |
@@ -232,8 +233,8 @@ The order, which the composites follow:
 
 Modules are in `accessionflow/api/collate/` unless shown otherwise. Steps 1–16, 19 and 20
 run once per collation. Steps 17 and 18 run once per accession, and are the unit that a
-flow maps over. Steps 1–3 only read and check the arguments, so they run before any step that
-changes the file system (principle 12).
+flow maps over. Steps 1–3 and `merge_path_metadata` only read and check the arguments, so
+they run before any step that changes the file system (principle 12).
 
 ### Interim state
 
@@ -463,7 +464,7 @@ staged doesn't need draining.
     module-scoped `dicom_dir` fixture (L25-29) between its tests. Each test copies the
     fixture's files into its own `tmp_path` first.
 - **Unchanged otherwise**: `cli/tests/test_collate_commands.py`,
-  `cli/tests/test_loop_interval.py`, `sources/folder/tests/test_collate_api.py`,
+  `cli/tests/test_loop_interval.py`,
   `sources/orthanc/tests/test_orthanc_cli.py` and the rest of `cli/tests/test_cli.py`
   must pass with their assertions as they are. The scripts in `real-tests/` use the CLI.
   `real-tests/uq_acemid_collate.py` should be checked, since collating now consumes its

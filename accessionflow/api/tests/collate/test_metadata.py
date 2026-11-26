@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
-from fileformats.generic import DirectoryOf, SetOf
+from fileformats.generic import DirectoryOf, File, SetOf
+from fileformats.medimage import DicomSeries
 from fileformats.text import Csv
 
 from accessionflow.api.collate import (
@@ -19,6 +20,7 @@ from accessionflow.api.collate import (
     inject_accession_tables,
     inject_fileset_tables,
     load_metadata_tables,
+    merge_path_metadata,
     plan_recursion,
     tag_fileset_types,
 )
@@ -29,7 +31,6 @@ from accessionflow.helpers.arg_types import (
     PathMetadataRegex,
 )
 from accessionflow.model.accession import Accession
-from accessionflow.sources.folder.api.collate_api import merge_path_metadata
 
 RUN_UID = "20261124010203_abc123"
 
@@ -411,3 +412,14 @@ def test_inject_accession_tables_after_table_is_claimed(tmp_path: Path) -> None:
     table_path.unlink()
     accessions = inject_accession_tables(_accessions(tmp_path), [table])
     assert accessions[0].metadata["StudyComment"] == "injected-via-table"
+
+
+def test_merge_path_metadata() -> None:
+    merged = merge_path_metadata(
+        [PathMetadataPattern("{cohort}", "medimage/dicom-series")],
+        [PathMetadataRegex(r".*/(?P<name>[^/]+)$", "generic/file")],
+    )
+    assert merged == [
+        PathMetadataRegex(r"(?:.*/)?(?P<cohort>[^/]+)$", DicomSeries),
+        PathMetadataRegex(r".*/(?P<name>[^/]+)$", File),
+    ]

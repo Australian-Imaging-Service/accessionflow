@@ -1,6 +1,5 @@
 """Collates files found in local or mounted folders into accessions"""
 
-import re
 import typing as ty
 from pathlib import Path
 
@@ -17,6 +16,7 @@ from accessionflow.api.collate import (
     finish_claim,
     load_metadata_tables,
     make_run_uid,
+    merge_path_metadata,
     plan_recursion,
 )
 from accessionflow.api.collate.claim import CLAIMED_MANIFEST
@@ -44,122 +44,8 @@ DEFAULT_ACQUISITION_ID_FIELD: tuple[IDSpec, ...] = (
 DEFAULT_RESOURCE_FIELD: tuple[IDSpec, ...] = ()
 _DEFAULT_DATATYPES: tuple[type[FileSet], ...] = (DicomSeries,)
 
-# Tokens of a path-metadata pattern, tried in order: escaped braces, a '{name}'
-# placeholder, '**', '*', '?' and a '[...]' character class
-_PATTERN_TOKEN_RE = re.compile(
-    r"(?P<lbrace>\{\{)|(?P<rbrace>\}\})|\{(?P<field>[^{}]*)\}|(?P<globstar>\*\*/?)"
-    r"|(?P<star>\*)|(?P<qmark>\?)|(?P<charclass>\[!?\]?[^\]]*\])"
-)
-
-
-def path_metadata_pattern_to_regex(pattern: str) -> str:
-    """Translates a glob-like path-metadata pattern into the equivalent regular
-    expression, as taken by ``--path-metadata-regex``/``PathMetadataRegex``.
-
-    * ``{name}`` matches one path segment (or part of one), i.e. ``[^/]+``, and stores
-      it in the metadata field ``name``. ``name`` must be a valid Python identifier. A
-      field repeated in the same pattern must have the same value each time
-    * ``*`` matches any characters within a segment, ``**`` any characters across
-      segments (``**/`` zero or more whole segments), ``?`` a single character within
-      a segment, and ``[...]``/``[!...]`` a (negated) character class, as in a shell
-      glob
-    * ``{{`` and ``}}`` match literal braces, every other character matches itself
-    * a pattern starting with ``/`` must match the whole path; otherwise it only needs
-      to match its trailing segments, e.g. ``{cohort}/*.dcm`` matches
-      ``/data/incoming/cohort-A/1.dcm``
-
-    Parameters
-    ----------
-    pattern : str
-        the glob-like pattern, e.g. ``'{subject}/{session}/*'``
-
-    Returns
-    -------
-    str
-        the regular expression, with a named group for each field in ``pattern``
-
-    Raises
-    ------
-    ValueError
-        if a placeholder's name isn't a valid identifier, or a brace is unmatched
-    """
-    parts: list[str] = []
-    fields: set[str] = set()
-    pos = 0
-    for match in _PATTERN_TOKEN_RE.finditer(pattern):
-        literal = pattern[pos : match.start()]
-        if "{" in literal or "}" in literal:
-            raise ValueError(
-                f"Unmatched brace in path-metadata pattern '{pattern}' (use '{{{{' or "
-                "'}}' for a literal brace)"
-            )
-        parts.append(re.escape(literal))
-        pos = match.end()
-        kind = match.lastgroup
-        if kind == "lbrace":
-            parts.append(re.escape("{"))
-        elif kind == "rbrace":
-            parts.append(re.escape("}"))
-        elif kind == "field":
-            name = match.group("field")
-            if not name.isidentifier():
-                raise ValueError(
-                    f"'{{{name}}}' in path-metadata pattern '{pattern}' isn't a valid "
-                    "field name: it must be a valid Python identifier (letters, digits "
-                    "and underscores, not starting with a digit)"
-                )
-            if name in fields:
-                parts.append(f"(?P={name})")
-            else:
-                fields.add(name)
-                parts.append(f"(?P<{name}>[^/]+)")
-        elif kind == "globstar":
-            # '**/' matches zero or more whole segments, a bare '**' anything at all
-            parts.append("(?:.*/)?" if match.group().endswith("/") else ".*")
-        elif kind == "star":
-            parts.append("[^/]*")
-        elif kind == "qmark":
-            parts.append("[^/]")
-        else:
-            charclass = match.group("charclass")[1:-1]
-            negate = charclass.startswith("!")
-            if negate:
-                charclass = charclass[1:]
-            charclass = (
-                charclass.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
-            )
-            if charclass.startswith("^"):
-                charclass = "\\" + charclass
-            parts.append(f"[^/{charclass}]" if negate else f"[{charclass}]")
-    literal = pattern[pos:]
-    if "{" in literal or "}" in literal:
-        raise ValueError(
-            f"Unmatched brace in path-metadata pattern '{pattern}' (use '{{{{' or '}}}}' "
-            "for a literal brace)"
-        )
-    parts.append(re.escape(literal))
-    body = "".join(parts)
-    if not pattern.startswith("/"):
-        body = "(?:.*/)?" + body
-    return body + "$"
-
-
 # How many run UIDs a new run tries before giving up, should each be taken already
 _RUN_UID_ATTEMPTS = 5
-
-
-def merge_path_metadata(
-    path_metadata: ty.Sequence[PathMetadataPattern] = (),
-    path_metadata_regex: ty.Sequence[PathMetadataRegex] = (),
-) -> list[PathMetadataRegex]:
-    """Translates the glob-like path-metadata patterns into regexes and merges them
-    with the raw regexes into a single list, patterns first. Where both set the same
-    field for a resource, the later one in the list wins.
-    """
-    return [
-        PathMetadataRegex(path_metadata_pattern_to_regex(p.pattern), p.datatype)
-        for p in path_metadata
-    ] + list(path_metadata_regex)
 
 
 def _start_run(output_dir: Path) -> tuple[str, Path]:
@@ -420,7 +306,7 @@ def collate(
     path_metadata: ty.Sequence[PathMetadataPattern]
         A simpler, glob-like alternative to ``path_metadata_regex``, where ``{name}`` placeholders
         mark the parts of the path to extract as metadata fields, e.g. ``'{subject}/{session}'``.
-        Each pattern is translated into a regex (see ``path_metadata_pattern_to_regex``) and applied
+        Each pattern is translated into a regex (see ``accessionflow.helpers.path_pattern.path_metadata_pattern_to_regex``) and applied
         before the ``path_metadata_regex`` ones, so a regex wins where both set the same field.
     unlink_source: str | None
         If "all" or "keep-metadata", the input files will be unlinked one by one after staging (both behave the same

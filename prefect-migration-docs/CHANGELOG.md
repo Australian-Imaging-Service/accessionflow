@@ -231,6 +231,20 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1: `merge_path_metadata` moves from the folder source into the core
+  collate API, so the core no longer depends on a source for it.
+  - `merge_path_metadata` is now in `accessionflow/api/collate/metadata.py`, and is
+    exported from `accessionflow.api.collate`.
+  - The pattern parser, `path_metadata_pattern_to_regex` (with `_PATTERN_TOKEN_RE`), is
+    in a new `accessionflow/helpers/path_pattern.py`.
+  - Both are removed from `sources/folder/api/collate_api.py`, and
+    `path_metadata_pattern_to_regex` from `accessionflow.sources.folder.api`. The folder
+    `collate()` and `collate_files` import `merge_path_metadata` from the core.
+  - The code is unchanged. Its tests move from the deleted
+    `sources/folder/tests/test_collate_api.py` to `helpers/tests/test_path_pattern.py`
+    and `api/tests/collate/test_metadata.py`, with the same assertions.
+
+  CLI unchanged. PR: pending.
 - 2026-11-26, Phase 1 design, `ROADMAP.md` only: collate is split into two parts.
   - **Collate runs** deliver run accessions, `<labels>_<run_uid>` (`collate_files`,
     done).
@@ -500,6 +514,7 @@ Only read and check, so a bad configuration fails before anything is created or 
 | 1 | `check_datatypes(datatypes, ignore_datatypes=()) -> None` | `classify.py` | L888-897 | Raises if no datatype is given (`fileformats.core.from_paths` with no candidates tries every installed format), or if a datatype is both wanted and ignored, naming the datatypes by MIME-like name. Called first by the folder `collate()`. `from_paths` keeps its own copy of the check until it is removed, since the model can't import from the API |
 | 2 | `plan_recursion(datatypes, ignore_datatypes=(), recursive=False) -> RecursionPlan` | `classify.py` | L899-918 | Pure: returns a new `ignore_datatypes` list and doesn't change its input. `RecursionPlan` is a `NamedTuple` of `(recurse_into_dirs, ignore_datatypes)`. Rejects the generic directory and file-set types with `recursive`, naming the datatypes by MIME-like name. For recursion over files only, adds `Directory` to the ignored datatypes. The folder `collate()` calls it before `prepare_build_dir`, discarding the result until step 7 uses it; `from_paths` keeps its own copy until it is removed |
 | 3 | `load_metadata_tables(metadata_tables=None) -> list[MetadataTable]` | `metadata.py` | `MetadataTable.table` (lazy today) | Reads every `--metadata-table` into memory and checks that its join columns are in it, before the claim. A table is often delivered with the data (the Canfield export writes its CSV into the input directory), so it is claimed with the files around it and is no longer at its path when the tables are injected; the loaded rows are kept in the `MetadataTable`, which pickles with them. A missing, unreadable or mismatched table fails before anything is created or moved Since `list_input_files` leaves the tables out, a table in an input directory is no longer claimed; loading early still fails a bad table before the claim, and lets the tables be passed between tasks. |
+| – | `merge_path_metadata(path_metadata=(), path_metadata_regex=()) -> list[PathMetadataRegex]` | `metadata.py` | `sources/folder/api/collate_api.py` | Translates the glob-like `--path-metadata` patterns (`accessionflow.helpers.path_pattern.path_metadata_pattern_to_regex`) and merges them with `--path-metadata-regex`, patterns first. Raises `ValueError` on a bad pattern, so it runs with the checks. Its result is given to `apply_path_metadata` (step 11). Moved from the folder source on 2026-11-26 |
 
 ##### Set up the run directory
 
@@ -972,6 +987,11 @@ Status: **Done** (2026-11-26). The regression net, before anything is removed.
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, moved:
+  - `merge_path_metadata(path_metadata=(), path_metadata_regex=()) -> list[PathMetadataRegex]`,
+    to `accessionflow.api.collate` (`metadata.py`)
+  - `path_metadata_pattern_to_regex(pattern) -> str`, to
+    `accessionflow.helpers.path_pattern`
 - 2026-11-26, Phase 1, composites step C4:
   - added, in `accessionflow.sources.folder.api.collate_api`:
     `collate_files(input_files, output_dir, working_dir, unprocessed_dir, error_dir, label_fields, *, datatypes=(DicomSeries,), ignore_datatypes=(), source_roots=None, recursive=False, allow_unrecognised=(), dont_read_metadata=(), accession_uid_field=..., acquisition_id_field=..., resource_field=..., path_metadata=(), path_metadata_regex=(), metadata_tables=None, on_resource_clash="error", acquisition_field=None, constant_labels=None, store_type=None, copy_mode=hardlink_or_copy, collation_map=None, conversion_map=None, raise_errors=False) -> list[str]`

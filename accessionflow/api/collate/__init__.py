@@ -40,6 +40,7 @@ from .metadata import (
     inject_accession_tables,
     inject_fileset_tables,
     load_metadata_tables,
+    merge_path_metadata,
     tag_fileset_types,
 )
 from .save import (
@@ -80,6 +81,7 @@ __all__ = [
     "list_input_files",
     "load_metadata_tables",
     "make_run_uid",
+    "merge_path_metadata",
     "move_to_target",
     "plan_recursion",
     "remove_claimed_files",
