@@ -7,7 +7,7 @@ from fileformats.core import FileSet
 
 from accessionflow.cli.collate_cli import collate_group, collate_options
 from accessionflow.cli.runner import check_loop_options
-from accessionflow.helpers.arg_types import Convert, LoggerConfig
+from accessionflow.helpers.arg_types import Convert, LoggerConfig, conversion_map_from
 from accessionflow.helpers.logging import logger, set_logger_handling
 
 from ..api.collate_api import collate
@@ -113,7 +113,7 @@ def collate_cmd(
             raise_errors=raise_errors,
             copy_mode=copy_mode,
             wait_period=wait_period,
-            conversion_map={c.source: (c.target, c.options) for c in conversions},
+            conversion_map=conversion_map_from(conversions),
         )
         if loop < 0:
             break

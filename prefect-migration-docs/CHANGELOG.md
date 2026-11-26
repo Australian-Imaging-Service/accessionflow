@@ -23,6 +23,11 @@ contract, so each entry says "CLI unchanged".
 
 ### Added
 
+- 2026-11-26, Phase 1, option converters, `accessionflow/helpers/arg_types.py`:
+  `collation_map_from(specs)` and `conversion_map_from(converts)`, which turn the values
+  of `--collate-resources` (`CollationSpec`) and `--convert` (`Convert`) into the
+  `collation_map` and `conversion_map` API arguments. A datatype given twice keeps its
+  last entry, as before. Tests in `helpers/tests/test_arg_types.py`. PR: pending.
 - 2026-11-26, Phase 1, Combine: the accession combiner, in
   `accessionflow/api/collate/combine.py` and `api/collate/composites.py`.
   `combine_run_accessions` takes each session whose run accessions (`<labels>_<run_uid>`,
@@ -248,6 +253,11 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-26, Phase 1, option converters: `collate folder`
+  (`sources/folder/cli/collate_cli.py`) and `collate orthanc`
+  (`sources/orthanc/cli/collate_cli.py`) build their `collation_map` and
+  `conversion_map` with `collation_map_from` and `conversion_map_from` instead of
+  inline dict comprehensions, giving the same values. CLI unchanged. PR: pending.
 - 2026-11-26, documents: the roadmap's finished Phase 1 sections moved to the Step API
   section: the Combine design, as "Phase 1 combine", and the steps' run-order table,
   into "Phase 1 collate steps". The roadmap keeps short pointers. No code changes. PR:
@@ -1176,6 +1186,9 @@ left for the next combine.
 
 #### Dated entries
 
+- 2026-11-26, Phase 1, option converters, added in `accessionflow.helpers.arg_types`:
+  - `collation_map_from(specs) -> dict[type[FileSet], FileSet.CopyCollation]`
+  - `conversion_map_from(converts) -> dict[type[FileSet] | UnionType, tuple[type[FileSet], dict[str, Any]]]`
 - 2026-11-26, Phase 1, Combine, added in `accessionflow.api.collate`:
   - `check_primary_label(primary_label) -> None`
   - `list_run_accessions(runs_dir) -> list[RunAccessionGroup]`

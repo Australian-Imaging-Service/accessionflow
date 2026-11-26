@@ -19,6 +19,8 @@ from accessionflow.helpers.arg_types import (
     MimeType,
     PathMetadataPattern,
     PathMetadataRegex,
+    collation_map_from,
+    conversion_map_from,
 )
 from accessionflow.helpers.logging import logger, set_logger_handling
 
@@ -380,8 +382,8 @@ def collate_cmd(
             path_metadata_regex=path_metadata_regex,
             path_metadata=path_metadata,
             recursive=recursive,
-            collation_map={cs.datatype: cs.collation_level for cs in collate_resources},
-            conversion_map={c.source: (c.target, c.options) for c in conversions},
+            collation_map=collation_map_from(collate_resources),
+            conversion_map=conversion_map_from(conversions),
             metadata_tables=list(metadata_tables),
         )
         if errors:

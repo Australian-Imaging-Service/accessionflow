@@ -13,10 +13,13 @@ from accessionflow.exceptions import AccessionParseError
 from accessionflow.helpers.arg_types import (
     SEMICOLON_LIST,
     ClashSpec,
+    CollationSpec,
     Convert,
     IDSpec,
     JoinExpr,
     MetadataTable,
+    collation_map_from,
+    conversion_map_from,
     parse_join_exprs,
     row_frequency_converter,
     table_file_converter,
@@ -990,3 +993,45 @@ def test_convert_cli_option_invalid_value_reported_clearly() -> None:
     assert result.exit_code != 0
     assert isinstance(result.exception, ValueError)
     assert "compresslevel" in str(result.exception)
+
+
+# collation_map_from and conversion_map_from ----------------------------------------
+
+
+def test_collation_map_from() -> None:
+    from fileformats.core import FileSet
+    from fileformats.medimage import DicomSeries
+    from fileformats.text import Plain
+
+    collation_map = collation_map_from(
+        [
+            CollationSpec("medimage/dicom-series", "siblings"),
+            CollationSpec("text/plain", "any"),
+        ]
+    )
+    assert collation_map == {
+        DicomSeries: FileSet.CopyCollation.siblings,
+        Plain: FileSet.CopyCollation.any,
+    }
+
+
+def test_collation_map_from_repeated_datatype_keeps_last() -> None:
+    from fileformats.core import FileSet
+    from fileformats.text import Plain
+
+    assert collation_map_from(
+        [CollationSpec("text/plain", "siblings"), CollationSpec("text/plain", "any")]
+    ) == {Plain: FileSet.CopyCollation.any}
+
+
+def test_conversion_map_from() -> None:
+    from fileformats.application import Zip
+    from fileformats.text import Plain
+
+    convert = Convert("text/plain", "application/zip:allowZip64=false")
+    assert conversion_map_from([convert]) == {Plain: (Zip, {"allowZip64": False})}
+
+
+def test_option_converters_with_no_values() -> None:
+    assert collation_map_from([]) == {}
+    assert conversion_map_from(()) == {}

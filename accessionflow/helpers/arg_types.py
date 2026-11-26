@@ -701,6 +701,47 @@ class CollationSpec(MultiCliTyped):
         return FileSet.CopyCollation[self.collation.lower()]
 
 
+def collation_map_from(
+    specs: ty.Iterable[CollationSpec],
+) -> dict[type[FileSet], FileSet.CopyCollation]:
+    """Turns the values of ``--collate-resources`` into the ``collation_map`` that the
+    collate and save functions take
+
+    Parameters
+    ----------
+    specs : Iterable[CollationSpec]
+        the option's values
+
+    Returns
+    -------
+    dict[type[FileSet], FileSet.CopyCollation]
+        each datatype mapped to the collation used to save it. A datatype given more
+        than once keeps its last collation. Empty if no spec is given
+    """
+    return {spec.datatype: spec.collation_level for spec in specs}  # type: ignore[misc]
+
+
+def conversion_map_from(
+    converts: ty.Iterable[Convert],
+) -> dict[type[FileSet] | types.UnionType, tuple[type[FileSet], dict[str, ty.Any]]]:
+    """Turns the values of ``--convert`` into the ``conversion_map`` that the collate
+    and save functions take
+
+    Parameters
+    ----------
+    converts : Iterable[Convert]
+        the option's values
+
+    Returns
+    -------
+    dict[type[FileSet] | UnionType, tuple[type[FileSet], dict[str, Any]]]
+        each source datatype mapped to the datatype it is converted to and the
+        conversion's options. A source given more than once keeps its last conversion.
+        Empty if no conversion is given
+    """
+    return {convert.source: (convert.target, convert.options) for convert in converts}
+
+
 class SemicolonListType(click.types.StringParamType):
     """A plain string option (used with ``multiple=True``) whose environment-variable
     value is split on ``;`` rather than on whitespace, with surrounding whitespace

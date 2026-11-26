@@ -143,8 +143,8 @@ own phase, starting with collate in Phase 1:
 
 Status: In progress. Done, and recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API):
 the step functions (steps 0–20), the three design changes made since ("Phase 1 design
-records"), the composites (C1–C5) and the accession combiner. Collate is split into two
-parts:
+records"), the composites (C1–C5), the accession combiner and the option converters.
+Collate is split into two parts:
 
 1. **Collate runs into run accessions.** Each run delivers the accessions it formed
    from the files it claimed, labelled and named `<project>.<subject>.<session>_<run_uid>`
@@ -153,7 +153,7 @@ parts:
    had no new run accession for a given time, it combines that session's run
    accessions into a single accession and writes it to the output directory.
 
-What is left: the option converters, moving the CLI onto `collate_files` and the
+What is left: moving the CLI onto `collate_files` and the
 combiner (with the label options and the new directories), the removals, and the tests
 listed below.
 
@@ -251,11 +251,13 @@ the quiet period, is part of the [CLI](#cli) step.
 
 ### Option converters
 
-`collation_map_from(specs)` and `conversion_map_from(converts)` in
-`accessionflow/helpers/arg_types.py` turn CLI option values into API arguments. They
-replace the inline dict comprehensions at `sources/folder/cli/collate_cli.py:386-387`
-and `sources/orthanc/cli/collate_cli.py:119`, and the flows repository can use them to
-build arguments from its own parameters.
+Status: **Done** (2026-11-26). `collation_map_from(specs)` and
+`conversion_map_from(converts)` in `accessionflow/helpers/arg_types.py` turn the values
+of `--collate-resources` and `--convert` into the `collation_map` and `conversion_map`
+API arguments. They replaced the inline dict comprehensions in
+`sources/folder/cli/collate_cli.py` and `sources/orthanc/cli/collate_cli.py`, and the
+flows repository can use them to build the same arguments from its own parameters.
+Recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
 ### CLI
 
