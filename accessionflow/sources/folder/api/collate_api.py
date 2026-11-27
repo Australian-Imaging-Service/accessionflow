@@ -17,7 +17,6 @@ from accessionflow.api.collate import (
     MoveAccessions,
     ReserveRunUid,
 )
-from accessionflow.api.collate.claim import CLAIMED_MANIFEST
 from accessionflow.api.staging import remove_build_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
@@ -248,9 +247,7 @@ def collate(
     except Exception as e:
         if claimed is None:
             # The claim raised partway: the files it moved are found from its plan
-            run_dir = Path(working_dir).absolute() / run_uid
-            if (run_dir / CLAIMED_MANIFEST).exists():
-                claimed = ClaimedFiles.load(run_dir)
+            claimed = ClaimedFiles.find(working_dir, run_uid)
         if claimed is not None:
             abandon.act(claimed, e)
         raise

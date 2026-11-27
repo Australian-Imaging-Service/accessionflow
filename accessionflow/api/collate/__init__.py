@@ -15,6 +15,8 @@ from .claim import (
     ClaimInputFiles,
     FinishClaim,
     ReserveRunUid,
+    claim_run_dir,
+    has_claim_plan,
     make_run_uid,
 )
 from .classify import (
@@ -86,6 +88,8 @@ __all__ = [
     "ClassifiedFilesets",
     "ClaimInputFiles",
     "ReserveRunUid",
+    "claim_run_dir",
+    "has_claim_plan",
     "RecursionPlan",
     "acquisition_id_for",
     "assign_labels",

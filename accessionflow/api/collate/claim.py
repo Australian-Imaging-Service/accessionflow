@@ -37,6 +37,8 @@ __all__ = [
     "ClaimedFiles",
     "FinishClaim",
     "ReserveRunUid",
+    "claim_run_dir",
+    "has_claim_plan",
     "make_run_uid",
     "RUN_UID_ATTEMPTS",
     "write_error_record",
@@ -113,6 +115,38 @@ def make_run_uid(
     return f"{when.strftime('%Y%m%d%H%M%S')}_{suffix}"
 
 
+def claim_run_dir(working_dir: Path, run_uid: str) -> Path:
+    """The directory of a run's claim in the processing area, ``working_dir / run_uid``,
+    which holds its plan and, under ``files/``, the files it claimed
+
+    Parameters
+    ----------
+    working_dir : Path
+        the processing area, e.g. ``<output_dir>/__processing__``
+    run_uid : str
+        the run's UID
+
+    Returns
+    -------
+    Path
+        the run's directory, absolute even if ``working_dir`` is relative
+    """
+    return Path(working_dir).absolute() / run_uid
+
+
+def has_claim_plan(run_dir: Path) -> bool:
+    """Whether a claim's plan (`CLAIMED_MANIFEST`) has been written to its run
+    directory. The plan is written before any file is moved, so a run directory without
+    one holds no claimed files
+
+    Parameters
+    ----------
+    run_dir : Path
+        the run's directory in the processing area (`claim_run_dir`)
+    """
+    return (Path(run_dir) / CLAIMED_MANIFEST).exists()
+
+
 @attrs.frozen(hash=False)
 class ClaimedFiles:
     """The files a run has claimed, as returned by `ClaimInputFiles`
@@ -173,6 +207,28 @@ class ClaimedFiles:
             if the run directory holds no plan
         """
         return cls._from_plan(Path(run_dir), _read_plan(Path(run_dir)))
+
+    @classmethod
+    def find(cls, working_dir: Path, run_uid: str) -> "ClaimedFiles | None":
+        """Finds the claim of a run in the processing area, e.g. after the claim raised
+        partway and returned nothing, so that the files it moved can be dealt with
+
+        Parameters
+        ----------
+        working_dir : Path
+            the processing area the run claimed its files into
+        run_uid : str
+            the run's UID
+
+        Returns
+        -------
+        ClaimedFiles or None
+            the record of the claim, with the files from its plan that are in its run
+            directory now (`load`), or None if no plan was written, i.e. no file was
+            moved
+        """
+        run_dir = claim_run_dir(working_dir, run_uid)
+        return cls.load(run_dir) if has_claim_plan(run_dir) else None
 
     @classmethod
     def _from_plan(cls, run_dir: Path, plan: dict[str, ty.Any]) -> "ClaimedFiles":
@@ -324,8 +380,8 @@ class ClaimInputFiles(Step):
             source roots, or the roots have no common directory. Nothing is moved
         """
         check_run_uid(run_uid, "claim directory")
-        run_dir = self.working_dir.absolute() / run_uid
-        if (run_dir / CLAIMED_MANIFEST).exists():
+        run_dir = claim_run_dir(self.working_dir, run_uid)
+        if has_claim_plan(run_dir):
             plan = _read_plan(run_dir)
             planned = {entry["original"] for entry in plan["files"]}
             if planned != {str(Path(p).absolute()) for p in input_files}:

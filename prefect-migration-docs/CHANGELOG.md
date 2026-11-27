@@ -1368,6 +1368,17 @@ left for the next combine.
 
 #### Dated entries
 
+- 2026-11-27, Phase 1, added in `accessionflow.api.collate`, so that the layout of a
+  claim in the processing area is defined in one place (`claim.py`), which
+  `ClaimInputFiles`, `ClaimedFiles` and the folder `collate`'s failure handler all
+  use:
+  - `claim_run_dir(working_dir, run_uid) -> Path`: the run's claim directory,
+    absolute
+  - `has_claim_plan(run_dir) -> bool`: whether the claim's plan was written, i.e.
+    whether it may have moved files
+  - `ClaimedFiles.find(working_dir, run_uid) -> ClaimedFiles | None`: the claim of a
+    run, e.g. one that raised partway, or None if it wrote no plan
+
 - 2026-11-27, Phase 1, step classes:
   - added: `accessionflow.api.step.Step`, the base class of a step:
     `check_configuration()`, the private hooks `_check_configuration()` and

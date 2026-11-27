@@ -21,6 +21,8 @@ from accessionflow.api.collate import (
     ClaimedFiles,
     ClaimInputFiles,
     FinishClaim,
+    claim_run_dir,
+    has_claim_plan,
     make_run_uid,
 )
 from accessionflow.model.accession import Accession
@@ -342,10 +344,59 @@ def test_claim_run_dir_is_absolute(
     files = _tree(tmp_path / "inbox", "a.txt")
     claimed = ClaimInputFiles(Path("proc")).act(files, RUN_UID, [tmp_path / "inbox"])
     assert claimed.run_dir == tmp_path / "proc" / RUN_UID
+    assert claim_run_dir(Path("proc"), RUN_UID) == claimed.run_dir
     # A relative path to a claimed file is mapped too
     assert claimed.original_of(
         Path("proc") / RUN_UID / CLAIMED_FILES_DIRNAME / "a.txt"
     ) == (tmp_path / "inbox" / "a.txt")
+
+
+def test_has_claim_plan(tmp_path: Path) -> None:
+    run_dir = claim_run_dir(tmp_path / "proc", RUN_UID)
+    assert not has_claim_plan(run_dir)
+    files = _tree(tmp_path / "inbox", "a.txt")
+    ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [tmp_path / "inbox"])
+    assert has_claim_plan(run_dir)
+
+
+def test_find_claim_without_one(tmp_path: Path) -> None:
+    assert ClaimedFiles.find(tmp_path / "proc", RUN_UID) is None
+    # A claim of no files writes no plan, so there is none to find
+    ClaimInputFiles(tmp_path / "proc").act([], RUN_UID)
+    assert ClaimedFiles.find(tmp_path / "proc", RUN_UID) is None
+
+
+def test_find_claim(tmp_path: Path) -> None:
+    files = _tree(tmp_path / "inbox", "a.txt", "b/c.txt")
+    claimed = ClaimInputFiles(tmp_path / "proc").act(
+        files, RUN_UID, [tmp_path / "inbox"]
+    )
+    assert ClaimedFiles.find(tmp_path / "proc", RUN_UID) == claimed
+    assert ClaimedFiles.load(claimed.run_dir) == claimed
+
+
+def test_find_claim_that_stopped_partway(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "1.txt", "2.txt", "3.txt")
+    real_rename = os.rename
+    calls = []
+
+    def crashing_rename(src: ty.Any, dst: ty.Any) -> None:
+        calls.append(src)
+        if len(calls) == 2:
+            raise RuntimeError("crash")
+        real_rename(src, dst)
+
+    monkeypatch.setattr(os, "rename", crashing_rename)
+    with pytest.raises(RuntimeError, match="crash"):
+        ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+
+    found = ClaimedFiles.find(tmp_path / "proc", RUN_UID)
+    assert found is not None
+    # Only the file moved before the crash is in the record
+    assert list(found.files.values()) == [files[0]]
 
 
 # finish_claim and abandon_claim ---------------------------------------------------
