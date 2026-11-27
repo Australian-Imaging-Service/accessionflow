@@ -280,6 +280,17 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-27, Phase 1, step clean-up: the folder `collate` and `combine_run_accessions`
+  clean up through a `contextlib.ExitStack`, on which each step's `clean_up` is
+  registered as the step acts (see Step API), in place of their `try`/`except`/
+  `finally` handlers. The stack runs the clean-ups in reverse order, with the run's
+  error. Behaviour is unchanged: a run that raises, including in the claim part way,
+  has its claim moved to the error directory; an interrupt leaves it in the working
+  directory; and the build directory is removed either way. A clean-up that raises no
+  longer stops the ones after it. Tests: the clean-up tests in `api/tests/test_step.py`
+  and `api/tests/collate/test_claim.py`, and
+  `test_interrupt_leaves_the_claim_in_place` in `sources/folder/tests/test_collate.py`.
+  CLI unchanged. PR: pending.
 - 2026-11-27, Phase 1, step classes: the steps of a collate run are classes on the new
   base class `accessionflow.api.step.Step`, made with their configuration, which
   `check_configuration()` checks, and run with `act(...)`, which never checks it (see
@@ -689,6 +700,9 @@ contract, so each entry says "CLI unchanged".
 
 ### Removed
 
+- 2026-11-27, Phase 1, step clean-up: the step `AbandonClaim`. A failed claim is moved
+  to the error directory by `ClaimInputFiles(working_dir, error_dir).clean_up(run_uid,
+  error=...)`, which can't abandon with a plain message: pass an exception.
 - 2026-11-26, Phase 1, removals: the old collate path, which only tests still called
   since the CLI step.
   - `Accession.from_paths` and `Accession.last_modified`. Use the collate steps in
@@ -1367,6 +1381,21 @@ left for the next combine.
 `helpers/tests/test_run_uid.py` and `model/tests/test_labels.py`.
 
 #### Dated entries
+
+- 2026-11-27, Phase 1, step clean-up:
+  - added: `Step.clean_up(*args, error=None)`, which disposes of what `act` created
+    once the run has ended, given the run data that names it and the run's error. It
+    does nothing by default, needs no checked configuration, and can be called again
+  - added: `Step.register_clean_up(stack, *args, **kwargs)`, which pushes the step's
+    `clean_up` on an `ExitStack`, to be called with the run's error when it exits
+  - added: `ReserveRunUid.clean_up(build_dir, error=None)`, which removes the build
+    directory (`remove_build_dir`) whatever the error
+  - changed: `ClaimInputFiles(working_dir, error_dir)` takes the error directory, a
+    required field, and has `clean_up(run_uid, error=None)`. If `error` is an
+    `Exception`, it finds the claim (`ClaimedFiles.find`) and moves it to
+    `error_dir / run_uid` with `error.json`. Without an error, after an interrupt, or
+    with no claim left in the working directory, it does nothing
+  - removed: `AbandonClaim(error_dir).act(claimed, error)`
 
 - 2026-11-27, Phase 1, added in `accessionflow.api.collate`, so that the layout of a
   claim in the processing area is defined in one place (`claim.py`), which

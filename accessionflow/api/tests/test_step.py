@@ -3,6 +3,7 @@ design principle 12)"""
 
 import pickle
 import typing as ty
+from contextlib import ExitStack
 
 import attrs
 import pytest
@@ -76,3 +77,56 @@ def test_a_checked_step_pickles_with_what_it_derived() -> None:
 def test_step_is_abstract() -> None:
     with pytest.raises(TypeError):
         Step()  # type: ignore[abstract]
+
+
+@attrs.define
+class _Recording(Step):
+    """A step whose clean-up records what it was called with"""
+
+    name: str
+    calls: list[tuple[str, str, BaseException | None]]
+    fail: bool = False
+
+    def act(self) -> None:
+        pass
+
+    def clean_up(self, value: str, error: BaseException | None = None) -> None:
+        self.calls.append((self.name, value, error))
+        if self.fail:
+            raise OSError(f"{self.name} couldn't clean up")
+
+
+def test_default_clean_up_does_nothing() -> None:
+    _Unchecked().clean_up("anything", error=ValueError("x"))
+
+
+def test_clean_ups_run_in_reverse_order_without_an_error() -> None:
+    calls: list[tuple[str, str, BaseException | None]] = []
+    with ExitStack() as stack:
+        _Recording("first", calls).register_clean_up(stack, "a")
+        _Recording("second", calls).register_clean_up(stack, "b")
+        assert calls == []
+    assert calls == [("second", "b", None), ("first", "a", None)]
+
+
+def test_clean_ups_get_the_error_which_is_raised() -> None:
+    calls: list[tuple[str, str, BaseException | None]] = []
+    error = ValueError("failed")
+    with pytest.raises(ValueError, match="failed"):
+        with ExitStack() as stack:
+            _Recording("first", calls).register_clean_up(stack, "a")
+            _Recording("second", calls).register_clean_up(stack, "b")
+            raise error
+    assert calls == [("second", "b", error), ("first", "a", error)]
+
+
+def test_a_clean_up_runs_after_another_raises() -> None:
+    calls: list[tuple[str, str, BaseException | None]] = []
+    with pytest.raises(OSError, match="second couldn't") as raised:
+        with ExitStack() as stack:
+            _Recording("first", calls).register_clean_up(stack, "a")
+            _Recording("second", calls, fail=True).register_clean_up(stack, "b")
+            raise ValueError("failed")
+    assert [name for name, _, _ in calls] == ["second", "first"]
+    # The run's error is kept as the clean-up's context
+    assert isinstance(raised.value.__context__, ValueError)

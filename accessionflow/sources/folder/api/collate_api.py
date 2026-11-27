@@ -1,23 +1,21 @@
 """Collates files found in local or mounted folders into accessions"""
 
 import typing as ty
+from contextlib import ExitStack
 from pathlib import Path
 
 from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
 from accessionflow.api.collate import (
-    AbandonClaim,
     ApplyFilesetMetadata,
     BuildAccessions,
     BuildFilesets,
-    ClaimedFiles,
     ClaimInputFiles,
     FinishClaim,
     MoveAccessions,
     ReserveRunUid,
 )
-from accessionflow.api.staging import remove_build_dir
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -88,9 +86,12 @@ def collate(
     6. Moves the files that weren't delivered (unrecognised, ignored, or of an
        accession that failed) to ``<unprocessed_dir>/<run_uid>/`` (`FinishClaim`).
 
-    If a step raises, the run's claimed files are moved to ``<error_dir>/<run_uid>/``
-    (`AbandonClaim`) and the error is raised. The build directory is removed either
-    way. An interrupt (e.g. Ctrl-C) leaves the claim in the working directory.
+    Each step's clean-up (`Step.clean_up`) is registered as the step acts, and runs
+    when the run ends, in reverse order. If a step raises, including the claim part
+    way, the run's claimed files are moved to ``<error_dir>/<run_uid>/``
+    (`ClaimInputFiles.clean_up`) and the error is raised. The build directory is
+    removed either way (`ReserveRunUid.clean_up`). An interrupt (e.g. Ctrl-C) leaves
+    the claim in the working directory.
 
     Errors are returned rather than logged: the caller summarises them (e.g. with
     ``accessionflow.cli.runner.log_stage_summary``).
@@ -188,7 +189,7 @@ def collate(
         if no unused run UID could be made. Nothing has been claimed
     """
     reserve = ReserveRunUid(output_dir)
-    claim = ClaimInputFiles(working_dir)
+    claim = ClaimInputFiles(working_dir, error_dir)
     build_filesets = BuildFilesets(
         datatypes,
         ignore_datatypes,
@@ -221,7 +222,6 @@ def collate(
         raise_errors=raise_errors,
     )
     finish = FinishClaim(unprocessed_dir)
-    abandon = AbandonClaim(error_dir)
     # Every step's configuration is checked before anything is changed
     for step in (
         reserve,
@@ -231,26 +231,23 @@ def collate(
         build_accessions,
         move,
         finish,
-        abandon,
     ):
         step.check_configuration()
 
-    run_uid, build_dir = reserve.act()
-    claimed: ClaimedFiles | None = None
-    try:
+    with ExitStack() as stack:
+        run_uid, build_dir = reserve.act()
+        reserve.register_clean_up(stack, build_dir)
+        # Before the claim acts, so that a claim that raises part way is moved too
+        claim.register_clean_up(stack, run_uid)
         claimed = claim.act(input_files, run_uid, source_roots)
+        build_filesets.register_clean_up(stack)
         classified = build_filesets.act(claimed)
+        apply_metadata.register_clean_up(stack)
         filesets = apply_metadata.act(classified.filesets, claimed)
+        build_accessions.register_clean_up(stack)
         accessions = build_accessions.act(filesets, run_uid)
+        move.register_clean_up(stack)
         failed = move.act(accessions, build_dir, claimed)
+        finish.register_clean_up(stack)
         finish.act(claimed, failed, classified.ignored)
-    except Exception as e:
-        if claimed is None:
-            # The claim raised partway: the files it moved are found from its plan
-            claimed = ClaimedFiles.find(working_dir, run_uid)
-        if claimed is not None:
-            abandon.act(claimed, e)
-        raise
-    finally:
-        remove_build_dir(build_dir)
     return [message for _, message in failed]

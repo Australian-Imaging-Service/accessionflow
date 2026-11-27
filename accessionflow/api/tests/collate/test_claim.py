@@ -17,10 +17,10 @@ from accessionflow.api.collate import (
     ERROR_MANIFEST,
     PROCESSING_NAME_DEFAULT,
     UNPROCESSED_MANIFEST,
-    AbandonClaim,
     ClaimedFiles,
     ClaimInputFiles,
     FinishClaim,
+    ReserveRunUid,
     claim_run_dir,
     has_claim_plan,
     make_run_uid,
@@ -105,7 +105,9 @@ def test_claim_moves_files_keeping_layout(
     processing = tmp_path / "out" / PROCESSING_NAME_DEFAULT
     caplog.set_level("WARNING")
 
-    claimed = ClaimInputFiles(processing).act(files, RUN_UID, source_roots=[inbox])
+    claimed = ClaimInputFiles(processing, tmp_path / "error").act(
+        files, RUN_UID, source_roots=[inbox]
+    )
 
     run_dir = processing / RUN_UID
     assert claimed.run_dir == run_dir
@@ -125,7 +127,9 @@ def test_claim_moves_files_keeping_layout(
 def test_claim_keeps_repeated_names_and_directories_apart(tmp_path: Path) -> None:
     inbox = tmp_path / "inbox"
     files = _tree(inbox, "a/1.dcm", "b/1.dcm", "series.dcm/1", "series.dcm/2")
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
     files_dir = claimed.files_dir
     assert sorted(p.relative_to(files_dir).as_posix() for p in claimed.files) == [
         "a/1.dcm",
@@ -138,7 +142,7 @@ def test_claim_keeps_repeated_names_and_directories_apart(tmp_path: Path) -> Non
 
 def test_claim_roots_default_to_file_directories(tmp_path: Path) -> None:
     files = _tree(tmp_path / "in", "x/a.txt", "y/b.txt")
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID)
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(files, RUN_UID)
     assert claimed.base == tmp_path / "in"
     assert claimed.roots == (tmp_path / "in" / "x", tmp_path / "in" / "y")
     assert claimed.claimed_roots == [claimed.files_dir / "x", claimed.files_dir / "y"]
@@ -148,7 +152,9 @@ def test_claim_two_source_roots(tmp_path: Path) -> None:
     first = _tree(tmp_path / "site1" / "inbox", "a.txt")
     second = _tree(tmp_path / "site2" / "inbox", "a.txt")
     roots = [tmp_path / "site1" / "inbox", tmp_path / "site2" / "inbox"]
-    claimed = ClaimInputFiles(tmp_path / "proc").act(first + second, RUN_UID, roots)
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        first + second, RUN_UID, roots
+    )
     assert claimed.base == tmp_path
     assert claimed.claimed_roots == [
         claimed.files_dir / "site1" / "inbox",
@@ -161,7 +167,7 @@ def test_claim_file_outside_roots_raises_before_moving(tmp_path: Path) -> None:
     inside = _tree(tmp_path / "inbox", "a.txt")
     outside = _tree(tmp_path / "elsewhere", "b.txt")
     with pytest.raises(ValueError, match="aren't in any of the source roots"):
-        ClaimInputFiles(tmp_path / "proc").act(
+        ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
             inside + outside, RUN_UID, [tmp_path / "inbox"]
         )
     assert all(p.exists() for p in inside + outside)
@@ -172,13 +178,13 @@ def test_claim_file_outside_roots_raises_before_moving(tmp_path: Path) -> None:
 def test_claim_rejects_invalid_run_uid(tmp_path: Path, run_uid: str) -> None:
     files = _tree(tmp_path / "inbox", "a.txt")
     with pytest.raises(ValueError, match="Invalid run UID for a claim directory"):
-        ClaimInputFiles(tmp_path / "proc").act(files, run_uid)
+        ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(files, run_uid)
     assert files[0].exists()
     assert not (tmp_path / "proc").exists()
 
 
 def test_claim_no_files_creates_nothing(tmp_path: Path) -> None:
-    claimed = ClaimInputFiles(tmp_path / "proc").act([], RUN_UID)
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act([], RUN_UID)
     assert claimed.files == {}
     assert not (tmp_path / "proc").exists()
 
@@ -192,7 +198,9 @@ def test_claim_across_file_systems(
     monkeypatch.setattr(os, "rename", _exdev_rename)
 
     with caplog.at_level("WARNING"):
-        claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+        claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+            files, RUN_UID, [inbox]
+        )
 
     copy_warnings = [
         r.getMessage()
@@ -225,7 +233,9 @@ def test_claim_leaves_file_that_changes_while_copied(
     monkeypatch.setattr(os, "rename", _exdev_rename)
     monkeypatch.setattr(shutil, "copy2", copy_then_append)
 
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
 
     assert [p.name for p in claimed.files] == ["a.txt"]
     assert (inbox / "growing.txt").read_text() == "growing.txt more"
@@ -239,7 +249,9 @@ def test_claim_skips_file_that_disappeared(
     files = _tree(inbox, "a.txt", "gone.txt")
     files[1].unlink()
     with caplog.at_level("WARNING"):
-        claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+        claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+            files, RUN_UID, [inbox]
+        )
     assert [p.name for p in claimed.files] == ["a.txt"]
     assert any("disappeared" in r.getMessage() for r in caplog.records)
 
@@ -248,7 +260,9 @@ def test_claim_leaves_files_that_arrive_after_listing(tmp_path: Path) -> None:
     inbox = tmp_path / "inbox"
     listed = _tree(inbox, "a.txt", "b.txt")
     (late,) = _tree(inbox, "late.txt")
-    claimed = ClaimInputFiles(tmp_path / "proc").act(listed, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        listed, RUN_UID, [inbox]
+    )
     assert sorted(p.name for p in claimed.files) == ["a.txt", "b.txt"]
     assert late.read_text() == "late.txt"
 
@@ -269,18 +283,22 @@ def test_claim_retry_after_crash_part_way(
 
     monkeypatch.setattr(os, "rename", crashing_rename)
     with pytest.raises(RuntimeError, match="crash"):
-        ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+        ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+            files, RUN_UID, [inbox]
+        )
     assert sum(p.exists() for p in files) == 2
 
     calls.clear()
     # The retry is given a different list, but follows the saved plan
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files[:1], RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files[:1], RUN_UID, [inbox]
+    )
     assert len(calls) == 2  # only the files not claimed yet are moved
     assert sorted(p.name for p in claimed.files) == ["1.txt", "2.txt", "3.txt", "4.txt"]
     assert not any(p.exists() for p in files)
 
     monkeypatch.setattr(os, "rename", real_rename)
-    clean = ClaimInputFiles(tmp_path / "proc").act(
+    clean = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
         _tree(tmp_path / "inbox2", "1.txt", "2.txt", "3.txt", "4.txt"),
         "20261124010203_def456",
         [tmp_path / "inbox2"],
@@ -299,13 +317,17 @@ def test_claim_retry_after_crash_before_source_deleted(
     inbox = tmp_path / "inbox"
     (src,) = _tree(inbox, "a.txt")
     processing = tmp_path / "proc"
-    claimed = ClaimInputFiles(processing).act([src], RUN_UID, [inbox])
+    claimed = ClaimInputFiles(processing, tmp_path / "error").act(
+        [src], RUN_UID, [inbox]
+    )
     (dest,) = claimed.files
     shutil.copy2(dest, src)  # as if the source had never been deleted
     if source_changed:
         src.write_text("a new file with the same name")
 
-    retried = ClaimInputFiles(processing).act([src], RUN_UID, [inbox])
+    retried = ClaimInputFiles(processing, tmp_path / "error").act(
+        [src], RUN_UID, [inbox]
+    )
 
     assert retried.files == claimed.files
     assert src.exists() is source_changed
@@ -315,7 +337,9 @@ def test_claim_retry_after_crash_before_source_deleted(
 def test_claimed_files_load_and_pickle(tmp_path: Path) -> None:
     inbox = tmp_path / "inbox"
     files = _tree(inbox, "a.txt", "sub/b.txt")
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
     assert ClaimedFiles.load(claimed.run_dir) == claimed
     assert pickle.loads(pickle.dumps(claimed)) == claimed
     claimed_path = claimed.files_dir / "sub" / "b.txt"
@@ -330,7 +354,9 @@ def test_claim_input_file_named_like_the_manifest(tmp_path: Path) -> None:
     """A file named claimed.json goes with the other files, not over the plan"""
     inbox = tmp_path / "inbox"
     files = _tree(inbox, CLAIMED_MANIFEST, "a.txt")
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
     assert len(claimed.files) == 2
     assert (claimed.files_dir / CLAIMED_MANIFEST).read_text() == CLAIMED_MANIFEST
     assert ClaimedFiles.load(claimed.run_dir) == claimed  # the plan is intact
@@ -342,7 +368,9 @@ def test_claim_run_dir_is_absolute(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     files = _tree(tmp_path / "inbox", "a.txt")
-    claimed = ClaimInputFiles(Path("proc")).act(files, RUN_UID, [tmp_path / "inbox"])
+    claimed = ClaimInputFiles(Path("proc"), Path("error")).act(
+        files, RUN_UID, [tmp_path / "inbox"]
+    )
     assert claimed.run_dir == tmp_path / "proc" / RUN_UID
     assert claim_run_dir(Path("proc"), RUN_UID) == claimed.run_dir
     # A relative path to a claimed file is mapped too
@@ -355,20 +383,22 @@ def test_has_claim_plan(tmp_path: Path) -> None:
     run_dir = claim_run_dir(tmp_path / "proc", RUN_UID)
     assert not has_claim_plan(run_dir)
     files = _tree(tmp_path / "inbox", "a.txt")
-    ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [tmp_path / "inbox"])
+    ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [tmp_path / "inbox"]
+    )
     assert has_claim_plan(run_dir)
 
 
 def test_find_claim_without_one(tmp_path: Path) -> None:
     assert ClaimedFiles.find(tmp_path / "proc", RUN_UID) is None
     # A claim of no files writes no plan, so there is none to find
-    ClaimInputFiles(tmp_path / "proc").act([], RUN_UID)
+    ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act([], RUN_UID)
     assert ClaimedFiles.find(tmp_path / "proc", RUN_UID) is None
 
 
 def test_find_claim(tmp_path: Path) -> None:
     files = _tree(tmp_path / "inbox", "a.txt", "b/c.txt")
-    claimed = ClaimInputFiles(tmp_path / "proc").act(
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
         files, RUN_UID, [tmp_path / "inbox"]
     )
     assert ClaimedFiles.find(tmp_path / "proc", RUN_UID) == claimed
@@ -391,7 +421,9 @@ def test_find_claim_that_stopped_partway(
 
     monkeypatch.setattr(os, "rename", crashing_rename)
     with pytest.raises(RuntimeError, match="crash"):
-        ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+        ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+            files, RUN_UID, [inbox]
+        )
 
     found = ClaimedFiles.find(tmp_path / "proc", RUN_UID)
     assert found is not None
@@ -399,13 +431,15 @@ def test_find_claim_that_stopped_partway(
     assert list(found.files.values()) == [files[0]]
 
 
-# finish_claim and abandon_claim ---------------------------------------------------
+# FinishClaim and clean_up ---------------------------------------------------------
 
 
 def _claim(tmp_path: Path, *relpaths: str) -> tuple[Path, ClaimedFiles]:
     inbox = tmp_path / "inbox"
     files = _tree(inbox, *relpaths)
-    return inbox, ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+    return inbox, ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
 
 
 def _reasons(moved_run_dir: Path) -> dict[str, dict[str, ty.Any]]:
@@ -417,7 +451,9 @@ def test_finish_claim_removes_run_dir_when_all_staged(tmp_path: Path) -> None:
     inbox = tmp_path / "inbox"
     files = _tree(inbox, "a.txt", "sub/b.txt", "sub/deeper/c.txt")
     processing = tmp_path / "out" / PROCESSING_NAME_DEFAULT
-    claimed = ClaimInputFiles(processing).act(files, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(processing, tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
     for path in claimed.files:
         path.unlink()  # as stage_accession does
     unprocessed = tmp_path / "unprocessed"
@@ -503,7 +539,7 @@ def test_finish_claim_removes_partial_copies(tmp_path: Path) -> None:
 
 
 def test_finish_claim_without_run_dir(tmp_path: Path) -> None:
-    empty = ClaimInputFiles(tmp_path / "proc").act([], RUN_UID)
+    empty = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act([], RUN_UID)
     assert FinishClaim(tmp_path / "unprocessed").act(empty) == []
     _, claimed = _claim(tmp_path, "a.txt")
     for path in claimed.files:
@@ -541,14 +577,19 @@ def test_finish_claim_retry_after_crash_before_delete(tmp_path: Path) -> None:
     assert not claimed.run_dir.exists()
 
 
-def test_abandon_claim(tmp_path: Path) -> None:
-    _, claimed = _claim(tmp_path, "a.txt", "sub/b.txt")
-    error_dir = tmp_path / "errors"
+def _error(message: str) -> ValueError:
+    """An error that has been raised, so it has a traceback"""
     try:
-        raise ValueError("no datatype recognised 'a.txt'")
+        raise ValueError(message)
     except ValueError as e:
-        moved = AbandonClaim(error_dir).act(claimed, e)
-    assert moved == error_dir / RUN_UID
+        return e
+
+
+def test_clean_up_moves_the_claim_of_a_run_that_raised(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, "a.txt", "sub/b.txt")
+    claim = ClaimInputFiles(tmp_path / "proc", tmp_path / "errors")
+    claim.clean_up(RUN_UID, error=_error("no datatype recognised 'a.txt'"))
+    moved = tmp_path / "errors" / RUN_UID
     assert not claimed.run_dir.exists()
     assert (moved / CLAIMED_FILES_DIRNAME / "sub" / "b.txt").read_text() == "sub/b.txt"
     record = json.loads((moved / ERROR_MANIFEST).read_text())
@@ -556,12 +597,75 @@ def test_abandon_claim(tmp_path: Path) -> None:
     assert record["message"] == "no datatype recognised 'a.txt'"
     assert "Traceback" in record["traceback"]
     # Again, now it has been moved
-    assert AbandonClaim(error_dir).act(claimed, "again") == moved
+    claim.clean_up(RUN_UID, error=_error("again"))
+    assert json.loads((moved / ERROR_MANIFEST).read_text()) == record
 
 
-def test_abandon_claim_with_a_message(tmp_path: Path) -> None:
+@pytest.mark.parametrize("error", [None, KeyboardInterrupt()])
+def test_clean_up_leaves_the_claim_of_a_run_that_didnt_raise(
+    tmp_path: Path, error: BaseException | None
+) -> None:
+    """Without an error, or after an interrupt, the claim stays in the working
+    directory"""
     _, claimed = _claim(tmp_path, "a.txt")
-    moved = AbandonClaim(tmp_path / "errors").act(claimed, "stopped by the flow")
-    assert json.loads((moved / ERROR_MANIFEST).read_text()) == {
-        "message": "stopped by the flow"
-    }
+    ClaimInputFiles(tmp_path / "proc", tmp_path / "errors").clean_up(
+        RUN_UID, error=error
+    )
+    assert has_claim_plan(claimed.run_dir)
+    assert not (tmp_path / "errors").exists()
+
+
+def test_clean_up_with_nothing_claimed(tmp_path: Path) -> None:
+    claim = ClaimInputFiles(tmp_path / "proc", tmp_path / "errors")
+    claim.act([], RUN_UID)
+    claim.clean_up(RUN_UID, error=_error("failed"))
+    assert not (tmp_path / "proc").exists()
+    assert not (tmp_path / "errors").exists()
+
+
+def test_clean_up_after_finish_claim(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, "a.txt")
+    FinishClaim(tmp_path / "unprocessed").act(claimed)
+    ClaimInputFiles(tmp_path / "proc", tmp_path / "errors").clean_up(
+        RUN_UID, error=_error("failed")
+    )
+    assert (
+        tmp_path / "unprocessed" / RUN_UID / CLAIMED_FILES_DIRNAME / "a.txt"
+    ).exists()
+    assert not (tmp_path / "errors").exists()
+
+
+def test_clean_up_moves_a_claim_that_stopped_partway(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "1.txt", "2.txt")
+    real_rename = os.rename
+    calls = []
+
+    def crashing_rename(src: ty.Any, dst: ty.Any) -> None:
+        calls.append(src)
+        if len(calls) == 2:
+            raise RuntimeError("crash")
+        real_rename(src, dst)
+
+    claim = ClaimInputFiles(tmp_path / "proc", tmp_path / "errors")
+    monkeypatch.setattr(os, "rename", crashing_rename)
+    with pytest.raises(RuntimeError, match="crash") as raised:
+        claim.act(files, RUN_UID, [inbox])
+    monkeypatch.undo()
+
+    claim.clean_up(RUN_UID, error=raised.value)
+    moved = tmp_path / "errors" / RUN_UID / CLAIMED_FILES_DIRNAME
+    assert sorted(p.name for p in moved.iterdir()) == ["1.txt"]
+    assert not files[0].exists() and files[1].exists()
+    assert not claim_run_dir(tmp_path / "proc", RUN_UID).exists()
+
+
+def test_reserve_run_uid_clean_up_removes_the_build_dir(tmp_path: Path) -> None:
+    reserve = ReserveRunUid(tmp_path / "out")
+    _, build_dir = reserve.act()
+    (build_dir / "empty").mkdir()
+    reserve.clean_up(build_dir, error=_error("failed"))
+    assert not build_dir.exists()
+    reserve.clean_up(build_dir)  # again, with nothing left

@@ -105,7 +105,9 @@ def _claim_tree(
         path.write_text("{}" if path.suffix == ".json" else "a,b\n1,2\n")
         files.append(path)
     roots = [inbox / r for r in source_roots] if source_roots is not None else [inbox]
-    return ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, roots)
+    return ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, roots
+    )
 
 
 def _expand(
@@ -174,7 +176,7 @@ def test_expand_two_source_roots(tmp_path: Path) -> None:
 
 
 def test_expand_empty_claim(tmp_path: Path) -> None:
-    claimed = ClaimInputFiles(tmp_path / "proc").act([], RUN_UID)
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act([], RUN_UID)
     assert _expand(claimed, [Json]) == []
 
 

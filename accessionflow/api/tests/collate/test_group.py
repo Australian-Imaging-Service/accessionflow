@@ -47,7 +47,7 @@ def _filesets(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         paths.append(path)
-    claimed: ClaimedFiles = ClaimInputFiles(tmp_path / "proc").act(
+    claimed: ClaimedFiles = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
         paths, RUN_UID, [inbox]
     )
     plan = plan_recursion(datatypes, ignore_datatypes, recursive)

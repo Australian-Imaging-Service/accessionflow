@@ -45,9 +45,9 @@ def _claim(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}" if path.suffix == ".json" else "a,b\n1,2\n")
         files.append(path)
-    claimed = ClaimInputFiles(processing_dir or tmp_path / "proc").act(
-        files, RUN_UID, [inbox]
-    )
+    claimed = ClaimInputFiles(
+        processing_dir or tmp_path / "proc", tmp_path / "error"
+    ).act(files, RUN_UID, [inbox])
     return inbox, claimed
 
 
@@ -299,7 +299,9 @@ def test_table_delivered_with_the_data(tmp_path: Path) -> None:
     load_metadata_tables([table])
 
     files = sorted(p for p in inbox.rglob("*") if p.is_file())
-    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, RUN_UID, [inbox]
+    )
     assert not table.table_file.fspath.exists()  # the table was claimed too
 
     plan = plan_recursion([Json], recursive=True)

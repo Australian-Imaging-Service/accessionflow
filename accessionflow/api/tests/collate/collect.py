@@ -93,7 +93,10 @@ def collect_files(
     roots = list_source_roots(list(files_path), files)
 
     run_uid = make_run_uid()
-    claimed = ClaimInputFiles(working_dir).act(files, run_uid, roots)
+    # It is not cleaned up, so no claim is moved to the error directory
+    claimed = ClaimInputFiles(working_dir, working_dir.parent / "error").act(
+        files, run_uid, roots
+    )
     classified = build_filesets.act(claimed)
     filesets = apply_metadata.act(classified.filesets, claimed)
     return build_accessions.act(filesets, run_uid)

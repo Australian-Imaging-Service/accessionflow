@@ -233,6 +233,25 @@ def test_claim_that_raises_partway(
     assert sorted(p.name for p in _files_under(dirs.inbox)) == ["b.json", "c.json"]
 
 
+def test_interrupt_leaves_the_claim_in_place(
+    dirs: Dirs, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An interrupt, e.g. Ctrl-C, leaves the claim in the working directory to be
+    retried, and the build directory is removed"""
+    _write(dirs.inbox, {"s1/a.json": "{}"})
+
+    def interrupt(self: BuildFilesets, *args: ty.Any, **kwargs: ty.Any) -> ty.Any:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(BuildFilesets, "act", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        _run(dirs, metadata_tables=[_visit_table(tmp_path, "s1")])
+    run_dir = _only_run_dir(dirs.working)
+    assert (run_dir / CLAIMED_FILES_DIRNAME / "s1" / "a.json").exists()
+    assert not (dirs.output / BUILD_NAME_DEFAULT / run_dir.name).exists()
+    assert not dirs.error.exists()
+
+
 def test_files_that_arrive_during_a_run_wait_for_the_next(
     dirs: Dirs, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

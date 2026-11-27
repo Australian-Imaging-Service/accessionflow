@@ -3,6 +3,8 @@ design principle 12)"""
 
 import abc
 import typing as ty
+from contextlib import ExitStack
+from types import TracebackType
 
 import attrs
 
@@ -25,6 +27,14 @@ class Step(abc.ABC):
     keeps what it derives from the configuration in private ``init=False`` fields,
     sets them in `_check_configuration`, and implements `act`. Steps pickle, with
     their derived fields, so a configured step can be passed to a task (principle 8).
+
+    A step that creates something a run must dispose of, e.g. a directory, overrides
+    `clean_up`, which takes the run data that names it and the error the run raised,
+    if any. The caller registers each step's clean-up on a `contextlib.ExitStack` with
+    `register_clean_up` as it calls `act`: before `act` if the clean-up's arguments are
+    known by then, so that an `act` that raises part way is cleaned up too, otherwise
+    straight after. The stack runs the clean-ups in reverse order when the run ends,
+    however it ends.
     """
 
     _checked: bool = attrs.field(default=False, init=False, repr=False, eq=False)
@@ -60,6 +70,42 @@ class Step(abc.ABC):
                 f"{type(self).__name__}.check_configuration() must be called before "
                 "act()"
             )
+
+    def clean_up(self, *args: ty.Any, **kwargs: ty.Any) -> None:
+        """Disposes of what `act` created once the run has ended, given the run data
+        that names it and, as the keyword ``error``, the error the run raised (`None`
+        if it didn't). An interrupt (e.g. a `KeyboardInterrupt`) is passed too, so each
+        step decides what it leaves in place. Nothing by default.
+
+        It doesn't need the configuration checked, and doesn't check it. With nothing
+        to clean up, e.g. if `act` didn't get far or it has been cleaned up already, it
+        does nothing, so it can be called again. It never handles the run's error,
+        which is raised once every clean-up has run
+        """
+
+    def register_clean_up(
+        self, stack: ExitStack, *args: ty.Any, **kwargs: ty.Any
+    ) -> None:
+        """Registers `clean_up` on the stack, to be called with the arguments, and the
+        error the run raised as ``error``, when the stack exits
+
+        Parameters
+        ----------
+        stack : ExitStack
+            the stack of the run's clean-ups
+        *args, **kwargs
+            the arguments `clean_up` is called with
+        """
+
+        def exit_(
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> bool:
+            self.clean_up(*args, error=exc, **kwargs)
+            return False  # the run's error is raised
+
+        stack.push(exit_)
 
     @abc.abstractmethod
     def act(self, *args: ty.Any, **kwargs: ty.Any) -> ty.Any:

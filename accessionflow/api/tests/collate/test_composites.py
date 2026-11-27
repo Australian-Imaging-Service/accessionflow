@@ -13,7 +13,6 @@ from fileformats.text import Csv, Plain
 from accessionflow.api.collate import (
     CLAIMED_FILES_DIRNAME,
     UNPROCESSED_MANIFEST,
-    AbandonClaim,
     ApplyFilesetMetadata,
     BuildAccessions,
     BuildFilesets,
@@ -49,7 +48,9 @@ def _claim(tmp_path: Path, files: dict[str, str]) -> ClaimedFiles:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         paths.append(path)
-    return ClaimInputFiles(tmp_path / "proc").act(paths, RUN_UID, [inbox])
+    return ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        paths, RUN_UID, [inbox]
+    )
 
 
 class _Collected(ty.NamedTuple):
@@ -571,7 +572,7 @@ def test_checked_steps_pickle(tmp_path: Path) -> None:
     table = _table(tmp_path, "Session,visit", "accession", "Session=sess")
     steps = [
         ReserveRunUid(tmp_path / "out"),
-        ClaimInputFiles(tmp_path / "proc"),
+        ClaimInputFiles(tmp_path / "proc", tmp_path / "error"),
         BuildFilesets([Json], [Plain], recursive=True),
         ApplyFilesetMetadata(
             path_metadata_regex=SESS_NAME_REGEX, metadata_tables=[table]
@@ -579,7 +580,6 @@ def test_checked_steps_pickle(tmp_path: Path) -> None:
         BuildAccessions([IDSpec("sess")], metadata_tables=[table]),
         MoveAccessions(tmp_path / "out", LABEL_FIELDS),
         FinishClaim(tmp_path / "unprocessed"),
-        AbandonClaim(tmp_path / "error"),
     ]
     for step in steps:
         step.check_configuration()

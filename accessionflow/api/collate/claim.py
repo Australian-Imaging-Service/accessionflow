@@ -19,6 +19,7 @@ from accessionflow.api.staging import (
     check_run_uid,
     prepare_build_dir,
     prune_empty_dirs,
+    remove_build_dir,
 )
 from accessionflow.api.step import Step
 from accessionflow.helpers.logging import logger
@@ -32,7 +33,6 @@ __all__ = [
     "UNPROCESSED_NAME_DEFAULT",
     "ERROR_NAME_DEFAULT",
     "UNPROCESSED_MANIFEST",
-    "AbandonClaim",
     "ClaimInputFiles",
     "ClaimedFiles",
     "FinishClaim",
@@ -50,7 +50,7 @@ __all__ = [
 PROCESSING_NAME_DEFAULT = "__processing__"
 
 # The subdirectories of the output directory that the CLI moves a run directory to by
-# default, when files are left (FinishClaim) or the run fails (AbandonClaim). The
+# default, when files are left (FinishClaim) or the run fails (ClaimInputFiles.clean_up). The
 # combiner moves the run accessions of a group that fails to the same error directory
 UNPROCESSED_NAME_DEFAULT = "__unprocessed__"
 ERROR_NAME_DEFAULT = "__error__"
@@ -289,6 +289,19 @@ class ReserveRunUid(Step):
                 logger.debug("Run UID '%s' is taken, making another", run_uid)
         raise RuntimeError(f"Couldn't make an unused run UID in '{self.output_dir}'")
 
+    def clean_up(self, build_dir: Path, error: BaseException | None = None) -> None:
+        """Removes the run's build directory, however the run ended, unless it still
+        holds files, e.g. from a save that failed part way (`remove_build_dir`)
+
+        Parameters
+        ----------
+        build_dir : Path
+            the run's build directory, from `act`
+        error : BaseException, optional
+            the error the run raised, which doesn't change what is removed
+        """
+        remove_build_dir(build_dir)
+
 
 def write_error_record(directory: Path, error: BaseException | str) -> Path:
     """Writes the record of why a run failed (`ERROR_MANIFEST`) into the directory
@@ -336,6 +349,11 @@ class ClaimInputFiles(Step):
     claiming the same file at the same time can both copy it, so runs that may overlap
     need the input on the same file system as the processing area.
 
+    If the run raises after the claim, or during it, `clean_up` moves the claim to
+    ``error_dir / run_uid``, with the error recorded in its ``error.json``
+    (`ERROR_MANIFEST`), so its files can be dealt with and the processing area doesn't
+    keep them.
+
     Its configuration needs no checks: whether the files are in the source roots depends
     on the files, so `act` checks it.
 
@@ -344,9 +362,13 @@ class ClaimInputFiles(Step):
     working_dir : Path
         the directory each run's own directory is made in, ``working_dir / run_uid``,
         e.g. ``<output_dir>/__processing__`` (`PROCESSING_NAME_DEFAULT`)
+    error_dir : Path
+        where the claim of a run that raised is moved to, e.g. ``<output_dir>/__error__``
+        (`ERROR_NAME_DEFAULT`)
     """
 
     working_dir: Path = attrs.field(converter=Path)
+    error_dir: Path = attrs.field(converter=Path)
 
     def act(
         self,
@@ -420,6 +442,30 @@ class ClaimInputFiles(Step):
             run_dir,
         )
         return claimed
+
+    def clean_up(self, run_uid: str, error: BaseException | None = None) -> None:
+        """Moves the claim of a run that raised, e.g. on a file no datatype
+        recognised, to ``error_dir / run_uid``, with the error recorded. It finds the
+        claim from its plan, so a claim that raised part way is moved with the files
+        it had moved by then.
+
+        It does nothing if the run didn't raise, if it was interrupted (e.g. Ctrl-C,
+        which leaves the claim in the working directory to be retried), or if no claim
+        is left in the working directory: nothing was claimed, or `FinishClaim` or an
+        earlier clean-up has moved it
+
+        Parameters
+        ----------
+        run_uid : str
+            the run's UID, as given to `act`
+        error : BaseException, optional
+            the error the run raised
+        """
+        if not isinstance(error, Exception):
+            return
+        claimed = ClaimedFiles.find(self.working_dir, run_uid)
+        if claimed is not None:
+            _abandon_claim(claimed, self.error_dir, error)
 
 
 @attrs.define
@@ -497,50 +543,22 @@ class FinishClaim(Step):
         return _files_in(moved_dir / CLAIMED_FILES_DIRNAME)
 
 
-@attrs.define
-class AbandonClaim(Step):
-    """Moves the claim of a run that failed after the claim, e.g. on a file no datatype
-    recognised, to ``error_dir / run_uid``, with the error recorded in its
-    ``error.json`` (`ERROR_MANIFEST`), so its files can be dealt with and the
-    processing area doesn't keep them. Act when the run raises, then re-raise.
+def _abandon_claim(
+    claimed: ClaimedFiles, error_dir: Path, error: BaseException
+) -> Path:
+    """Moves the run directory to the error directory, with the error recorded
 
-    Its configuration needs no checks.
-
-    Parameters
-    ----------
-    error_dir : Path
-        where the run directory is moved to
+    Returns
+    -------
+    Path
+        the run directory's new path
     """
-
-    error_dir: Path = attrs.field(converter=Path)
-
-    def act(self, claimed: ClaimedFiles, error: BaseException | str) -> Path:
-        """Moves the run directory to the error directory, with the error recorded
-
-        Parameters
-        ----------
-        claimed : ClaimedFiles
-            the run's claimed files, from `ClaimInputFiles`
-        error : BaseException or str
-            the error the run failed with
-
-        Returns
-        -------
-        Path
-            the run directory's new path, or where it would have been if the run
-            claimed nothing
-        """
-        run_dir = claimed.run_dir
-        dest = self.error_dir / run_dir.name
-        if not run_dir.exists():
-            return dest
-        _tidy_run_dir(claimed)
-        write_error_record(run_dir, error)
-        moved_dir = _move_run_dir(run_dir, self.error_dir)
-        logger.error(
-            "Moved the claim of failed run '%s' to '%s'", run_dir.name, moved_dir
-        )
-        return moved_dir
+    run_dir = claimed.run_dir
+    _tidy_run_dir(claimed)
+    write_error_record(run_dir, error)
+    moved_dir = _move_run_dir(run_dir, error_dir)
+    logger.error("Moved the claim of failed run '%s' to '%s'", run_dir.name, moved_dir)
+    return moved_dir
 
 
 def _tidy_run_dir(claimed: ClaimedFiles) -> list[Path]:

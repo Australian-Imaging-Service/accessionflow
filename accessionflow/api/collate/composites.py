@@ -2,6 +2,7 @@
 (see ``prefect-migration-docs/ROADMAP.md``, Phase 1, Composites)"""
 
 import typing as ty
+from contextlib import ExitStack
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 
-from accessionflow.api.staging import for_each_accession, remove_build_dir
+from accessionflow.api.staging import for_each_accession
 from accessionflow.api.step import Step
 from accessionflow.helpers.arg_types import (
     ClashSpec,
@@ -427,7 +428,7 @@ def combine_run_accessions(
     4. For each quiet group: `combine_accessions`, `deliver_combined` and
        `remove_run_accessions`. A group that fails has its run accessions moved to
        ``<error_dir>/<labels>_<run_uid>/`` (`abandon_group`).
-    5. Removes the build directory (`remove_build_dir`).
+    5. Removes the build directory, however the run ends (`ReserveRunUid.clean_up`).
 
     Errors are returned rather than logged: the caller summarises them.
 
@@ -470,21 +471,25 @@ def combine_run_accessions(
     groups = select_quiet_groups(list_run_accessions(runs_dir), quiet_period, now)
     if not groups:
         return []
-    run_uid, build_dir = ReserveRunUid(output_dir).act()
+    reserve = ReserveRunUid(output_dir)
+    reserve.check_configuration()
 
-    def combine(group: RunAccessionGroup) -> Path:
-        try:
-            accession = combine_accessions(group, on_resource_clash)
-            delivered = deliver_combined(
-                accession, group, build_dir, output_dir, primary_label, copy_mode
-            )
-            remove_run_accessions(group)
-        except Exception as e:
-            abandon_group(group, error_dir, e, run_uid)
-            raise
-        return delivered
+    with ExitStack() as stack:
+        run_uid, build_dir = reserve.act()
+        reserve.register_clean_up(stack, build_dir)
 
-    try:
+        def combine(group: RunAccessionGroup) -> Path:
+            try:
+                accession = combine_accessions(group, on_resource_clash)
+                delivered = deliver_combined(
+                    accession, group, build_dir, output_dir, primary_label, copy_mode
+                )
+                remove_run_accessions(group)
+            except Exception as e:
+                abandon_group(group, error_dir, e, run_uid)
+                raise
+            return delivered
+
         failures = for_each_accession(
             groups,
             combine,
@@ -492,8 +497,6 @@ def combine_run_accessions(
             raise_errors=raise_errors,
             name_of=lambda group: group.name,
         )
-    finally:
-        remove_build_dir(build_dir)
     return [message for _, message in failures]
 
 

@@ -95,7 +95,10 @@ These apply to every stage.
     checks with `check_configuration()` for every step of a run before any step acts,
     and it is run with `act(...)` on the run's data. `act` never checks the
     configuration itself; a step that needs what the check derives (e.g. the recursion
-    plan) refuses to act if it wasn't checked.
+    plan) refuses to act if it wasn't checked. What a step creates that the run must
+    dispose of, e.g. its build directory or a claim that failed, is disposed of by its
+    `clean_up(..., error=...)`, which the caller registers on an `ExitStack` with
+    `register_clean_up` as the step acts, so it runs however the run ends.
 
 ## Target layout
 
@@ -331,10 +334,33 @@ principle 12):
 | `BuildAccessions` | `build_accessions`, with `load_metadata_tables` as its check |
 | `MoveAccessions` | `move_accessions`, which now checks the label levels and constant labels before any accession is delivered |
 | `FinishClaim` | `finish_claim` |
-| `AbandonClaim` | `abandon_claim` |
+| `AbandonClaim` | `abandon_claim`. Folded into `ClaimInputFiles.clean_up` by [Step clean-up](#step-clean-up) |
 
 The folder `collate` makes the eight steps, checks every one, and then runs them. The
 combiner's steps are still functions, apart from its use of `ReserveRunUid`.
+
+### Step clean-up
+
+Status: **Done** (2026-11-27), recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API,
+Changed and Removed). The composites cleaned up ad hoc: the folder `collate` abandoned
+the claim in an `except`, with a special case for a claim that raised part way, and
+removed the build directory in a `finally`, which the combiner repeated. Now:
+
+- `Step.clean_up(..., error=None)` disposes of what `act` created, given the run data
+  that names it and the run's error. It does nothing by default.
+- The composite registers each step's clean-up on a `contextlib.ExitStack` with
+  `Step.register_clean_up` as the step acts: before `act` when the clean-up's
+  arguments are known by then, so an `act` that raises part way is cleaned up too.
+  Every step is registered, including those whose clean-up does nothing, so a step
+  that gains one needs no change to the composites.
+- `ReserveRunUid.clean_up(build_dir)` removes the build directory.
+- `ClaimInputFiles(working_dir, error_dir).clean_up(run_uid)` moves a claim to the
+  error directory if the run raised an `Exception`, finding it from its plan.
+  `AbandonClaim` is removed.
+
+The stack runs the clean-ups in reverse order, and one that raises doesn't stop the
+others. The combiner's per-group `abandon_group` stays in its group function until its
+steps are classes.
 
 ### Store-neutral labels
 
