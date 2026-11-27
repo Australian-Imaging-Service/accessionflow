@@ -240,7 +240,8 @@ TARGET_NAME = f"PROJ.s1.s1_{RUN_UID}"
 
 def _labelled(tmp_path: Path) -> tuple[ClaimedFiles, Accession]:
     claimed, (accession,) = _claim_and_group(tmp_path)
-    assign_labels(accession, LABEL_FIELDS, constant_labels={"project": "PROJ"})
+    accession.metadata["project"] = "PROJ"  # as a constant label is written
+    assign_labels(accession, LABEL_FIELDS)
     return claimed, accession
 
 

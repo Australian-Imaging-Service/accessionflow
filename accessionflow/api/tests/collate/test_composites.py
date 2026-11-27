@@ -139,6 +139,25 @@ def test_apply_fileset_metadata(tmp_path: Path) -> None:
     }
 
 
+def test_apply_fileset_metadata_writes_constant_fields_last(tmp_path: Path) -> None:
+    """The constant fields override the same fields from the paths and the tables"""
+    claimed = _claim(tmp_path, {"s1/a.json": "{}"})
+    (tables_dir := tmp_path / "tables").mkdir()
+    (tables_dir / "files.csv").write_text("Name,project\na,from-table\n")
+    tables = [MetadataTable(str(tables_dir / "files.csv"), "fileset", "Name=name")]
+    filesets = checked(BuildFilesets([Json], recursive=True)).act(claimed).filesets
+    (fileset,) = checked(
+        ApplyFilesetMetadata(
+            path_metadata_regex=SESS_NAME_REGEX,
+            metadata_tables=tables,
+            constant_fields={"project": "P", "sess": "constant"},
+        )
+    ).act(filesets, claimed)
+    assert fileset.metadata["project"] == "P"
+    assert fileset.metadata["sess"] == "constant"
+    assert fileset.metadata["name"] == "a"
+
+
 def test_build_accessions(tmp_path: Path) -> None:
     claimed = _claim(tmp_path, {"s1/a.json": "{}", "s2/b.json": "{}"})
     (tables_dir := tmp_path / "tables").mkdir()
@@ -383,6 +402,8 @@ def _collect_sessions(
         run_uid=RUN_UID,
     )
     for accession in collected.accessions:
+        # As ApplyFilesetMetadata writes a constant label (constant_label_fields)
+        accession.metadata["project"] = "P"
         if not accession.uid.endswith("-novisit"):
             accession.metadata["visit"] = "v1"
     output_dir = tmp_path / "out"
@@ -416,7 +437,6 @@ def test_move_accessions_one_of_each_case(
         MoveAccessions(
             output_dir,
             LABEL_FIELDS,
-            constant_labels={"project": "P"},
         )
     )
     failed = move.act(accessions, RUN_UID, claimed)
@@ -460,7 +480,6 @@ def test_move_accessions_all(tmp_path: Path) -> None:
         MoveAccessions(
             output_dir,
             LABEL_FIELDS,
-            constant_labels={"project": "P"},
         )
     )
     failed = move.act(accessions, RUN_UID, claimed)
@@ -486,7 +505,6 @@ def test_move_accessions_raise_errors(tmp_path: Path) -> None:
             MoveAccessions(
                 output_dir,
                 LABEL_FIELDS,
-                constant_labels={"project": "P"},
                 raise_errors=True,
             )
         ).act(accessions, RUN_UID, claimed)
@@ -511,7 +529,6 @@ def test_move_accessions_warns_once_before_moving(
         MoveAccessions(
             output_dir,
             LABEL_FIELDS,
-            constant_labels={"project": "P"},
             copy_mode=copy_mode,
         )
     ).act(accessions, RUN_UID, claimed)
@@ -559,10 +576,14 @@ def _table(
             [IDSpec("sess")],
             metadata_tables=[_table(tmp_path, "A,B", "accession", "Missing=sess")],
         ),
-        lambda tmp_path: MoveAccessions(tmp_path / "out", {}),
-        lambda tmp_path: MoveAccessions(
-            tmp_path / "out", LABEL_FIELDS, constant_labels={"site": "X"}
+        # A constant field that an accession table, injected later, would override
+        lambda tmp_path: ApplyFilesetMetadata(
+            metadata_tables=[
+                _table(tmp_path, "sess,project", "accession", "sess=sess")
+            ],
+            constant_fields={"project": "P"},
         ),
+        lambda tmp_path: MoveAccessions(tmp_path / "out", {}),
     ],
 )
 def test_check_configuration_raises_for_a_bad_configuration(

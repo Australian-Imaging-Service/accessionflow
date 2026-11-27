@@ -161,7 +161,7 @@ CLI, the removals and the tests. Collate is split into two parts:
    had no new run accession for a given time, it combines that session's run
    accessions into a single accession and writes it to the output directory.
 
-What is left: [Store-neutral labels](#store-neutral-labels) (N1–N5), which comes before
+What is left: [Store-neutral labels](#store-neutral-labels) (N1–N6), which comes before
 Phase 2, since it changes the step API that Phase 2 releases.
 
 The call chain before the CLI step was:
@@ -330,9 +330,9 @@ principle 12):
 | `ReserveRunUid` | `create_run_directory`. Since [Step clean-up](#step-clean-up), it reserves the UID in the working directory |
 | `ClaimInputFiles` | `claim_input_files` |
 | `BuildFilesets` | `build_filesets`, with `check_datatypes` and `plan_recursion` as its check |
-| `ApplyFilesetMetadata` | `apply_fileset_metadata`, with `merge_path_metadata` and `load_metadata_tables` as its check |
+| `ApplyFilesetMetadata` | `apply_fileset_metadata`, with `merge_path_metadata` and `load_metadata_tables` as its check. It also writes the constant labels to the metadata (`constant_fields`) |
 | `BuildAccessions` | `build_accessions`, with `load_metadata_tables` as its check |
-| `MoveAccessions` | `move_accessions`, which now checks the label levels and constant labels before any accession is delivered |
+| `MoveAccessions` | `move_accessions`, which now checks the label levels before any accession is delivered. It labels from the metadata alone: the constant labels are metadata fields, written by `ApplyFilesetMetadata` |
 | `FinishClaim` | `finish_claim` |
 | `AbandonClaim` | `abandon_claim`. Folded into `ClaimInputFiles.clean_up` by [Step clean-up](#step-clean-up) |
 
@@ -384,16 +384,41 @@ store's names:
   accession labelled for another store.
 
 That is premature at collate. Every field the names are made from is in the
-accession's metadata. A store-neutral `{project}.{subject}.{session}` identifies an
+accession's metadata. A store-neutral project, subject and session identify an
 accession through every stage, and each store can build its own naming from the labels
 and the metadata at the start of the store stage. So collate needs to know about
 project, subject and session, and nothing about stores.
 
+The subject and session are often a patient ID and an accession number, which are
+personal health information. So the staged name isn't the labels themselves, as
+`<project>.<subject>.<session>`, but a hash of them. The accessions of one session
+still share a name, and the name puts no PHI in directory listings, logs or error
+messages.
+
+Already in place (2026-11-27): a constant label is written to the accession's metadata
+as a field named after its level, e.g. `project`, by `ApplyFilesetMetadata`
+(`constant_label_fields`), and `MoveAccessions` labels from the metadata alone. So a
+staged accession's directory name always matches its saved metadata.
+
 **The model.**
 
 - Every staged accession is labelled with the same three levels, `project`, `subject`
-  and `session`, whatever store it is going to. Its directory is
-  `<project>.<subject>.<session>_<suffix>`, as now.
+  and `session`, whatever store it is going to. The labels are kept in its saved
+  metadata (`__labels__`), the only place they are read from.
+- **Its name is a hash of the labels.**
+  - Its directory is `<name>_<suffix>`. `<name>` is the first 16 hex characters of the
+    SHA-256 of the UTF-8 `<project>.<subject>.<session>`, made from the labels as
+    escaped by `Accession.label`. A label holds no `.`, so the joined string is
+    unambiguous.
+  - The suffix is the run UID, or a combined accession's primary label, as now.
+  - The same three labels always give the same name. So the run accessions of one
+    session share a name, and the combiner groups them as now.
+  - 16 hex characters are 64 bits, so a collision is negligible at any realistic
+    number of sessions. One would merge two sessions in the combiner, so the combiner
+    refuses a group whose saved labels differ.
+  - **Limit:** the hash has no key, so a guessable subject or session (e.g. a short
+    patient ID) can be recovered by hashing candidates. The name keeps PHI out of
+    plain sight; it doesn't anonymise.
 - Its acquisitions keep their store-neutral descriptions, resolved in collate with
   `--scan` (by default `SeriesDescription`). The staging layout is unchanged.
 - It no longer records a `store_type`.
@@ -446,9 +471,25 @@ project, subject and session, and nothing about stores.
     what each store needs at the store stage.
   - Deidentify selects recipes by the project label, which it does today through the
     first label (`api/deidentify_api.py`).
-- **N5. Docs and the staging layout.**
+- **N5. Staged names are hashes.**
+  - `Accession.name` and `staging_dirname()` give the hash of the three labels
+    (see the model above).
+  - `Accession.load` takes the labels from the saved metadata only, so a name is no
+    longer parsed into labels (`_labels_from_dirname`).
+  - `list_run_accessions` groups the run accessions by their name before the suffix,
+    and checks that the saved labels in a group agree.
+  - The log and error messages of collate, combine and the later stages name an
+    accession by its hashed name, never by its labels. That includes the unprocessed
+    and error manifests and `for_each_accession`'s messages.
+  - A [`CHANGELOG.md`](CHANGELOG.md) Staging layout entry: names change from
+    `<labels>_<suffix>` to `<hash>_<suffix>`. Data staged by an earlier version must
+    be drained before upgrading, unless `Accession.load` keeps reading the old names.
+    That choice is settled in N5's review.
+- **N6. Docs and the staging layout.**
   - The user docs: `docs/source/concepts.rst`, `docs/source/stages/label.rst`,
-    `docs/source/sources/folder.rst` and the folder store's page.
+    `docs/source/sources/folder.rst` and the folder store's page. They explain the
+    hashed name, and how to find an accession by its labels. A small helper or CLI
+    command that prints the name of given labels is an option.
   - A [`CHANGELOG.md`](CHANGELOG.md) Staging layout entry: `__store_type__` is no
     longer written, and accessions labelled by an earlier `label folder` with levels
     other than project, subject and session must be stored before upgrading.
@@ -465,6 +506,8 @@ project, subject and session, and nothing about stores.
     between joined as the subject
 - **N2:** does the folder step escape a label or field value that isn't a valid folder
   name, as XNAT IDs are escaped (`IDSpec.xnat_id_escape_re`)?
+- **N5:** does any store's own naming (N2) need the hashed name, or only the labels?
+  XNAT and the folder store use the labels.
 
 ## Phase 2: Collate step API hand-off
 

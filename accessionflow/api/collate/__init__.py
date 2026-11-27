@@ -1,7 +1,7 @@
 """The collate stage, split into step functions (see
 ``prefect-migration-docs/ROADMAP.md``, Phase 1)"""
 
-from .assign import assign_labels
+from .assign import assign_labels, constant_label_fields
 from .claim import (
     CLAIMED_FILES_DIRNAME,
     CLAIMED_MANIFEST,
@@ -56,6 +56,7 @@ from .group import (
     resource_label_for,
 )
 from .metadata import (
+    apply_constant_fields,
     apply_path_metadata,
     inject_accession_tables,
     inject_fileset_tables,
@@ -92,6 +93,8 @@ __all__ = [
     "RecursionPlan",
     "acquisition_id_for",
     "assign_labels",
+    "constant_label_fields",
+    "apply_constant_fields",
     "apply_path_metadata",
     "check_datatypes",
     "clash_hint_for",

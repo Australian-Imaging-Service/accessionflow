@@ -280,6 +280,27 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-27, documents, `ROADMAP.md` only: in "Store-neutral labels", a staged
+  accession's name becomes a hash of its labels, `<hash>_<run_uid>` or
+  `<hash>_<primary_label>`: the first 16 hex characters of the SHA-256 of
+  `<project>.<subject>.<session>`. The subject and session can be personal health
+  information, which the name no longer shows; the accessions of one session still
+  share a name. The labels are read from the saved metadata only. A new step, N5
+  ("Staged names are hashes"), does this; the docs step becomes N6. Records the limit
+  that an unkeyed hash of guessable IDs can be reversed. PR: pending.
+- 2026-11-27, Phase 1, constant labels as metadata: a constant label, e.g.
+  `--constant-label project=P` or XNAT's `--constant-project-id`, is now written to
+  the accession's metadata as a field named after its level (`project`), and the level
+  is labelled from that field. Before, the label was used in place of the metadata, so
+  the directory name `P.<subject>.<session>_<run_uid>` had no matching value in the
+  saved metadata. The field read from the files for that level (e.g. `StudyComments`)
+  is kept as it was. A constant label overrides a field of the same name from the
+  paths or a file-set table; one that is also a column of an accession, acquisition or
+  resource table is rejected before the claim. Tests:
+  `test_constant_labels_are_saved_in_the_metadata` in
+  `sources/folder/tests/test_collate.py`, and the constant tests in
+  `api/tests/collate/test_assign.py`, `test_metadata.py` and `test_composites.py`. CLI
+  unchanged. PR: pending.
 - 2026-11-27, Phase 1, step clean-up: the folder `collate` and `combine_run_accessions`
   clean up through a `contextlib.ExitStack`, on which each step's `clean_up` is
   registered as the step acts (see Step API), in place of their `try`/`except`/
@@ -1381,6 +1402,20 @@ left for the next combine.
 `helpers/tests/test_run_uid.py` and `model/tests/test_labels.py`.
 
 #### Dated entries
+
+- 2026-11-27, Phase 1, constant labels as metadata:
+  - added: `constant_label_fields(label_fields, constant_labels) -> (label_fields,
+    constant_fields)`, which points each constant level at a field named after it and
+    returns the fields to write. It raises `ValueError` for a constant that isn't a
+    label level, which `MoveAccessions` checked before
+  - added: `apply_constant_fields(filesets, constant_fields=None) -> list[FileSet]`
+  - changed: `ApplyFilesetMetadata(..., constant_fields={})` writes the constant fields
+    after the file-set tables. Its check rejects a constant field that is a column of
+    an accession, acquisition or resource table
+  - removed: `MoveAccessions`' `constant_labels` field, and `assign_labels`'
+    `constant_labels` argument. They label from the metadata alone
+  - unchanged: the folder `collate` takes `constant_labels`, keyed by level, and
+    translates them with `constant_label_fields`
 
 - 2026-11-27, Phase 1, `RecursionPlan` as the single source of truth for recursion:
   - changed: `RecursionPlan` gains `any_recursion`, its first field, which

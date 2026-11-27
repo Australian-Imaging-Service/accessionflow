@@ -12,6 +12,7 @@ from fileformats.text import Csv
 from accessionflow.api.collate import (
     ClaimedFiles,
     ClaimInputFiles,
+    apply_constant_fields,
     apply_path_metadata,
     classify_paths,
     disable_metadata_reading,
@@ -169,6 +170,34 @@ def test_relative_processing_dir(
 # tag_fileset_types ----------------------------------------------------------------
 
 TYPE_KEY = Accession.TYPE_METADATA_KEY
+
+
+def test_apply_constant_fields(tmp_path: Path) -> None:
+    """Every file-set gets the constants, over a field of the same name from its path,
+    so they are in the metadata of the accession they are grouped into"""
+    _, claimed = _claim(tmp_path, ["s1/a.json", "s1/b.json"])
+    filesets = apply_path_metadata(
+        _filesets(claimed, [Json]),
+        [
+            PathMetadataRegex(
+                r".*/(?P<sess>[^/]+)/(?P<name>(?P<project>[^/]+))\.json$", Json
+            )
+        ],
+        claimed,
+    )
+    result = apply_constant_fields(filesets, {"project": "P"})
+    assert result == filesets  # changed in place
+    assert [f.metadata["project"] for f in filesets] == ["P", "P"]
+    (accession,) = group_into_accessions(filesets, [IDSpec("sess")], [IDSpec("name")])
+    assert accession.metadata["project"] == "P"
+
+
+def test_apply_constant_fields_none(tmp_path: Path) -> None:
+    _, claimed = _claim(tmp_path, ["s1/a.json"])
+    (fileset,) = _filesets(claimed, [Json])
+    before = dict(fileset.metadata)
+    apply_constant_fields([fileset])
+    assert dict(fileset.metadata) == before
 
 
 def test_tag_fileset_types(tmp_path: Path) -> None:

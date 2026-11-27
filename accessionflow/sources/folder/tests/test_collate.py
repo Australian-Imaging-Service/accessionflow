@@ -174,7 +174,7 @@ def test_bad_configuration_fails_before_anything_is_created(
         "contradicting datatypes": {"ignore_datatypes": [Json]},  # BuildFilesets
         "generic directory": {"datatypes": [Directory]},  # BuildFilesets
         "table column": {"metadata_tables": [_missing_column_table(tmp_path)]},
-        "constant label": {"constant_labels": {"site": "X"}},  # MoveAccessions
+        "constant label": {"constant_labels": {"site": "X"}},  # constant_label_fields
     }[case]
     with pytest.raises(ValueError):
         _run(dirs, **options)
@@ -231,6 +231,18 @@ def test_claim_that_raises_partway(
         for p in _files_under(run_dir / CLAIMED_FILES_DIRNAME)
     ] == ["s1/a.json"]
     assert sorted(p.name for p in _files_under(dirs.inbox)) == ["b.json", "c.json"]
+
+
+def test_constant_labels_are_saved_in_the_metadata(dirs: Dirs, tmp_path: Path) -> None:
+    """A constant label is written to the metadata as a field named after its level,
+    so the delivered accession's directory name matches its saved metadata"""
+    _write(dirs.inbox, {"s1/a.json": "{}"})
+    assert _run(dirs, metadata_tables=[_visit_table(tmp_path, "s1")]) == []
+    (name,) = _delivered(dirs)
+    assert name.startswith("P.s1.v1_")
+    accession = Accession.load(dirs.output / name)
+    assert accession.metadata["project"] == "P"
+    assert accession.labels["project"] == "P"
 
 
 def test_interrupt_leaves_the_claim_in_place(

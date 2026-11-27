@@ -50,6 +50,7 @@ from .combine import (
 )
 from .group import group_into_accessions
 from .metadata import (
+    apply_constant_fields,
     apply_path_metadata,
     inject_accession_tables,
     inject_fileset_tables,
@@ -167,7 +168,12 @@ class ApplyFilesetMetadata(Step):
 
     `check_configuration`:
        * merges the glob-like path patterns into the regexes
-       * reads the metadata tables 
+       * reads the metadata tables
+       * checks that no constant field is a column of a table that `BuildAccessions`
+         injects later (accession, acquisition or resource), which would override it
+
+    `act` adds the metadata from the paths, the datatype tag and the file-set tables,
+    then the constant fields, so the constants override any of them.
 
     Parameters
     ----------
@@ -180,12 +186,16 @@ class ApplyFilesetMetadata(Step):
     metadata_tables : Sequence[MetadataTable], optional
         the metadata tables, whose file-set rows are joined. Pass the same objects to
         `BuildAccessions`: each table is read once and kept in its object
+    constant_fields : Mapping[str, str], optional
+        metadata fields set to the same value on every file-set, e.g. the labels given
+        as constants, from `constant_label_fields`
     """
 
     dont_read_metadata: ty.Sequence[type[FileSet]] = ()
     path_metadata: ty.Sequence[PathMetadataPattern] = ()
     path_metadata_regex: ty.Sequence[PathMetadataRegex] = ()
     metadata_tables: ty.Sequence[MetadataTable] = ()
+    constant_fields: ty.Mapping[str, str] = attrs.field(factory=dict)
     _regexes: list[PathMetadataRegex] = attrs.field(
         factory=list, init=False, repr=False
     )
@@ -196,6 +206,15 @@ class ApplyFilesetMetadata(Step):
             self.path_metadata, self.path_metadata_regex
         )
         self._tables = load_metadata_tables(self.metadata_tables)
+        for table in self._tables:
+            if table.row_frequency not in ("accession", "acquisition", "resource"):
+                continue
+            if clashes := sorted(set(self.constant_fields) & set(table.table)):
+                raise ValueError(
+                    f"The constant fields {clashes} are also columns of the "
+                    f"{table.row_frequency} metadata table {table.table_file}, which "
+                    "would override them"
+                )
 
     def act(
         self, filesets: ty.Sequence[FileSet], claimed: ClaimedFiles
@@ -220,7 +239,8 @@ class ApplyFilesetMetadata(Step):
         filesets = disable_metadata_reading(filesets, self.dont_read_metadata)
         filesets = apply_path_metadata(filesets, self._regexes, claimed)
         filesets = tag_fileset_types(filesets)
-        return inject_fileset_tables(filesets, self._tables)
+        filesets = inject_fileset_tables(filesets, self._tables)
+        return apply_constant_fields(filesets, self.constant_fields)
 
 
 @attrs.define
@@ -293,8 +313,10 @@ class BuildAccessions(Step):
 class MoveAccessions(Step):
     """Labels the accessions and moves them to the target directory: steps 16 to 18
 
-    `check_configuration` checks that there are label levels, and that the constant
-    labels name only those levels. `act` runs `warn_if_hardlinks_unavailable` once,
+    `check_configuration` checks that there are label levels. The labels are made from
+    each accession's metadata only, so its directory name matches the metadata saved
+    with it: labels given as constants are written to the metadata by
+    `ApplyFilesetMetadata` (`constant_label_fields`). `act` runs `warn_if_hardlinks_unavailable` once,
     then, for each accession in turn, `assign_labels` followed by `move_to_target`
     (with `for_each_accession`). An accession that fails, e.g. with
     `LabelsNotAssignedError` or an error saving it, is skipped and its files stay in the
@@ -315,8 +337,6 @@ class MoveAccessions(Step):
         `assign_labels`)
     acquisition_field : str, optional
         the metadata field each acquisition's description is made from
-    constant_labels : Mapping[str, str], optional
-        labels used as given, keyed by level
     store_type : str, optional
         the data store the labels are for, e.g. 'xnat'
     copy_mode : FileSet.CopyMode, optional
@@ -333,7 +353,6 @@ class MoveAccessions(Step):
     output_dir: Path = attrs.field(converter=Path)
     label_fields: ty.Mapping[str, str]
     acquisition_field: str | None = None
-    constant_labels: ty.Mapping[str, str] | None = None
     store_type: str | None = None
     copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy
     collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None
@@ -345,11 +364,6 @@ class MoveAccessions(Step):
     def _check_configuration(self) -> None:
         if not self.label_fields:
             raise ValueError("No label levels were given to label the accessions with")
-        if unknown := set(self.constant_labels or {}) - set(self.label_fields):
-            raise ValueError(
-                f"Constant labels {sorted(unknown)} are not label levels "
-                f"{list(self.label_fields)}"
-            )
 
     def act(
         self,
@@ -392,7 +406,6 @@ class MoveAccessions(Step):
                 accession,
                 self.label_fields,
                 acquisition_field=self.acquisition_field,
-                constant_labels=self.constant_labels,
                 store_type=self.store_type,
             )
             return move_to_target(

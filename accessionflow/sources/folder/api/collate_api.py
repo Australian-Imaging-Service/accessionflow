@@ -15,6 +15,7 @@ from accessionflow.api.collate import (
     FinishClaim,
     MoveAccessions,
     ReserveRunUid,
+    constant_label_fields,
 )
 from accessionflow.helpers.arg_types import (
     ClashSpec,
@@ -164,7 +165,9 @@ def collate(
     acquisition_field : str, optional
         the metadata field each acquisition's description is made from
     constant_labels : Mapping[str, str], optional
-        labels used as given, keyed by level
+        labels used as given, keyed by level. Each is written to the accessions'
+        metadata as a field named after its level, e.g. ``project``, which the level is
+        labelled from (`constant_label_fields`)
     store_type : str, optional
         the data store the labels are for, e.g. 'xnat'
     copy_mode : FileSet.CopyMode, optional
@@ -189,6 +192,10 @@ def collate(
     RuntimeError
         if no unused run UID could be made. Nothing has been claimed
     """
+    # The constant labels are written to the metadata, so the labels are made from it
+    label_fields, constant_fields = constant_label_fields(
+        label_fields, constant_labels or {}
+    )
     reserve = ReserveRunUid(working_dir)
     claim = ClaimInputFiles(working_dir, error_dir)
     build_filesets = BuildFilesets(
@@ -202,6 +209,7 @@ def collate(
         path_metadata=path_metadata,
         path_metadata_regex=path_metadata_regex,
         metadata_tables=list(metadata_tables or ()),
+        constant_fields=constant_fields,
     )
     build_accessions = BuildAccessions(
         accession_uid_field,
@@ -215,7 +223,6 @@ def collate(
         output_dir,
         label_fields,
         acquisition_field=acquisition_field,
-        constant_labels=constant_labels,
         store_type=store_type,
         copy_mode=copy_mode,
         collation_map=collation_map,

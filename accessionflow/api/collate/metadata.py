@@ -18,6 +18,7 @@ from accessionflow.model.accession import Accession
 from .claim import ClaimedFiles
 
 __all__ = [
+    "apply_constant_fields",
     "apply_path_metadata",
     "inject_accession_tables",
     "inject_fileset_tables",
@@ -218,6 +219,37 @@ def inject_fileset_tables(
         if more than one row of a table joins to a file-set
     """
     MetadataTable.inject_list(list(metadata_tables or []), list(filesets))
+    return list(filesets)
+
+
+def apply_constant_fields(
+    filesets: ty.Sequence[FileSet],
+    constant_fields: ty.Mapping[str, str] | None = None,
+) -> list[FileSet]:
+    """Sets the constant metadata fields on every file-set, e.g. the labels given as
+    constants (`constant_label_fields`). Every file-set gets the same value, so each
+    field is in the metadata of the accessions they are grouped into.
+
+    Run it last of the file-set metadata steps, after `inject_fileset_tables`, so that
+    the constants override a field of the same name from the paths, the files or a
+    table.
+
+    The file-sets' metadata is changed in place, and the same file-sets are returned.
+
+    Parameters
+    ----------
+    filesets : Sequence[FileSet]
+        the file-sets, after `inject_fileset_tables`
+    constant_fields : Mapping[str, str], optional
+        the values of the fields, by name
+
+    Returns
+    -------
+    list[FileSet]
+        the same file-sets
+    """
+    for fileset in filesets:
+        fileset.metadata.update(constant_fields or {})
     return list(filesets)
 
 
