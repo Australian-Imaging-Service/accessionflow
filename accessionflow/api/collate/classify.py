@@ -176,12 +176,15 @@ def drop_ignored_filesets(
 
 
 class RecursionPlan(ty.NamedTuple):
-    """How ``--recursive`` expands the claimed files, as worked out by
-    `plan_recursion`"""
+    """How the claimed files are expanded into the paths to classify, with or without
+    ``--recursive``, as worked out by `plan_recursion`"""
 
+    any_recursion: bool
+    """whether directories are searched recursively (``--recursive``)"""
     recurse_into_dirs: bool
-    """whether the walk stops at a directory that matches a directory datatype (and
-    keeps it whole) instead of flattening every directory into its files"""
+    """with `any_recursion`, whether the walk stops at a directory that matches a
+    directory datatype (and keeps it whole) instead of flattening every directory into
+    its files. Always False without it"""
     ignore_datatypes: list[type[FileSet]]
     """the datatypes to ignore, with ``Directory`` added for recursion over files
     only, so that the bare directories it finds are dropped"""
@@ -213,7 +216,8 @@ def plan_recursion(
     Returns
     -------
     RecursionPlan
-        ``(recurse_into_dirs, ignore_datatypes)``, with a new ``ignore_datatypes`` list
+        ``(any_recursion, recurse_into_dirs, ignore_datatypes)``, with ``recursive``
+        as ``any_recursion`` and a new ``ignore_datatypes`` list
 
     Raises
     ------
@@ -223,7 +227,7 @@ def plan_recursion(
     """
     ignore = list(ignore_datatypes)
     if not recursive:
-        return RecursionPlan(False, ignore)
+        return RecursionPlan(False, False, ignore)
     if Directory in datatypes or FileSet in datatypes:
         names = [to_mime(d, official=False) for d in datatypes]
         raise ValueError(
@@ -237,23 +241,22 @@ def plan_recursion(
     if not recurse_into_dirs:
         # No directory format is wanted or ignored, so Directory isn't in the list yet
         ignore.append(Directory)
-    return RecursionPlan(recurse_into_dirs, ignore)
+    return RecursionPlan(True, recurse_into_dirs, ignore)
 
 
 def expand_claimed_paths(
     claimed: ClaimedFiles,
     datatypes: ty.Sequence[type[FileSet]],
     recursion: RecursionPlan,
-    recursive: bool = False,
 ) -> list[Path]:
     """Expands the claimed source roots into the paths to classify, with the same rules
     as the input directories had before the claim, so ``--recursive`` and directory
     datatypes behave as they did
 
-    - Without ``recursive``: each root's top-level entries, so a subdirectory (e.g. a
-      DICOM directory) is classified whole.
-    - With ``recursive`` and only file datatypes: every claimed file under each root.
-    - With ``recursive`` and a directory format among the wanted or ignored datatypes
+    - Without recursion (``recursion.any_recursion`` False): each root's top-level
+      entries, so a subdirectory (e.g. a DICOM directory) is classified whole.
+    - With recursion and only file datatypes: every claimed file under each root.
+    - With recursion and a directory format among the wanted or ignored datatypes
       (``recursion.recurse_into_dirs``): a walk that keeps a directory matching a
       wanted datatype whole, also keeps one matching an ignored directory format
       whole (to be classified and then dropped as ignored, so that `FinishClaim`
@@ -271,9 +274,8 @@ def expand_claimed_paths(
     datatypes : Sequence[type[FileSet]]
         the datatypes to collate
     recursion : RecursionPlan
-        from `plan_recursion`, given the same ``datatypes`` and ``recursive``
-    recursive : bool, optional
-        whether directories are searched recursively
+        from `plan_recursion`, given the same ``datatypes``, which says whether and how
+        directories are searched recursively
 
     Returns
     -------
@@ -291,7 +293,7 @@ def expand_claimed_paths(
     for root in outermost:
         if root not in keep:
             continue  # nothing was claimed from this root
-        if not recursive:
+        if not recursion.any_recursion:
             expanded.update(p for p in root.iterdir() if p in keep)
         elif not recursion.recurse_into_dirs:
             expanded.update(p for p in claimed.files if p.is_relative_to(root))

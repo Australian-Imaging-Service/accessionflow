@@ -55,7 +55,7 @@ def _filesets(
     claimed: ClaimedFiles, datatypes: list[type[FileSet]], recursive: bool = True
 ) -> list[FileSet]:
     plan = plan_recursion(datatypes, recursive=recursive)
-    fspaths = expand_claimed_paths(claimed, datatypes, plan, recursive)
+    fspaths = expand_claimed_paths(claimed, datatypes, plan)
     return classify_paths(fspaths, datatypes, plan.ignore_datatypes)
 
 
@@ -305,7 +305,7 @@ def test_table_delivered_with_the_data(tmp_path: Path) -> None:
     assert not table.table_file.fspath.exists()  # the table was claimed too
 
     plan = plan_recursion([Json], recursive=True)
-    fspaths = expand_claimed_paths(claimed, [Json], plan, recursive=True)
+    fspaths = expand_claimed_paths(claimed, [Json], plan)
     filesets = classify_paths(fspaths, [Json], plan.ignore_datatypes, [r".*\.csv"])
     filesets = apply_path_metadata(
         filesets,

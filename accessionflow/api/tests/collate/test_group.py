@@ -51,7 +51,7 @@ def _filesets(
         paths, RUN_UID, [inbox]
     )
     plan = plan_recursion(datatypes, ignore_datatypes, recursive)
-    fspaths = expand_claimed_paths(claimed, datatypes, plan, recursive)
+    fspaths = expand_claimed_paths(claimed, datatypes, plan)
     filesets = classify_paths(fspaths, datatypes, plan.ignore_datatypes)
     filesets = drop_ignored_filesets(filesets, datatypes, plan.ignore_datatypes)
     filesets = apply_path_metadata(filesets, path_metadata, claimed)

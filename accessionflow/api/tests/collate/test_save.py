@@ -47,7 +47,7 @@ def _claim_and_group(tmp_path: Path) -> tuple[ClaimedFiles, list[Accession]]:
         files, RUN_UID, [inbox]
     )
     plan = plan_recursion([Json], recursive=True)
-    fspaths = expand_claimed_paths(claimed, [Json], plan, recursive=True)
+    fspaths = expand_claimed_paths(claimed, [Json], plan)
     filesets = apply_path_metadata(
         classify_paths(fspaths, [Json], plan.ignore_datatypes),
         [PathMetadataRegex(r".*/(?P<sess>[^/]+)/(?P<name>[^/]+)\.json$", Json)],

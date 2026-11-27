@@ -1382,6 +1382,18 @@ left for the next combine.
 
 #### Dated entries
 
+- 2026-11-27, Phase 1, `RecursionPlan` as the single source of truth for recursion:
+  - changed: `RecursionPlan` gains `any_recursion`, its first field, which
+    `plan_recursion` sets to its `recursive` argument. The plan is now
+    `(any_recursion, recurse_into_dirs, ignore_datatypes)`; `recurse_into_dirs` is
+    always False without recursion
+  - changed: `expand_claimed_paths(claimed, datatypes, recursion)` no longer takes
+    `recursive`: it reads `recursion.any_recursion`, so the plan and the flag can't
+    disagree
+  - changed: `BuildFilesets` makes the recursion plan in `act` rather than keeping it
+    from its check. Its check still runs `plan_recursion`, so datatypes that can't be
+    used with `recursive` fail before the claim. CLI unchanged
+
 - 2026-11-27, Phase 1, step clean-up, directory ownership:
   - changed: `ReserveRunUid(working_dir).act() -> run_uid`, replacing
     `ReserveRunUid(output_dir).act() -> (run_uid, build_dir)`. It reserves the UID by

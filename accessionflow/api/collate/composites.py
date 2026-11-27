@@ -31,7 +31,6 @@ from accessionflow.model.accession import Accession
 from .assign import assign_labels
 from .claim import ClaimedFiles, reserve_run_uid
 from .classify import (
-    RecursionPlan,
     check_datatypes,
     classify_paths,
     disable_metadata_reading,
@@ -89,12 +88,12 @@ class ClassifiedFilesets:
 
 @attrs.define
 class BuildFilesets(Step):
-    """Turns the claimed files into file-sets: steps 7 to 9
+    """Turns the claimed files into file-sets. No metadata is read or applied
 
-    `check_configuration` checks the datatypes (`check_datatypes`) and plans the
-    recursion (`plan_recursion`). `act` runs, in order, `expand_claimed_paths`,
-    `classify_paths` and `drop_ignored_filesets`. No metadata is read or applied: that
-    is `ApplyFilesetMetadata`.
+    `check_configuration` checks the datatypes (`check_datatypes`) and that they can be
+    used with ``recursive`` (`plan_recursion`), so a bad configuration fails before the
+    claim. `act` makes the recursion plan again, which is cheap, and runs
+    `expand_claimed_paths`, `classify_paths` and `drop_ignored_filesets`.
 
     Parameters
     ----------
@@ -112,13 +111,11 @@ class BuildFilesets(Step):
     ignore_datatypes: ty.Sequence[type[FileSet]] = ()
     recursive: bool = False
     allow_unrecognised: ty.Sequence[str] = ()
-    _recursion: RecursionPlan | None = attrs.field(default=None, init=False, repr=False)
 
     def _check_configuration(self) -> None:
         check_datatypes(self.datatypes, self.ignore_datatypes)
-        self._recursion = plan_recursion(
-            self.datatypes, self.ignore_datatypes, self.recursive
-        )
+        # Only as a check: it raises for datatypes that can't be used with recursive
+        plan_recursion(self.datatypes, self.ignore_datatypes, self.recursive)
 
     def act(self, claimed: ClaimedFiles) -> ClassifiedFilesets:
         """Classifies the claimed files
@@ -142,10 +139,10 @@ class BuildFilesets(Step):
             original paths, and the run directory that holds them
         """
         self._require_checked()
-        recursion = ty.cast(RecursionPlan, self._recursion)
-        fspaths = expand_claimed_paths(
-            claimed, self.datatypes, recursion, self.recursive
+        recursion = plan_recursion(
+            self.datatypes, self.ignore_datatypes, self.recursive
         )
+        fspaths = expand_claimed_paths(claimed, self.datatypes, recursion)
         try:
             classified = classify_paths(
                 fspaths,
@@ -166,13 +163,11 @@ class BuildFilesets(Step):
 
 @attrs.define
 class ApplyFilesetMetadata(Step):
-    """Adds the file-sets' metadata: steps 10 to 13
+    """Adds the file-sets' metadata
 
-    `check_configuration` merges the glob-like path patterns into the regexes
-    (`merge_path_metadata`) and reads the metadata tables (`load_metadata_tables`). It
-    only reads, so it runs before the claim, and a table delivered with the data is
-    read before it is claimed. `act` runs, in order, `disable_metadata_reading`,
-    `apply_path_metadata`, `tag_fileset_types` and `inject_fileset_tables`.
+    `check_configuration`:
+       * merges the glob-like path patterns into the regexes
+       * reads the metadata tables 
 
     Parameters
     ----------
@@ -209,15 +204,12 @@ class ApplyFilesetMetadata(Step):
 
         Parameters
         ----------
-        filesets : Sequence[FileSet]
-            the file-sets, from `BuildFilesets`
-        claimed : ClaimedFiles
-            the run's claim, whose original paths the path metadata is read from
+        filesets : the file-sets, from `BuildFilesets`
+        claimed : the run's claim, whose original paths the path metadata is read from
 
         Returns
         -------
-        list[FileSet]
-            the same file-sets, with their metadata, for `BuildAccessions`
+        the same file-sets, with their metadata, for `BuildAccessions`
 
         Raises
         ------

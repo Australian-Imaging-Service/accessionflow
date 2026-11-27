@@ -43,22 +43,22 @@ def test_check_datatypes_parametrised_types() -> None:
 @pytest.mark.parametrize(
     "datatypes, ignore_datatypes, recursive, expected",
     [
-        ([DicomSeries], [], False, (False, [])),
+        ([DicomSeries], [], False, (False, False, [])),
         # the generic types are only rejected with recursion
-        ([Directory], [], False, (False, [])),
+        ([Directory], [], False, (False, False, [])),
         # recursion over files only: bare directories are ignored
-        ([DicomSeries], [Json], True, (False, [Json, Directory])),
+        ([DicomSeries], [Json], True, (True, False, [Json, Directory])),
         # a directory format, wanted or ignored, makes the walk prune on a match
-        ([DirectoryOf[Json]], [], True, (True, [])),
-        ([Json], [DirectoryOf[Csv]], True, (True, [DirectoryOf[Csv]])),
-        ([DicomSeries], [Directory], True, (True, [Directory])),
+        ([DirectoryOf[Json]], [], True, (True, True, [])),
+        ([Json], [DirectoryOf[Csv]], True, (True, True, [DirectoryOf[Csv]])),
+        ([DicomSeries], [Directory], True, (True, True, [Directory])),
     ],
 )
 def test_plan_recursion(
     datatypes: list[type[FileSet]],
     ignore_datatypes: list[type[FileSet]],
     recursive: bool,
-    expected: tuple[bool, list[type[FileSet]]],
+    expected: tuple[bool, bool, list[type[FileSet]]],
 ) -> None:
     assert plan_recursion(datatypes, ignore_datatypes, recursive) == expected
 
@@ -84,7 +84,8 @@ def test_plan_recursion_doesnt_change_its_input() -> None:
 def test_recursion_plan_fields() -> None:
     plan = plan_recursion([DirectoryOf[Json]], recursive=True)
     assert isinstance(plan, RecursionPlan)
-    recurse_into_dirs, ignore_datatypes = plan
+    any_recursion, recurse_into_dirs, ignore_datatypes = plan
+    assert plan.any_recursion is any_recursion is True
     assert plan.recurse_into_dirs is recurse_into_dirs is True
     assert plan.ignore_datatypes == ignore_datatypes == []
 
@@ -117,7 +118,7 @@ def _expand(
     recursive: bool = False,
 ) -> list[str]:
     plan = plan_recursion(datatypes, ignore_datatypes, recursive)
-    expanded = expand_claimed_paths(claimed, datatypes, plan, recursive)
+    expanded = expand_claimed_paths(claimed, datatypes, plan)
     return [p.relative_to(claimed.files_dir).as_posix() for p in expanded]
 
 
@@ -152,6 +153,24 @@ def test_expand_recursion_prunes_on_directory_datatypes(tmp_path: Path) -> None:
     assert _expand(
         claimed, [DirectoryOf[Json]], [DirectoryOf[Csv]], recursive=True
     ) == ["analysis", "lesion", "plain/deep", "scan.txt"]
+
+
+def test_expand_follows_the_plan(tmp_path: Path) -> None:
+    """The plan alone says whether to recurse: the same datatypes expand to the
+    top-level entries without recursion, and are walked with it"""
+    claimed = _claim_tree(tmp_path, ["analysis/result.json", "plain/deep/result.json"])
+    datatypes: list[type[FileSet]] = [DirectoryOf[Json]]
+    flat = plan_recursion(datatypes)
+    walked = plan_recursion(datatypes, recursive=True)
+    assert not flat.any_recursion and walked.any_recursion
+    assert [
+        p.relative_to(claimed.files_dir).as_posix()
+        for p in expand_claimed_paths(claimed, datatypes, flat)
+    ] == ["analysis", "plain"]
+    assert [
+        p.relative_to(claimed.files_dir).as_posix()
+        for p in expand_claimed_paths(claimed, datatypes, walked)
+    ] == ["analysis", "plain/deep"]
 
 
 def test_expand_returns_only_claimed_entries(tmp_path: Path) -> None:
@@ -259,7 +278,7 @@ def test_classify_after_recursive_expansion(tmp_path: Path) -> None:
     )
     datatypes: list[type[FileSet]] = [DirectoryOf[Json]]
     plan = plan_recursion(datatypes, [DirectoryOf[Csv], Plain], recursive=True)
-    fspaths = expand_claimed_paths(claimed, datatypes, plan, recursive=True)
+    fspaths = expand_claimed_paths(claimed, datatypes, plan)
     filesets = classify_paths(fspaths, datatypes, plan.ignore_datatypes)
     assert sorted(
         (type(f).__name__, f.fspath.relative_to(claimed.files_dir).as_posix())
