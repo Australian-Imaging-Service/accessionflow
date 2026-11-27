@@ -280,6 +280,18 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-27, Phase 1, Store-neutral labels, N1: `collate folder` labels every
+  accession with a project, subject and session, whatever store it is going to, with
+  fixed options named, defaulted and read from the environment as in `label xnat`:
+  `--project` (`ACFLOW_PROJECT`, by default `StudyComments`), `--subject`
+  (`ACFLOW_SUBJECT`, `PatientID`), `--session` (`ACFLOW_SESSION`, `AccessionNumber`),
+  `--scan` (`ACFLOW_SCAN`, `SeriesDescription`) and `--constant-project-id`
+  (`ACFLOW_CONSTANT_PROJECT_ID`). The accessions it stages no longer record a store
+  type, and the combiner no longer compares them; the stores already accept an
+  accession without one. `ACFLOW_STORE`, `ACFLOW_LEVELS` and the other folder-store
+  variables in the environment are ignored by `collate folder`. The CLI contract is
+  kept: no released parameter changed (`cli/tests/test_cli_contract.py`'s `ADDED`
+  shrinks). Tests: `sources/folder/tests/test_collate_cli.py`. PR: pending.
 - 2026-11-27, documents, `ROADMAP.md` only: in "Store-neutral labels", a staged
   accession's name becomes a hash of its labels, `<hash>_<run_uid>` or
   `<hash>_<primary_label>`: the first 16 hex characters of the SHA-256 of
@@ -721,6 +733,10 @@ contract, so each entry says "CLI unchanged".
 
 ### Removed
 
+- 2026-11-27, Phase 1, Store-neutral labels, N1: `collate folder`'s `--store`,
+  `--level`, `--constant-label` and `--folder-acquisition`, added by the CLI step and
+  never released, with the per-store generation and refusal of options in
+  `sources/folder/cli/collate_cli.py`.
 - 2026-11-27, Phase 1, step clean-up: the step `AbandonClaim`. A failed claim is moved
   to the error directory by `ClaimInputFiles(working_dir, error_dir).clean_up(run_uid,
   error=...)`, which can't abandon with a plain message: pass an exception.
@@ -1402,6 +1418,19 @@ left for the next combine.
 `helpers/tests/test_run_uid.py` and `model/tests/test_labels.py`.
 
 #### Dated entries
+
+- 2026-11-27, Phase 1, Store-neutral labels, N1:
+  - added, in `accessionflow.cli.label_options`: `neutral_label_options`, a decorator
+    adding `--project`, `--subject`, `--session`, `--scan` and
+    `--constant-project-id`; `neutral_labels(project, subject, session, scan,
+    constant_project_id=None) -> LabelOptions`; and the constants `NEUTRAL_LEVELS` and
+    `NEUTRAL_LABEL_DEFAULTS`
+  - removed: the `store_type` argument of `assign_labels` and the folder `collate`,
+    and `MoveAccessions`' `store_type` field. The accessions collate stages record no
+    store type
+  - removed: `store_label_options`' `collate` and `rename` arguments. It gives the
+    options of `label <store>` only
+  - changed: `combine_accessions` no longer compares the run accessions' store types
 
 - 2026-11-27, Phase 1, constant labels as metadata:
   - added: `constant_label_fields(label_fields, constant_labels) -> (label_fields,

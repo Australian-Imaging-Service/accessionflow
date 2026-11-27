@@ -18,11 +18,7 @@ from accessionflow.api.collate import (
 )
 from accessionflow.cli.aliases import resolve_deprecated_alias
 from accessionflow.cli.collate_cli import collate_group, collate_options
-from accessionflow.cli.label_options import (
-    StoreLabelOption,
-    resolve_label_options,
-    store_label_options,
-)
+from accessionflow.cli.label_options import neutral_label_options, neutral_labels
 from accessionflow.cli.runner import (
     check_loop_options,
     log_stage_summary,
@@ -43,7 +39,6 @@ from accessionflow.helpers.arg_types import (
     conversion_map_from,
 )
 from accessionflow.helpers.logging import logger, set_logger_handling
-from accessionflow.model.store import get_store, store_plugins
 
 from ..api.collate_api import (
     DEFAULT_ACCESSION_UID_FIELD,
@@ -52,7 +47,6 @@ from ..api.collate_api import (
     collate,
 )
 
-DEFAULT_STORE = "xnat"
 DEFAULT_PRIMARY_LABEL = "combined"
 
 WAIT_PERIOD_HELP = (
@@ -66,15 +60,15 @@ WAIT_PERIOD_HELP = (
 @collate_group.command(
     name="folder",
     help="""Collates the files found in folders, on a local path or a mounted file
-system, into accessions, acquisitions and resources, labelled for the data store given
-by --store
+system, into accessions, acquisitions and resources, each labelled with a project,
+subject and session from its metadata (--project, --subject and --session)
 
 INPUT_PATHS are either paths to directories containing the files to collate, or
 glob patterns that select the paths directly. The files collated are moved out of them
 
 OUTPUT_DIR is the staging directory the accessions are delivered to, each in a directory
-named '<labels>_<primary-label>', e.g. '<project>.<subject>.<session>_combined' for
-XNAT. Each run delivers the accessions it collated to the run-accessions directory
+named '<project>.<subject>.<session>_<primary-label>', by default with the primary label
+'combined'. Each run delivers the accessions it collated to the run-accessions directory
 (--runs-dir), and an accession's run accessions are combined into one in OUTPUT_DIR once
 it has had no new data for --wait-period
 """,
@@ -343,18 +337,7 @@ it has had no new data for --wait-period
         "'ImagePath=HYPERLINK(\"{relpath}\")'\n"
     ),
 )
-@click.option(
-    "--store",
-    "store_name",
-    type=click.Choice(store_plugins()),
-    default=DEFAULT_STORE,
-    envvar="ACFLOW_STORE",
-    help=(
-        "The data store the accessions are labelled for, which gives the label "
-        "options used, e.g. --project, --subject, --session and --scan for 'xnat', or "
-        "--level and --constant-label for 'folder' (ACFLOW_STORE env. var)"
-    ),
-)
+@neutral_label_options
 @click.option(
     "--primary-label",
     type=str,
@@ -362,7 +345,7 @@ it has had no new data for --wait-period
     envvar="ACFLOW_PRIMARY_LABEL",
     help=(
         "The suffix of the names of the accessions delivered to OUTPUT_DIR, "
-        "'<labels>_<primary-label>': letters, digits and '-' "
+        "'<project>.<subject>.<session>_<primary-label>': letters, digits and '-' "
         "(ACFLOW_PRIMARY_LABEL env. var)"
     ),
 )
@@ -373,7 +356,8 @@ it has had no new data for --wait-period
     envvar="ACFLOW_RUNS_DIR",
     help=(
         "The directory each run delivers its run accessions to, "
-        f"'<labels>_<run-uid>', by default OUTPUT_DIR/{RUNS_NAME_DEFAULT} "
+        "'<project>.<subject>.<session>_<run-uid>', by default "
+        f"OUTPUT_DIR/{RUNS_NAME_DEFAULT} "
         "(ACFLOW_RUNS_DIR env. var)"
     ),
 )
@@ -437,13 +421,16 @@ def collate_cmd(
     collate_resources: tuple[CollationSpec, ...],
     conversions: tuple[Convert, ...],
     metadata_tables: tuple[MetadataTable, ...],
-    store_name: str,
+    project: str,
+    subject: str,
+    session: str,
+    scan: str | None,
+    constant_project_id: str | None,
     primary_label: str,
     runs_dir: Path | None,
     working_dir: Path | None,
     unprocessed_dir: Path | None,
     error_dir: Path | None,
-    **label_values: ty.Any,
 ) -> None:
     accession_uid = resolve_deprecated_alias(
         accession_uid,
@@ -465,9 +452,7 @@ def collate_cmd(
     )
 
     # Everything is checked before anything is changed
-    store = get_store(store_name)
-    _refuse_other_stores_options(store_name)
-    labels = resolve_label_options(store, STORE_LABEL_OPTIONS[store_name], label_values)
+    labels = neutral_labels(project, subject, session, scan, constant_project_id)
     check_primary_label(primary_label)
     if unlink_source is not None:
         logger.warning(
@@ -510,7 +495,6 @@ def collate_cmd(
             on_resource_clash=list(on_resource_clash),
             acquisition_field=labels.acquisition_field,
             constant_labels=labels.constant_labels,
-            store_type=store.name,
             copy_mode=copy_mode,
             collation_map=collation_map_from(collate_resources),
             conversion_map=conversion_map_from(conversions),
@@ -533,75 +517,3 @@ def collate_cmd(
     run_on_interval(
         run_once, loop, "Collate", monotonic=time.monotonic, sleep=time.sleep
     )
-
-
-def _store_label_options() -> dict[str, list[StoreLabelOption]]:
-    """The label options of each installed store, by store name, as 'collate folder'
-    takes them. An option whose name or environment variable is one of the command's
-    own is named after its store, e.g. the folder store's '--acquisition' (the field of
-    an acquisition's description) is '--folder-acquisition', since '--acquisition' is
-    the acquisition ID"""
-    taken_opts: set[str] = set()
-    taken_envvars: set[str] = set()
-    for param in collate_cmd.params:
-        taken_opts.update(param.opts + param.secondary_opts)
-        if isinstance(param.envvar, str):
-            taken_envvars.add(param.envvar)
-    by_store: dict[str, list[StoreLabelOption]] = {}
-    for name in store_plugins():
-        store = get_store(name)
-        rename = {
-            opt.option.opts[0]: f"--{name}-{opt.option.opts[0][2:]}"
-            for opt in store_label_options(store, collate=True)
-            if opt.option.opts[0] in taken_opts or opt.option.envvar in taken_envvars
-        }
-        by_store[name] = store_label_options(store, collate=True, rename=rename)
-    return by_store
-
-
-def _add_store_label_options() -> None:
-    """Adds the label options of every installed store to the command, each once,
-    before the options that all sources share"""
-    added: dict[str, click.Option] = {}
-    for name, options in STORE_LABEL_OPTIONS.items():
-        for opt in options:
-            if opt.name in added:
-                # Another store's option of the same name
-                added[
-                    opt.name
-                ].help = f"{added[opt.name].help}. Also used with --store {name}"
-            else:
-                added[opt.name] = opt.option
-    first_shared = next(
-        i for i, param in enumerate(collate_cmd.params) if param.name == "loop"
-    )
-    collate_cmd.params[first_shared:first_shared] = list(added.values())
-
-
-def _refuse_other_stores_options(store_name: str) -> None:
-    """Refuses a label option of another store given on the command line. From the
-    environment, it is ignored, since the environment is shared with other stages,
-    e.g. 'label folder'
-
-    Raises
-    ------
-    click.UsageError
-        if an option of another store is given on the command line
-    """
-    ctx = click.get_current_context()
-    own = {opt.name for opt in STORE_LABEL_OPTIONS[store_name]}
-    for name, options in STORE_LABEL_OPTIONS.items():
-        for opt in options:
-            if (
-                opt.name not in own
-                and ctx.get_parameter_source(opt.name)
-                == click.core.ParameterSource.COMMANDLINE
-            ):
-                raise click.UsageError(
-                    f"{opt.option.opts[0]} is a label option of --store {name}, not "
-                    f"of --store {store_name}"
-                )
-
-
-STORE_LABEL_OPTIONS = _store_label_options()
-_add_store_label_options()

@@ -30,13 +30,11 @@ def test_assign_labels(tmp_path: Path) -> None:
     accession = _accession(
         tmp_path, project="PROJ", PatientID="P01", visit="V1", desc="T1w"
     )
-    result = assign_labels(
-        accession, LABEL_FIELDS, acquisition_field="desc", store_type="xnat"
-    )
+    result = assign_labels(accession, LABEL_FIELDS, acquisition_field="desc")
     assert result is accession
     assert accession.labels == {"project": "PROJ", "subject": "P01", "session": "V1"}
     assert accession.name == "PROJ.P01.V1"
-    assert accession.store_type == "xnat"
+    assert accession.store_type is None  # store-neutral
     assert accession.acquisitions["scan"].type == "T1w"
 
 

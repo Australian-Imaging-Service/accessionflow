@@ -171,6 +171,7 @@ def test_combine_two_runs(
     group = _two_runs_of_s1(tmp_path, dirs, monkeypatch)
     combined = combine_accessions(group)
     assert combined.labels == {"project": "P", "subject": "s1", "session": "V1"}
+    assert combined.store_type is None  # collate labels store-neutrally
     assert combined.run_uid is None
     assert sorted(combined.acquisitions) == ["a", "b"]
     assert combined.metadata[COMBINED_FROM_KEY] == [

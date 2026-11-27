@@ -12,6 +12,7 @@ from click.testing import CliRunner, Result
 
 from accessionflow.api.collate import combine as combine_module
 from accessionflow.helpers.remotes import list_session_dirs
+from accessionflow.model.accession import Accession
 from accessionflow.sources.folder.cli import collate_cli
 from accessionflow.sources.folder.cli.collate_cli import collate_cmd
 
@@ -114,43 +115,44 @@ def test_collate_folder_reports_an_accession_that_cant_be_labelled(
     assert (run_dir / "files" / "s1" / "a.json").exists()
 
 
-def test_collate_folder_refuses_another_stores_option(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "option",
+    [
+        ["--store", "folder"],
+        ["--level", "site", "sess"],
+        ["--constant-label", "site", "X"],
+        ["--folder-acquisition", "ProtocolName"],
+    ],
+)
+def test_collate_folder_has_no_store_options(tmp_path: Path, option: list[str]) -> None:
+    """Collate labels project, subject and session, whatever store the accessions are
+    going to, so the store options of the CLI step are gone"""
     inbox = _inbox(tmp_path, "s1/a.json")
     out = tmp_path / "out"
-    result = _run([str(inbox), str(out), *JSON_ARGS, "--level", "site", "sess"])
+    result = _run([str(inbox), str(out), *JSON_ARGS, *option])
     assert result.exit_code == 2
-    assert "--level is a label option of --store folder" in result.output
+    assert f"No such option '{option[0]}'" in result.output
     assert not out.exists()
     assert (inbox / "s1" / "a.json").exists()
 
 
-def test_collate_folder_ignores_another_stores_option_from_the_environment(
+def test_collate_folder_ignores_store_options_in_the_environment(
     tmp_path: Path,
 ) -> None:
+    """The environment is shared with 'label folder', whose variables collate doesn't
+    read"""
     inbox = _inbox(tmp_path, "s1/a.json")
     out = tmp_path / "out"
     result = _run(
         [str(inbox), str(out), *JSON_ARGS, *XNAT_ARGS],
-        env={"ACFLOW_LEVELS": "site sess"},
+        env={"ACFLOW_STORE": "folder", "ACFLOW_LEVELS": "site sess"},
     )
     assert result.exit_code == 0, result.output
-    assert _names(out) == ["P.s1.s1_combined"]
-
-
-def test_collate_folder_needs_the_levels_of_the_folder_store(tmp_path: Path) -> None:
-    inbox = _inbox(tmp_path, "s1/a.json")
-    result = _run([str(inbox), str(tmp_path / "out"), "--store", "folder"])
-    assert result.exit_code == 2
-    assert "--level is needed to label for folder" in result.output
-
-
-def test_collate_folder_labels_for_the_folder_store(tmp_path: Path) -> None:
-    inbox = _inbox(tmp_path, "s1/a.json")
-    out = tmp_path / "out"
-    args = ["--store", "folder", "--level", "site", "sess", "--raise-errors"]
-    result = _run([str(inbox), str(out), *JSON_ARGS, *args])
-    assert result.exit_code == 0, result.output
-    assert _names(out) == ["s1_combined"]
+    (name,) = _names(out)
+    assert name == "P.s1.s1_combined"
+    accession = Accession.load(out / name)
+    assert accession.store_type is None
+    assert accession.labels == {"project": "P", "subject": "s1", "session": "s1"}
 
 
 @pytest.mark.parametrize("primary_label", ["", "a_b", "20261126010000_aaaaaa"])
@@ -212,7 +214,7 @@ def test_collate_folder_passes_the_defaults(
         "session": "AccessionNumber",
     }
     kwargs = collate.call_args.kwargs
-    assert kwargs["store_type"] == "xnat"
+    assert "store_type" not in kwargs
     assert kwargs["acquisition_field"] == "SeriesDescription"
     assert kwargs["constant_labels"] == {}
     assert kwargs["source_roots"] == [inbox.absolute()]
@@ -235,10 +237,11 @@ def test_collate_folder_reads_its_options_from_the_environment(
     result = _run(
         [str(inbox), str(out)],
         env={
-            "ACFLOW_STORE": "folder",
-            "ACFLOW_LEVELS": "site SiteID subject PatientID",
-            "ACFLOW_CONSTANT_LABELS": "site SYD",
-            "ACFLOW_FOLDER_ACQUISITION": "ProtocolName",
+            "ACFLOW_PROJECT": "StudyID",
+            "ACFLOW_SUBJECT": "{PatientID}_{SiteID}",
+            "ACFLOW_SESSION": "StudyDate",
+            "ACFLOW_SCAN": "ProtocolName",
+            "ACFLOW_CONSTANT_PROJECT_ID": "PROJ",
             "ACFLOW_PRIMARY_LABEL": "final",
             "ACFLOW_WAIT_PERIOD": "30",
             "ACFLOW_RUNS_DIR": str(tmp_path / "runs"),
@@ -256,11 +259,15 @@ def test_collate_folder_reads_its_options_from_the_environment(
         tmp_path / "left",
         tmp_path / "failed",
     )
-    assert label_fields == {"site": "SiteID", "subject": "PatientID"}
+    assert label_fields == {
+        "project": "StudyID",
+        "subject": "{PatientID}_{SiteID}",
+        "session": "StudyDate",
+    }
     kwargs = collate.call_args.kwargs
-    assert kwargs["store_type"] == "folder"
+    assert "store_type" not in kwargs
     assert kwargs["acquisition_field"] == "ProtocolName"
-    assert kwargs["constant_labels"] == {"site": "SYD"}
+    assert kwargs["constant_labels"] == {"project": "PROJ"}
 
     assert combine.call_args.args == (
         tmp_path / "runs",

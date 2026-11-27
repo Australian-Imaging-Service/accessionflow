@@ -59,10 +59,10 @@ def assign_labels(
     accession: Accession,
     label_fields: ty.Mapping[str, str],
     acquisition_field: str | None = None,
-    store_type: str | None = None,
 ) -> Accession:
-    """Assigns an accession its labels from its metadata, e.g. ``project``,
-    ``subject`` and ``session`` for XNAT, and a description for each acquisition. The
+    """Assigns an accession its labels from its metadata, ``project``, ``subject`` and
+    ``session``, and a description for each acquisition. The labels are store-neutral:
+    no store is recorded, and each store names the accession at the store stage. The
     labels name the accession's directory in the target directory, ``<labels>_<run_uid>``
     (`move_to_target`).
 
@@ -82,14 +82,11 @@ def assign_labels(
         the accession to label, from `group_into_accessions`
     label_fields : Mapping[str, str]
         the metadata field (or a format string over several fields) each label is made
-        from, keyed by the name of its level in the data store, in order from the top
-        level, e.g. ``{"project": "StudyComments", "subject": "PatientID",
+        from, keyed by level, in order from the top level, e.g. ``{"project": "StudyComments", "subject": "PatientID",
         "session": "AccessionNumber"}``
     acquisition_field : str, optional
         the metadata field each acquisition's description is made from. Acquisitions it
         can't be resolved for are left without one
-    store_type : str, optional
-        the data store the labels are for, e.g. 'xnat', recorded with the accession
 
     Returns
     -------
@@ -101,11 +98,7 @@ def assign_labels(
     LabelsNotAssignedError
         if a field a label is made from is missing from the accession's metadata
     """
-    missing = accession.label(
-        label_fields,
-        acquisition_field=acquisition_field,
-        store_type=store_type,
-    )
+    missing = accession.label(label_fields, acquisition_field=acquisition_field)
     if missing:
         raise LabelsNotAssignedError(
             f"Couldn't assign the labels of accession '{accession.uid}', as the "

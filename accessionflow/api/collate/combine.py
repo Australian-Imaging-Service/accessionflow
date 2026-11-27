@@ -173,8 +173,8 @@ def combine_accessions(
 ) -> Accession:
     """Combines a group's run accessions into one accession, in memory
 
-    The combined accession starts from the oldest run accession's labels, UID, store
-    type and fields, and has no run UID. The resources of every run accession are added
+    The combined accession starts from the oldest run accession's labels, UID and
+    fields, and has no run UID. The resources of every run accession are added
     to it in turn, oldest first (`Accession.add_resource`), so a resource that is
     identical to one already added (the same checksums) is skipped, and any other clash
     is resolved by ``on_resource_clash``. The names of the run accessions are recorded
@@ -182,7 +182,7 @@ def combine_accessions(
 
     The metadata each level holds of its own (e.g. from a metadata table), rather than
     collated from the level below it, is carried over. A key that two run accessions
-    give different values is an error, as are different store types or fields.
+    give different values is an error, as are different fields.
 
     Parameters
     ----------
@@ -200,7 +200,7 @@ def combine_accessions(
     Raises
     ------
     ValueError
-        if the run accessions' own metadata, fields or store types conflict, or a
+        if the run accessions' own metadata or fields conflict, or a
         resource clash is an error under ``on_resource_clash``
     """
     run_accessions = [Accession.load(d) for d in group.run_dirs]
@@ -215,11 +215,6 @@ def combine_accessions(
     accession_metadata: dict[str, ty.Any] = {}
     acquisition_metadata: dict[str, dict[str, ty.Any]] = {}
     for run_dir, accession in zip(group.run_dirs, run_accessions):
-        if accession.store_type != combined.store_type:
-            raise ValueError(
-                f"Run accession '{run_dir.name}' was labelled for the "
-                f"'{accession.store_type}' store, not '{combined.store_type}'"
-            )
         _merge_into(combined.fields, dict(accession.fields), "field", run_dir)
         _merge_into(
             accession_metadata,

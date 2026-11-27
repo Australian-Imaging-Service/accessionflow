@@ -30,10 +30,9 @@ COMMANDS: dict[str, tuple[str, str]] = {
 
 # The parameters added since the snapshot was taken, by command
 ADDED: dict[str, set[str]] = {
-    # Phase 1, CLI: the store and its label options, the combiner's primary label and
-    # the run directories
+    # Phase 1, CLI: the combiner's primary label and the run directories. Store-neutral
+    # labels, N1: the store-neutral label options, named as in 'label xnat'
     "collate folder": {
-        "--store",
         "--primary-label",
         "--runs-dir",
         "--working-dir",
@@ -44,9 +43,6 @@ ADDED: dict[str, set[str]] = {
         "--session",
         "--scan",
         "--constant-project-id",
-        "--level",
-        "--folder-acquisition",
-        "--constant-label",
     },
     "collate orthanc": set(),
     "label xnat": set(),

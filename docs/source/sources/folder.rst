@@ -5,10 +5,12 @@ Folders
 
 ``collate folder`` reads files from directories on a local path or a mounted file
 system, reads each file's metadata (DICOM tags by default), and collates the files into
-accessions, acquisitions and resources. It labels each accession for a data store
-(``--store``, XNAT by default, with the same label options as ``label <store>``), and
-writes it to ``OUTPUT_DIR`` as ``<labels>_combined`` once it has had no new data for
-``--wait-period`` seconds (see :ref:`concepts-staging` for the layout).
+accessions, acquisitions and resources. It labels each accession with a project,
+subject and session from its metadata (``--project``, ``--subject`` and ``--session``,
+named and defaulted as in ``label xnat``, with ``--scan`` and
+``--constant-project-id``), whatever store it is going to, and writes it to
+``OUTPUT_DIR`` as ``<project>.<subject>.<session>_combined`` once it has had no new
+data for ``--wait-period`` seconds (see :ref:`concepts-staging` for the layout).
 
 .. code-block:: console
 
@@ -71,8 +73,7 @@ regular expression. It is often the easiest way to get a field that the data sto
 
 Here, anything found under a ``.../cohort-A/...`` directory gets a ``cohort`` metadata
 field set to ``cohort-A``, alongside whatever is read from its DICOM headers. It can be
-used anywhere a metadata field can, e.g. in a ``--project`` or ``--level`` specifier
-when labelling.
+used anywhere a metadata field can, e.g. in a ``--project`` specifier when labelling.
 
 * The regex is matched (with ``re.match``, so from the start of the string, but not
   necessarily the whole of it unless you anchor it with ``$`` as above) against the

@@ -372,7 +372,7 @@ steps are classes.
 
 ### Store-neutral labels
 
-Status: Planned (2026-11-26). The next step of Phase 1.
+Status: In progress (2026-11-27): N1 is done. The next step of Phase 1.
 
 Since the [CLI](#cli) step, collate labels the accessions for a store. `collate folder`
 takes `--store` and every installed store's label options, and the accessions carry the
@@ -431,7 +431,8 @@ staged accession's directory name always matches its saved metadata.
 
 **Steps.** Each one is reviewed and recorded on its own, and leaves the tests passing:
 
-- **N1. Collate labels project, subject and session only.**
+- **N1. Collate labels project, subject and session only.** Done (2026-11-27),
+  recorded in [`CHANGELOG.md`](CHANGELOG.md) (Changed, Removed and Step API).
   - In `collate folder`, the options the CLI step added are removed: `--store`, the
     folder store's `--level`, `--constant-label` and `--folder-acquisition`. They were
     never released. So is the per-store generation and refusal of options in
@@ -440,7 +441,10 @@ staged accession's directory name always matches its saved metadata.
     `label xnat`: `--project`, `--subject` and `--session` (by default
     `StudyComments`, `PatientID` and `AccessionNumber`), `--scan` (by default
     `SeriesDescription`) and `--constant-project-id`.
-  - `cli/label_options.py` shrinks to that one fixed set.
+  - `cli/label_options.py` loses what it had only for `collate folder` (the
+    `collate` and `rename` arguments of `store_label_options`) and gains the fixed
+    set (`neutral_label_options`, `neutral_labels`). The per-store options stay for
+    `label <store>` until N3 and N4.
   - `store_type` leaves `assign_labels`, `MoveAccessions` and the folder `collate`,
     and the combiner no longer compares it.
   - The contract snapshot's `ADDED` set for `collate folder` shrinks to match. No

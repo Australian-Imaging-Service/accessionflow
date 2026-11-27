@@ -61,7 +61,6 @@ def collate(
     on_resource_clash: OnResourceClash | ty.Sequence[ClashSpec] = "error",
     acquisition_field: str | None = None,
     constant_labels: ty.Mapping[str, str] | None = None,
-    store_type: str | None = None,
     copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy,
     collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None,
     conversion_map: (
@@ -168,8 +167,6 @@ def collate(
         labels used as given, keyed by level. Each is written to the accessions'
         metadata as a field named after its level, e.g. ``project``, which the level is
         labelled from (`constant_label_fields`)
-    store_type : str, optional
-        the data store the labels are for, e.g. 'xnat'
     copy_mode : FileSet.CopyMode, optional
         how the files are saved, by default hard-linked if possible, otherwise copied
     collation_map : dict[type[FileSet], FileSet.CopyCollation], optional
@@ -223,7 +220,6 @@ def collate(
         output_dir,
         label_fields,
         acquisition_field=acquisition_field,
-        store_type=store_type,
         copy_mode=copy_mode,
         collation_map=collation_map,
         conversion_map=conversion_map,

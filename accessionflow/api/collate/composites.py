@@ -337,8 +337,6 @@ class MoveAccessions(Step):
         `assign_labels`)
     acquisition_field : str, optional
         the metadata field each acquisition's description is made from
-    store_type : str, optional
-        the data store the labels are for, e.g. 'xnat'
     copy_mode : FileSet.CopyMode, optional
         how the files are saved, by default hard-linked if possible, otherwise copied
     collation_map : dict[type[FileSet], FileSet.CopyCollation], optional
@@ -353,7 +351,6 @@ class MoveAccessions(Step):
     output_dir: Path = attrs.field(converter=Path)
     label_fields: ty.Mapping[str, str]
     acquisition_field: str | None = None
-    store_type: str | None = None
     copy_mode: FileSet.CopyMode = FileSet.CopyMode.hardlink_or_copy
     collation_map: dict[type[FileSet], FileSet.CopyCollation] | None = None
     conversion_map: dict[type[FileSet], tuple[type[FileSet], dict[str, str]]] | None = (
@@ -406,7 +403,6 @@ class MoveAccessions(Step):
                 accession,
                 self.label_fields,
                 acquisition_field=self.acquisition_field,
-                store_type=self.store_type,
             )
             return move_to_target(
                 accession,

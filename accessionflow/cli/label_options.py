@@ -1,6 +1,12 @@
-"""The label options of a store, e.g. XNAT's '--project', '--subject', '--session' and
-'--scan', shared by the 'label <store>' commands and 'collate folder', which labels the
-accessions it collates (see ``prefect-migration-docs/ROADMAP.md``, Phase 1, CLI)"""
+"""Label options:
+
+- the store-neutral set, '--project', '--subject', '--session', '--scan' and
+  '--constant-project-id', which 'collate folder' labels the accessions it collates
+  with (see ``prefect-migration-docs/ROADMAP.md``, Phase 1, Store-neutral labels, N1)
+- the label options of a store, e.g. XNAT's '--project', '--subject', '--session' and
+  '--scan', or the folder store's '--level', which the 'label <store>' commands take
+  until they become store-neutral (N3 and N4)
+"""
 
 import typing as ty
 
@@ -11,7 +17,11 @@ from accessionflow.model.store import Store, check_level_names
 
 __all__ = [
     "LabelOptions",
+    "NEUTRAL_LABEL_DEFAULTS",
+    "NEUTRAL_LEVELS",
     "StoreLabelOption",
+    "neutral_label_options",
+    "neutral_labels",
     "resolve_label_options",
     "store_label_options",
 ]
@@ -63,13 +73,113 @@ _FIELD_HELP = (
 )
 
 
-def store_label_options(
-    store: Store,
-    *,
-    collate: bool = False,
-    rename: ty.Mapping[str, str] | None = None,
-) -> list[StoreLabelOption]:
-    """The label options of a store
+# The levels every accession is labelled with, from the top, whatever store it is
+# going to, and the metadata fields they are made from by default, as for XNAT
+NEUTRAL_LEVELS = ("project", "subject", "session")
+NEUTRAL_LABEL_DEFAULTS = {
+    "project": "StudyComments",
+    "subject": "PatientID",
+    "session": "AccessionNumber",
+}
+# The field each acquisition's description is made from by default
+NEUTRAL_ACQUISITION_DEFAULT = "SeriesDescription"
+
+_NEUTRAL_ENVVAR_PREFIX = "ACFLOW_"
+
+
+def neutral_label_options(
+    command: ty.Callable[..., ty.Any],
+) -> ty.Callable[..., ty.Any]:
+    """Adds the store-neutral label options to a command, with the names, environment
+    variables and defaults of 'label xnat': '--project', '--subject' and '--session'
+    (the fields the accession's labels are made from), '--scan' (the field each
+    acquisition's description is made from) and '--constant-project-id'. The command
+    takes them as the parameters 'project', 'subject', 'session', 'scan' and
+    'constant_project_id', and turns them into labels with `neutral_labels`"""
+    options = [
+        click.option(
+            f"--{level}",
+            level,
+            type=str,
+            default=NEUTRAL_LABEL_DEFAULTS[level],
+            envvar=f"{_NEUTRAL_ENVVAR_PREFIX}{level.upper()}",
+            help=(
+                _FIELD_HELP.format(what=f"accession's {level} label")
+                + f" ({_NEUTRAL_ENVVAR_PREFIX}{level.upper()} env. var)"
+            ),
+        )
+        for level in NEUTRAL_LEVELS
+    ]
+    options.append(
+        click.option(
+            "--scan",
+            "scan",
+            type=str,
+            default=NEUTRAL_ACQUISITION_DEFAULT,
+            envvar=f"{_NEUTRAL_ENVVAR_PREFIX}SCAN",
+            help=(
+                "The keyword of the metadata field to extract the description of each "
+                "acquisition from. Acquisitions for which the field can't be resolved "
+                f"are left without one ({_NEUTRAL_ENVVAR_PREFIX}SCAN env. var)"
+            ),
+        )
+    )
+    options.append(
+        click.option(
+            "--constant-project-id",
+            "constant_project_id",
+            type=str,
+            default=None,
+            envvar=f"{_NEUTRAL_ENVVAR_PREFIX}CONSTANT_PROJECT_ID",
+            help=(
+                "Fix the project label as a constant for all data matched by this "
+                "command. It is saved in the accession's metadata as its 'project' "
+                f"field ({_NEUTRAL_ENVVAR_PREFIX}CONSTANT_PROJECT_ID env. var)"
+            ),
+        )
+    )
+    # Applied in reverse, so that the help lists them in the order above
+    for option in reversed(options):
+        command = option(command)
+    return command
+
+
+def neutral_labels(
+    project: str,
+    subject: str,
+    session: str,
+    scan: str | None,
+    constant_project_id: str | None = None,
+) -> LabelOptions:
+    """The labels the values of the store-neutral label options give
+    (`neutral_label_options`)
+
+    Parameters
+    ----------
+    project, subject, session : str
+        the metadata field (or a format string over several fields) each label is made
+        from
+    scan : str, optional
+        the metadata field each acquisition's description is made from
+    constant_project_id : str, optional
+        the project label, used as given
+
+    Returns
+    -------
+    LabelOptions
+        the label fields, the acquisition field and the constant labels
+    """
+    return LabelOptions(
+        label_fields={"project": project, "subject": subject, "session": session},
+        acquisition_field=scan,
+        constant_labels=(
+            {"project": constant_project_id} if constant_project_id is not None else {}
+        ),
+    )
+
+
+def store_label_options(store: Store) -> list[StoreLabelOption]:
+    """The label options of a store, which its 'label <store>' command takes
 
     If the store has fixed label levels, there is an option for each of them, e.g.
     '--project', '--subject' and '--session' for XNAT, and one for a constant label of
@@ -83,24 +193,12 @@ def store_label_options(
     ----------
     store : Store
         the configuration of the store
-    collate : bool, optional
-        whether the options are for 'collate folder', which takes the options of every
-        store. Its options have no defaults and aren't required: the chosen store's
-        defaults are applied by `resolve_label_options`, and the help names them. The
-        Python parameter of each option is named after the option, e.g. 'label_project'
-        for '--project', so that two stores' options with the same name are one
-        parameter. Otherwise, the options are those of 'label <store>'
-    rename : Mapping[str, str], optional
-        a new option name for an option whose name is already taken, e.g.
-        ``{"--acquisition": "--folder-acquisition"}``. The environment variable is named
-        after the new name
 
     Returns
     -------
     list[StoreLabelOption]
         the options, in the order they are listed in the help
     """
-    rename = rename or {}
     prefix = store.envvar_prefix
     options: list[StoreLabelOption] = []
 
@@ -114,22 +212,13 @@ def store_label_options(
         level: str | None = None,
         **kwargs: ty.Any,
     ) -> None:
-        if option_name in rename:
-            option_name = rename[option_name]
-            envvar = prefix + option_name.lstrip("-").upper().replace("-", "_")
-        if collate:
-            param_name = "label_" + option_name.lstrip("-").replace("-", "_")
-            help += f". Used with --store {store.name}"
-            if default is not None:
-                help += f", by default '{default}'"
-        else:
-            # An explicit default of None would count as a value for 'required' in
-            # click >= 8.3, so an option without a default is given none at all
-            if default is not None:
-                kwargs["default"] = default
-            elif role == "constant_top":
-                # As 'label <store>' has always declared it
-                kwargs["default"] = None
+        # An explicit default of None would count as a value for 'required' in
+        # click >= 8.3, so an option without a default is given none at all
+        if default is not None:
+            kwargs["default"] = default
+        elif role == "constant_top":
+            # As 'label <store>' has always declared it
+            kwargs["default"] = None
         options.append(
             StoreLabelOption(
                 role=role,
@@ -156,7 +245,7 @@ def store_label_options(
                 default=level.default,
                 level=level.name,
                 type=str,
-                required=not collate and level.default is None,
+                required=level.default is None,
             )
     else:
         envvar = f"{prefix}LEVELS"
@@ -175,7 +264,7 @@ def store_label_options(
             ),
             type=(str, str),
             multiple=True,
-            required=not collate,
+            required=True,
             metavar="<name> <field>",
         )
         # The help of 'label folder' says how the pairs are given in the variable
