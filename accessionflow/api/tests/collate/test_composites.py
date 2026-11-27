@@ -7,26 +7,28 @@ import pytest
 from fileformats.application import Json
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
-from fileformats.generic import DirectoryOf, File
+from fileformats.generic import Directory, DirectoryOf, File
 from fileformats.text import Csv, Plain
 
 from accessionflow.api.collate import (
     CLAIMED_FILES_DIRNAME,
     UNPROCESSED_MANIFEST,
+    AbandonClaim,
+    ApplyFilesetMetadata,
+    BuildAccessions,
+    BuildFilesets,
     ClaimedFiles,
+    ClaimInputFiles,
     ClassifiedFilesets,
-    apply_fileset_metadata,
-    build_accessions,
-    build_filesets,
-    claim_input_files,
-    finish_claim,
+    FinishClaim,
+    MoveAccessions,
+    ReserveRunUid,
     load_metadata_tables,
-    move_accessions,
-    plan_recursion,
 )
 from accessionflow.api.collate import composites as composites_module
 from accessionflow.api.collate import save as save_module
 from accessionflow.api.staging import prepare_build_dir, remove_build_dir
+from accessionflow.api.tests.collate.collect import checked
 from accessionflow.exceptions import LabelsNotAssignedError
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable, PathMetadataRegex
 from accessionflow.model.accession import Accession
@@ -47,7 +49,7 @@ def _claim(tmp_path: Path, files: dict[str, str]) -> ClaimedFiles:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         paths.append(path)
-    return claim_input_files(paths, tmp_path / "proc", RUN_UID, [inbox])
+    return ClaimInputFiles(tmp_path / "proc").act(paths, RUN_UID, [inbox])
 
 
 class _Collected(ty.NamedTuple):
@@ -73,31 +75,31 @@ def _collect(
     metadata_tables: list[MetadataTable] = [],
     run_uid: str | None = None,
 ) -> _Collected:
-    """Runs build_filesets, apply_fileset_metadata and build_accessions in turn, as
+    """Runs BuildFilesets, ApplyFilesetMetadata and BuildAccessions in turn, as
     collate does"""
-    recursion = plan_recursion(datatypes, ignore_datatypes, recursive)
-    classified = build_filesets(
-        claimed,
-        datatypes,
-        recursion,
-        recursive=recursive,
-        allow_unrecognised=allow_unrecognised,
-    )
-    filesets = apply_fileset_metadata(
-        classified.filesets,
-        claimed,
-        dont_read_metadata=dont_read_metadata,
-        path_metadata_regex=path_metadata_regex,
-        metadata_tables=metadata_tables,
-    )
-    accessions = build_accessions(
-        filesets,
-        accession_uid_field=accession_uid_field,
-        acquisition_id_field=acquisition_id_field,
-        resource_field=resource_field,
-        run_uid=run_uid,
-        metadata_tables=metadata_tables,
-    )
+    classified = checked(
+        BuildFilesets(
+            datatypes,
+            ignore_datatypes,
+            recursive=recursive,
+            allow_unrecognised=allow_unrecognised,
+        )
+    ).act(claimed)
+    filesets = checked(
+        ApplyFilesetMetadata(
+            dont_read_metadata,
+            path_metadata_regex=path_metadata_regex,
+            metadata_tables=metadata_tables,
+        )
+    ).act(classified.filesets, claimed)
+    accessions = checked(
+        BuildAccessions(
+            accession_uid_field,
+            acquisition_id_field,
+            resource_field,
+            metadata_tables=metadata_tables,
+        )
+    ).act(filesets, run_uid)
     return _Collected(accessions, classified.ignored, classified)
 
 
@@ -106,8 +108,7 @@ def _collect(
 
 def test_build_filesets_splits_kept_and_ignored(tmp_path: Path) -> None:
     claimed = _claim(tmp_path, {"s1/a.json": "{}", "s1/notes.txt": "x"})
-    recursion = plan_recursion([Json], [Plain], recursive=True)
-    classified = build_filesets(claimed, [Json], recursion, recursive=True)
+    classified = checked(BuildFilesets([Json], [Plain], recursive=True)).act(claimed)
     assert [type(f) for f in classified.filesets] == [Json]
     assert [type(f) for f in classified.ignored] == [Plain]
     # No metadata has been applied yet
@@ -118,18 +119,13 @@ def test_apply_fileset_metadata(tmp_path: Path) -> None:
     claimed = _claim(tmp_path, {"s1/a.json": "{}"})
     (tables_dir := tmp_path / "tables").mkdir()
     (tables_dir / "files.csv").write_text("Name,Note\na,first\n")
-    tables = load_metadata_tables(
-        [MetadataTable(str(tables_dir / "files.csv"), "fileset", "Name=name")]
-    )
-    recursion = plan_recursion([Json], recursive=True)
-    filesets = build_filesets(claimed, [Json], recursion, recursive=True).filesets
-    result = apply_fileset_metadata(
-        filesets,
-        claimed,
-        dont_read_metadata=[Json],
-        path_metadata_regex=SESS_NAME_REGEX,
-        metadata_tables=tables,
-    )
+    tables = [MetadataTable(str(tables_dir / "files.csv"), "fileset", "Name=name")]
+    filesets = checked(BuildFilesets([Json], recursive=True)).act(claimed).filesets
+    result = checked(
+        ApplyFilesetMetadata(
+            [Json], path_metadata_regex=SESS_NAME_REGEX, metadata_tables=tables
+        )
+    ).act(filesets, claimed)
     assert result == filesets  # changed in place
     (fileset,) = result
     assert fileset.metadata.read_disabled
@@ -146,22 +142,13 @@ def test_build_accessions(tmp_path: Path) -> None:
     claimed = _claim(tmp_path, {"s1/a.json": "{}", "s2/b.json": "{}"})
     (tables_dir := tmp_path / "tables").mkdir()
     (tables_dir / "acc.csv").write_text("Session,Cohort\ns2,case\n")
-    tables = load_metadata_tables(
-        [MetadataTable(str(tables_dir / "acc.csv"), "accession", "Session=sess")]
+    tables = [MetadataTable(str(tables_dir / "acc.csv"), "accession", "Session=sess")]
+    filesets = checked(ApplyFilesetMetadata(path_metadata_regex=SESS_NAME_REGEX)).act(
+        checked(BuildFilesets([Json], recursive=True)).act(claimed).filesets, claimed
     )
-    recursion = plan_recursion([Json], recursive=True)
-    filesets = apply_fileset_metadata(
-        build_filesets(claimed, [Json], recursion, recursive=True).filesets,
-        claimed,
-        path_metadata_regex=SESS_NAME_REGEX,
-    )
-    s1, s2 = build_accessions(
-        filesets,
-        accession_uid_field=[IDSpec("sess")],
-        acquisition_id_field=[IDSpec("name")],
-        run_uid=RUN_UID,
-        metadata_tables=tables,
-    )
+    s1, s2 = checked(
+        BuildAccessions([IDSpec("sess")], [IDSpec("name")], metadata_tables=tables)
+    ).act(filesets, RUN_UID)
     assert (s1.uid, list(s1.acquisitions)) == ("s1", ["a"])
     assert (s2.uid, list(s2.acquisitions)) == ("s2", ["b"])
     assert "Cohort" not in s1.metadata
@@ -372,7 +359,7 @@ def test_composite_results_pickle(tmp_path: Path) -> None:
     ]
 
 
-# move_accessions -------------------------------------------------------------------
+# MoveAccessions --------------------------------------------------------------------
 
 LABEL_FIELDS = {"project": "project", "subject": "sess", "session": "visit"}
 
@@ -424,14 +411,13 @@ def test_move_accessions_one_of_each_case(
         return real_save(accession, *args, **kw)
 
     monkeypatch.setattr(save_module, "save_to_build_dir", save_fails_for_s2)
-    failed = move_accessions(
-        accessions,
-        build_dir,
-        output_dir,
-        claimed,
-        LABEL_FIELDS,
-        constant_labels={"project": "P"},
-    )
+    failed = checked(
+        MoveAccessions(
+            output_dir,
+            LABEL_FIELDS,
+            constant_labels={"project": "P"},
+        )
+    ).act(accessions, build_dir, claimed)
 
     assert len(failed) == 2
     assert all(a is b for (a, _), b in zip(failed, [s2, s3], strict=True))
@@ -443,7 +429,7 @@ def test_move_accessions_one_of_each_case(
     assert not (claimed.files_dir / "s1" / "s1a.json").exists()
 
     unprocessed = tmp_path / "unprocessed"
-    moved = finish_claim(claimed, unprocessed, failed=failed)
+    moved = FinishClaim(unprocessed).act(claimed, failed=failed)
     files_dir = unprocessed / RUN_UID / CLAIMED_FILES_DIRNAME
     assert moved == [
         files_dir / "s1" / "notes.txt",
@@ -467,14 +453,13 @@ def _reasons(moved_run_dir: Path) -> dict[str, dict[str, ty.Any]]:
 
 def test_move_accessions_all(tmp_path: Path) -> None:
     claimed, accessions, output_dir, build_dir = _collect_sessions(tmp_path, "s1", "s2")
-    failed = move_accessions(
-        accessions,
-        build_dir,
-        output_dir,
-        claimed,
-        LABEL_FIELDS,
-        constant_labels={"project": "P"},
-    )
+    failed = checked(
+        MoveAccessions(
+            output_dir,
+            LABEL_FIELDS,
+            constant_labels={"project": "P"},
+        )
+    ).act(accessions, build_dir, claimed)
     assert failed == []
     assert sorted(p.name for p in output_dir.iterdir() if p != build_dir.parent) == [
         f"P.s1.v1_{RUN_UID}",
@@ -491,15 +476,14 @@ def test_move_accessions_raise_errors(tmp_path: Path) -> None:
         tmp_path, "s1", "s3-novisit"
     )
     with pytest.raises(LabelsNotAssignedError, match="visit"):
-        move_accessions(
-            accessions,
-            build_dir,
-            output_dir,
-            claimed,
-            LABEL_FIELDS,
-            constant_labels={"project": "P"},
-            raise_errors=True,
-        )
+        checked(
+            MoveAccessions(
+                output_dir,
+                LABEL_FIELDS,
+                constant_labels={"project": "P"},
+                raise_errors=True,
+            )
+        ).act(accessions, build_dir, claimed)
     assert (output_dir / f"P.s1.v1_{RUN_UID}").is_dir()
     assert (claimed.files_dir / "s3-novisit" / "s3a.json").exists()
 
@@ -517,15 +501,88 @@ def test_move_accessions_warns_once_before_moving(
 
     monkeypatch.setattr(composites_module, "warn_if_hardlinks_unavailable", record)
     copy_mode = FileSet.CopyMode.copy
-    move_accessions(
-        accessions,
-        build_dir,
-        output_dir,
-        claimed,
-        LABEL_FIELDS,
-        constant_labels={"project": "P"},
-        copy_mode=copy_mode,
-    )
+    checked(
+        MoveAccessions(
+            output_dir,
+            LABEL_FIELDS,
+            constant_labels={"project": "P"},
+            copy_mode=copy_mode,
+        )
+    ).act(accessions, build_dir, claimed)
     assert len(calls) == 1
     assert list(calls[0][0]) == accessions
     assert calls[0][1:3] == (build_dir, copy_mode)
+
+
+# The steps' configuration checks --------------------------------------------------
+
+
+def _table(
+    tmp_path: Path, columns: str, row_frequency: str, join: str
+) -> MetadataTable:
+    path = tmp_path / "tables" / "t.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{columns}\nx,y\n")
+    return MetadataTable(str(path), row_frequency, join)
+
+
+@pytest.mark.parametrize(
+    "make_step",
+    [
+        lambda tmp_path: BuildFilesets([Json], [Json]),
+        lambda tmp_path: BuildFilesets([Directory], recursive=True),
+        lambda tmp_path: ApplyFilesetMetadata(
+            metadata_tables=[_table(tmp_path, "A,B", "fileset", "Missing=name")]
+        ),
+        lambda tmp_path: BuildAccessions(
+            [IDSpec("sess")],
+            metadata_tables=[_table(tmp_path, "A,B", "accession", "Missing=sess")],
+        ),
+        lambda tmp_path: MoveAccessions(tmp_path / "out", {}),
+        lambda tmp_path: MoveAccessions(
+            tmp_path / "out", LABEL_FIELDS, constant_labels={"site": "X"}
+        ),
+    ],
+)
+def test_check_configuration_raises_for_a_bad_configuration(
+    tmp_path: Path, make_step: ty.Callable[[Path], ty.Any]
+) -> None:
+    step = make_step(tmp_path)
+    with pytest.raises(ValueError):
+        step.check_configuration()
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize(
+    "step, args",
+    [
+        (BuildFilesets([Json]), (None,)),
+        (ApplyFilesetMetadata(), ([], None)),
+        (BuildAccessions([IDSpec("sess")]), ([],)),
+        (MoveAccessions(Path("out"), LABEL_FIELDS), ([], Path("build"), None)),
+    ],
+)
+def test_act_refuses_an_unchecked_step(step: ty.Any, args: tuple[ty.Any, ...]) -> None:
+    with pytest.raises(RuntimeError, match="check_configuration"):
+        step.act(*args)
+
+
+def test_checked_steps_pickle(tmp_path: Path) -> None:
+    table = _table(tmp_path, "Session,visit", "accession", "Session=sess")
+    steps = [
+        ReserveRunUid(tmp_path / "out"),
+        ClaimInputFiles(tmp_path / "proc"),
+        BuildFilesets([Json], [Plain], recursive=True),
+        ApplyFilesetMetadata(
+            path_metadata_regex=SESS_NAME_REGEX, metadata_tables=[table]
+        ),
+        BuildAccessions([IDSpec("sess")], metadata_tables=[table]),
+        MoveAccessions(tmp_path / "out", LABEL_FIELDS),
+        FinishClaim(tmp_path / "unprocessed"),
+        AbandonClaim(tmp_path / "error"),
+    ]
+    for step in steps:
+        step.check_configuration()
+        copy = pickle.loads(pickle.dumps(step))
+        assert copy == step
+        assert copy._checked

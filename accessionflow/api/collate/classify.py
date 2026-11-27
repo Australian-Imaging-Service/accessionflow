@@ -149,7 +149,7 @@ def drop_ignored_filesets(
     Datatypes are matched with ``isinstance``, so subclasses match too. A wanted
     datatype wins, so that, for example, a wanted ``DirectoryOf[Json]`` isn't dropped
     because ``Directory`` is ignored. The files of a dropped file-set aren't touched:
-    they stay in the run's processing directory, where `finish_claim` reports them.
+    they stay in the run's processing directory, where `FinishClaim` reports them.
 
     Parameters
     ----------
@@ -256,7 +256,7 @@ def expand_claimed_paths(
     - With ``recursive`` and a directory format among the wanted or ignored datatypes
       (``recursion.recurse_into_dirs``): a walk that keeps a directory matching a
       wanted datatype whole, also keeps one matching an ignored directory format
-      whole (to be classified and then dropped as ignored, so that `finish_claim`
+      whole (to be classified and then dropped as ignored, so that `FinishClaim`
       records its files as ignored), and descends into any other.
 
     Only claimed files, and the directories that hold them, are ever returned. Roots
@@ -267,7 +267,7 @@ def expand_claimed_paths(
     Parameters
     ----------
     claimed : ClaimedFiles
-        the run's claimed files, from `claim_input_files`
+        the run's claimed files, from `ClaimInputFiles`
     datatypes : Sequence[type[FileSet]]
         the datatypes to collate
     recursion : RecursionPlan

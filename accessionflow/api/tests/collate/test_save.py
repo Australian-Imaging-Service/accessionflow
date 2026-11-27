@@ -9,9 +9,9 @@ from fileformats.generic import DirectoryOf
 
 from accessionflow.api.collate import (
     ClaimedFiles,
+    ClaimInputFiles,
     apply_path_metadata,
     assign_labels,
-    claim_input_files,
     classify_paths,
     expand_claimed_paths,
     group_into_accessions,
@@ -43,7 +43,7 @@ def _claim_and_group(tmp_path: Path) -> tuple[ClaimedFiles, list[Accession]]:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f'{{"{name}": 1}}')
         files.append(path)
-    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox])
+    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox])
     plan = plan_recursion([Json], recursive=True)
     fspaths = expand_claimed_paths(claimed, [Json], plan, recursive=True)
     filesets = apply_path_metadata(
@@ -201,7 +201,7 @@ def test_remove_claimed_files_removes_directory_datatypes(tmp_path: Path) -> Non
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}")
         files.append(path)
-    claimed = claim_input_files(files, tmp_path / "proc", RUN_UID, [inbox / "s1"])
+    claimed = ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, [inbox / "s1"])
     datatypes: list[type[FileSet]] = [DirectoryOf[Json]]
     plan = plan_recursion(datatypes)
     filesets = classify_paths(

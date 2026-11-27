@@ -11,9 +11,9 @@ from fileformats.vendor.siemens.medimage import SyngoMi_Vr20b_ListMode
 
 from accessionflow.api.collate import (
     ClaimedFiles,
+    ClaimInputFiles,
     acquisition_id_for,
     apply_path_metadata,
-    claim_input_files,
     clash_hint_for,
     classify_paths,
     drop_ignored_filesets,
@@ -47,8 +47,8 @@ def _filesets(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         paths.append(path)
-    claimed: ClaimedFiles = claim_input_files(
-        paths, tmp_path / "proc", RUN_UID, [inbox]
+    claimed: ClaimedFiles = ClaimInputFiles(tmp_path / "proc").act(
+        paths, RUN_UID, [inbox]
     )
     plan = plan_recursion(datatypes, ignore_datatypes, recursive)
     fspaths = expand_claimed_paths(claimed, datatypes, plan, recursive)

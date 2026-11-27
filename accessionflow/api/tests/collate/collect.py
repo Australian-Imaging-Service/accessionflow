@@ -9,17 +9,15 @@ from pathlib import Path
 from fileformats.core import FileSet
 
 from accessionflow.api.collate import (
-    apply_fileset_metadata,
-    build_accessions,
-    build_filesets,
-    check_datatypes,
-    claim_input_files,
+    ApplyFilesetMetadata,
+    BuildAccessions,
+    BuildFilesets,
+    ClaimInputFiles,
     list_input_files,
     list_source_roots,
-    load_metadata_tables,
     make_run_uid,
-    plan_recursion,
 )
+from accessionflow.api.step import Step
 from accessionflow.helpers.arg_types import (
     ClashSpec,
     IDSpec,
@@ -28,6 +26,14 @@ from accessionflow.helpers.arg_types import (
     PathMetadataRegex,
 )
 from accessionflow.model.accession import Accession
+
+StepT = ty.TypeVar("StepT", bound=Step)
+
+
+def checked(step: StepT) -> StepT:
+    """Checks a step's configuration, and returns the step, ready to act"""
+    step.check_configuration()
+    return step
 
 
 def collect_files(
@@ -56,39 +62,41 @@ def collect_files(
     ignore_datatypes = ignore_datatypes or ()
 
     files = list_input_files(list(files_path), exclude_paths or ())
-    check_datatypes(datatypes, ignore_datatypes)
-    recursion = plan_recursion(datatypes, ignore_datatypes, recursive)
-    tables = load_metadata_tables(metadata_tables)
+    # Every step is checked before any acts, as in a run
+    build_filesets = checked(
+        BuildFilesets(
+            datatypes,
+            ignore_datatypes,
+            recursive=recursive,
+            allow_unrecognised=allow_unrecognised or (),
+        )
+    )
+    apply_metadata = checked(
+        ApplyFilesetMetadata(
+            dont_read_metadata,
+            path_metadata_regex=path_metadata_regex,
+            metadata_tables=list(metadata_tables or ()),
+        )
+    )
+    build_accessions = checked(
+        BuildAccessions(
+            accession_uid_field,
+            acquisition_id_field,
+            resource_field,
+            on_resource_clash,
+            metadata_tables=apply_metadata.metadata_tables,
+        )
+    )
 
     # The input directories are the roots, so their top-level entries are classified
     # as they were in them
     roots = list_source_roots(list(files_path), files)
 
     run_uid = make_run_uid()
-    claimed = claim_input_files(files, working_dir, run_uid, roots)
-    classified = build_filesets(
-        claimed,
-        datatypes,
-        recursion,
-        recursive=recursive,
-        allow_unrecognised=allow_unrecognised or (),
-    )
-    filesets = apply_fileset_metadata(
-        classified.filesets,
-        claimed,
-        dont_read_metadata=dont_read_metadata,
-        path_metadata_regex=path_metadata_regex,
-        metadata_tables=tables,
-    )
-    return build_accessions(
-        filesets,
-        accession_uid_field=accession_uid_field,
-        acquisition_id_field=acquisition_id_field,
-        resource_field=resource_field,
-        on_resource_clash=on_resource_clash,
-        run_uid=run_uid,
-        metadata_tables=tables,
-    )
+    claimed = ClaimInputFiles(working_dir).act(files, run_uid, roots)
+    classified = build_filesets.act(claimed)
+    filesets = apply_metadata.act(classified.filesets, claimed)
+    return build_accessions.act(filesets, run_uid)
 
 
 def stage_unlabelled(

@@ -7,19 +7,15 @@ from fileformats.core import FileSet
 from fileformats.medimage import DicomSeries
 
 from accessionflow.api.collate import (
+    AbandonClaim,
+    ApplyFilesetMetadata,
+    BuildAccessions,
+    BuildFilesets,
     ClaimedFiles,
-    abandon_claim,
-    apply_fileset_metadata,
-    build_accessions,
-    build_filesets,
-    check_datatypes,
-    claim_input_files,
-    create_run_directory,
-    finish_claim,
-    load_metadata_tables,
-    merge_path_metadata,
-    move_accessions,
-    plan_recursion,
+    ClaimInputFiles,
+    FinishClaim,
+    MoveAccessions,
+    ReserveRunUid,
 )
 from accessionflow.api.collate.claim import CLAIMED_MANIFEST
 from accessionflow.api.staging import remove_build_dir
@@ -79,22 +75,22 @@ def collate(
     output directory, running the collate steps in order (see
     ``prefect-migration-docs/ROADMAP.md``, Phase 1, Composites)
 
-    1. Checks the arguments before anything is changed: `check_datatypes`,
-       `plan_recursion`, `load_metadata_tables` and `merge_path_metadata`.
-    2. Makes the run's UID and its build directory (`create_run_directory`), with
+    1. Makes each step with its configuration, and checks every step's configuration
+       (`Step.check_configuration`) before anything is changed.
+    2. Reserves the run's UID and its build directory (`ReserveRunUid`), with
        another UID if one is taken.
-    3. Claims the files into ``<working_dir>/<run_uid>/`` (`claim_input_files`). A
+    3. Claims the files into ``<working_dir>/<run_uid>/`` (`ClaimInputFiles`). A
        file that arrives after they were listed stays in the input, for the next run.
-    4. Turns the claimed files into file-sets (`build_filesets`), adds their
-       metadata (`apply_fileset_metadata`) and groups them into accessions
-       (`build_accessions`).
+    4. Turns the claimed files into file-sets (`BuildFilesets`), adds their
+       metadata (`ApplyFilesetMetadata`) and groups them into accessions
+       (`BuildAccessions`).
     5. Labels and moves each accession to ``<output_dir>/<labels>_<run_uid>/``
-       (`move_accessions`).
+       (`MoveAccessions`).
     6. Moves the files that weren't delivered (unrecognised, ignored, or of an
-       accession that failed) to ``<unprocessed_dir>/<run_uid>/`` (`finish_claim`).
+       accession that failed) to ``<unprocessed_dir>/<run_uid>/`` (`FinishClaim`).
 
     If a step raises, the run's claimed files are moved to ``<error_dir>/<run_uid>/``
-    (`abandon_claim`) and the error is raised. The build directory is removed either
+    (`AbandonClaim`) and the error is raised. The build directory is removed either
     way. An interrupt (e.g. Ctrl-C) leaves the claim in the working directory.
 
     Errors are returned rather than logged: the caller summarises them (e.g. with
@@ -121,7 +117,7 @@ def collate(
     ignore_datatypes : Sequence[type[FileSet]], optional
         the datatypes expected but not wanted, whose files are left as ignored
     source_roots : Sequence[Path], optional
-        the directories the files were listed from (`claim_input_files`). Pass the input
+        the directories the files were listed from (`ClaimInputFiles`). Pass the input
         directories so that their top-level entries are classified as they were in them
     recursive : bool, optional
         whether to classify the files in subdirectories one by one
@@ -188,57 +184,67 @@ def collate(
     Raises
     ------
     ValueError
-        if an argument is invalid. Nothing has been changed
+        if a step's configuration is invalid. Nothing has been changed
     RuntimeError
         if no unused run UID could be made. Nothing has been claimed
     """
-    check_datatypes(datatypes, ignore_datatypes)
-    recursion = plan_recursion(datatypes, ignore_datatypes, recursive)
-    tables = load_metadata_tables(metadata_tables)
-    regexes = merge_path_metadata(path_metadata, path_metadata_regex)
+    reserve = ReserveRunUid(output_dir)
+    claim = ClaimInputFiles(working_dir)
+    build_filesets = BuildFilesets(
+        datatypes,
+        ignore_datatypes,
+        recursive=recursive,
+        allow_unrecognised=allow_unrecognised,
+    )
+    apply_metadata = ApplyFilesetMetadata(
+        dont_read_metadata,
+        path_metadata=path_metadata,
+        path_metadata_regex=path_metadata_regex,
+        metadata_tables=list(metadata_tables or ()),
+    )
+    build_accessions = BuildAccessions(
+        accession_uid_field,
+        acquisition_id_field,
+        resource_field,
+        on_resource_clash,
+        # The same table objects, so that each table is read once
+        metadata_tables=apply_metadata.metadata_tables,
+    )
+    move = MoveAccessions(
+        output_dir,
+        label_fields,
+        acquisition_field=acquisition_field,
+        constant_labels=constant_labels,
+        store_type=store_type,
+        copy_mode=copy_mode,
+        collation_map=collation_map,
+        conversion_map=conversion_map,
+        raise_errors=raise_errors,
+    )
+    finish = FinishClaim(unprocessed_dir)
+    abandon = AbandonClaim(error_dir)
+    # Every step's configuration is checked before anything is changed
+    for step in (
+        reserve,
+        claim,
+        build_filesets,
+        apply_metadata,
+        build_accessions,
+        move,
+        finish,
+        abandon,
+    ):
+        step.check_configuration()
 
-    run_uid, build_dir = create_run_directory(output_dir)
+    run_uid, build_dir = reserve.act()
     claimed: ClaimedFiles | None = None
     try:
-        claimed = claim_input_files(input_files, working_dir, run_uid, source_roots)
-        classified = build_filesets(
-            claimed,
-            datatypes,
-            recursion,
-            recursive=recursive,
-            allow_unrecognised=allow_unrecognised,
-        )
-        filesets = apply_fileset_metadata(
-            classified.filesets,
-            claimed,
-            dont_read_metadata=dont_read_metadata,
-            path_metadata_regex=regexes,
-            metadata_tables=tables,
-        )
-        accessions = build_accessions(
-            filesets,
-            accession_uid_field=accession_uid_field,
-            acquisition_id_field=acquisition_id_field,
-            resource_field=resource_field,
-            on_resource_clash=on_resource_clash,
-            run_uid=run_uid,
-            metadata_tables=tables,
-        )
-        failed = move_accessions(
-            accessions,
-            build_dir,
-            output_dir,
-            claimed,
-            label_fields,
-            acquisition_field=acquisition_field,
-            constant_labels=constant_labels,
-            store_type=store_type,
-            copy_mode=copy_mode,
-            collation_map=collation_map,
-            conversion_map=conversion_map,
-            raise_errors=raise_errors,
-        )
-        finish_claim(claimed, unprocessed_dir, failed, classified.ignored)
+        claimed = claim.act(input_files, run_uid, source_roots)
+        classified = build_filesets.act(claimed)
+        filesets = apply_metadata.act(classified.filesets, claimed)
+        accessions = build_accessions.act(filesets, run_uid)
+        failed = move.act(accessions, build_dir, claimed)
+        finish.act(claimed, failed, classified.ignored)
     except Exception as e:
         if claimed is None:
             # The claim raised partway: the files it moved are found from its plan
@@ -246,7 +252,7 @@ def collate(
             if (run_dir / CLAIMED_MANIFEST).exists():
                 claimed = ClaimedFiles.load(run_dir)
         if claimed is not None:
-            abandon_claim(claimed, error_dir, e)
+            abandon.act(claimed, e)
         raise
     finally:
         remove_build_dir(build_dir)

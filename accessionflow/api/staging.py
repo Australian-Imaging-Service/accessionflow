@@ -212,7 +212,7 @@ def for_each_accession(
     list[tuple[T, str]]
         each accession the step failed on, with its error message (which gives the
         traceback too), in order. Pass the messages to `log_stage_summary`, and the
-        failed accessions and their messages to `finish_claim`
+        failed accessions and their messages to `FinishClaim`
     """
     failures: list[tuple[T, str]] = []
     for accession in tqdm(accessions, desc):

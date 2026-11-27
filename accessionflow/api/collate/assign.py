@@ -23,7 +23,7 @@ def assign_labels(
 
     Unlike the ``label`` stage, it doesn't use placeholder labels for fields missing
     from the metadata: it raises, so the accession isn't delivered, and its files are
-    left for `finish_claim` to move to the unprocessed directory.
+    left for `FinishClaim` to move to the unprocessed directory.
 
     The accession is changed in place and returned.
 

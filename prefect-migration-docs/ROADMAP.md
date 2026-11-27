@@ -90,7 +90,12 @@ These apply to every stage.
     any step that changes the file system, so that a run with invalid arguments fails
     without creating, moving or deleting anything. This matters most once collation
     moves its input files: a run that fails after the claim leaves them in the
-    processing area.
+    processing area. A step that has configuration is a `Step`
+    (`accessionflow/api/step.py`): it is made with its configuration, which the caller
+    checks with `check_configuration()` for every step of a run before any step acts,
+    and it is run with `act(...)` on the run's data. `act` never checks the
+    configuration itself; a step that needs what the check derives (e.g. the recursion
+    plan) refuses to act if it wasn't checked.
 
 ## Target layout
 
@@ -213,7 +218,8 @@ removals (see [Removed](#removed)).
 Status: **Done** (2026-11-26). The composites, built in steps C1–C5, are recorded in
 [`CHANGELOG.md`](CHANGELOG.md) (Step API, "Phase 1 composites"): the four composites in
 `api/collate/composites.py`, each one stage of a run (`build_filesets`: steps 7–9,
-`apply_fileset_metadata`: 10–13, `build_accessions`: 14–15, `move_accessions`: 16–18),
+`apply_fileset_metadata`: 10–13, `build_accessions`: 14–15, `move_accessions`: 16–18,
+since made [step classes](#step-classes)),
 and the folder composite `collate_files` in `sources/folder/api/collate_api.py`,
 alongside today's `collate()`. The tests of `from_paths` and of the old `collate()` have
 been ported to them, as the regression net.
@@ -309,6 +315,27 @@ layout) with the CLI step.
   removed (see `CHANGELOG.md`, Changed). The XNAT server and deidentify tests in
   `cli/tests/test_cli.py` are left for Phase 7.
 
+### Step classes
+
+Status: **Done** (2026-11-27), recorded in [`CHANGELOG.md`](CHANGELOG.md) (Step API and
+Changed). Each step of a run checks its configuration and then acts on the run's data,
+so the steps are classes on the base class `Step` (`accessionflow/api/step.py`, design
+principle 12):
+
+| Step class | Was |
+| --- | --- |
+| `ReserveRunUid` | `create_run_directory` |
+| `ClaimInputFiles` | `claim_input_files` |
+| `BuildFilesets` | `build_filesets`, with `check_datatypes` and `plan_recursion` as its check |
+| `ApplyFilesetMetadata` | `apply_fileset_metadata`, with `merge_path_metadata` and `load_metadata_tables` as its check |
+| `BuildAccessions` | `build_accessions`, with `load_metadata_tables` as its check |
+| `MoveAccessions` | `move_accessions`, which now checks the label levels and constant labels before any accession is delivered |
+| `FinishClaim` | `finish_claim` |
+| `AbandonClaim` | `abandon_claim` |
+
+The folder `collate` makes the eight steps, checks every one, and then runs them. The
+combiner's steps are still functions, apart from its use of `ReserveRunUid`.
+
 ### Store-neutral labels
 
 Status: Planned (2026-11-26). The next step of Phase 1.
@@ -355,7 +382,7 @@ project, subject and session, and nothing about stores.
     `StudyComments`, `PatientID` and `AccessionNumber`), `--scan` (by default
     `SeriesDescription`) and `--constant-project-id`.
   - `cli/label_options.py` shrinks to that one fixed set.
-  - `store_type` leaves `assign_labels`, `move_accessions` and the folder `collate`,
+  - `store_type` leaves `assign_labels`, `MoveAccessions` and the folder `collate`,
     and the combiner no longer compares it.
   - The contract snapshot's `ADDED` set for `collate folder` shrinks to match. No
     released parameter changes.
@@ -412,11 +439,12 @@ Status: Planned.
 - Export the Phase 1 steps and composites from `accessionflow.api.collate` (`__all__`),
   and document them in `docs/source/reference/api.rst`.
 - **Pickle contract test**: each step's arguments and return values round-trip through
-  `pickle`, including `Accession`, `FileSet`, `Path` and the option types. This includes
+  `pickle`, including `Accession`, `FileSet`, `Path` and the option types, and so do
+  the configured step objects (`Step`), after `check_configuration()`. This includes
   datatype classes, e.g. in `RecursionPlan.ignore_datatypes`: check that parametrised
   ones such as `DirectoryOf[Json]` pickle. Anything that
   fails is fixed here, not worked around in the flows repository.
-- **Retry tests**: running `claim_input_files` again with the same `run_uid` after it
+- **Retry tests**: running `ClaimInputFiles.act` again with the same `run_uid` after it
   stopped part way claims the remaining files and nothing twice, and running
   `move_to_target` again after a failure part way through a save gives the same output
   as a clean run.

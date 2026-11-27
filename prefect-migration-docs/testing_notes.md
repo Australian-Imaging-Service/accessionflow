@@ -182,9 +182,17 @@ same tests, and `git stash pop`.
   `cli/tests/test_runner.py`.
 - **Collate steps (Phase 1)**: `api/tests/collate/`, one test module per step module,
   using small trees of plain files in `tmp_path`, so they run in about a second.
+- **Step classes (Phase 1)**: `api/tests/test_step.py` tests the `Step` base class.
+  `api/tests/collate/test_composites.py` checks that each step's bad configuration
+  raises from `check_configuration()`, that `act()` refuses an unchecked step, and
+  that checked steps pickle. `sources/folder/tests/test_collate.py` checks that a bad
+  configuration in any step fails the folder `collate` before anything is created. A
+  test checks a step and acts with `checked(step).act(...)` (`checked` is in
+  `api/tests/collate/collect.py`). To patch a step, patch its class's `act`, e.g.
+  `monkeypatch.setattr(BuildFilesets, "act", ...)`.
 - **Collate composites (Phase 1)**: `api/tests/collate/test_composites.py`
-  (`build_filesets`, `apply_fileset_metadata`, `build_accessions`,
-  `move_accessions`) and
+  (`BuildFilesets`, `ApplyFilesetMetadata`, `BuildAccessions`,
+  `MoveAccessions`) and
   `sources/folder/tests/test_collate.py` (the folder `collate`), which holds the
   end-to-end race test: files that arrive during a run wait for the next. Its DICOM
   tests take about 4 minutes in all.

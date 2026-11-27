@@ -10,9 +10,9 @@ from fileformats.text import Csv, Plain
 
 from accessionflow.api.collate import (
     ClaimedFiles,
+    ClaimInputFiles,
     RecursionPlan,
     check_datatypes,
-    claim_input_files,
     classify_paths,
     disable_metadata_reading,
     drop_ignored_filesets,
@@ -105,7 +105,7 @@ def _claim_tree(
         path.write_text("{}" if path.suffix == ".json" else "a,b\n1,2\n")
         files.append(path)
     roots = [inbox / r for r in source_roots] if source_roots is not None else [inbox]
-    return claim_input_files(files, tmp_path / "proc", RUN_UID, roots)
+    return ClaimInputFiles(tmp_path / "proc").act(files, RUN_UID, roots)
 
 
 def _expand(
@@ -174,7 +174,7 @@ def test_expand_two_source_roots(tmp_path: Path) -> None:
 
 
 def test_expand_empty_claim(tmp_path: Path) -> None:
-    claimed = claim_input_files([], tmp_path / "proc", RUN_UID)
+    claimed = ClaimInputFiles(tmp_path / "proc").act([], RUN_UID)
     assert _expand(claimed, [Json]) == []
 
 

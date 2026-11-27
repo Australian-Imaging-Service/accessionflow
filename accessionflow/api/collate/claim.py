@@ -20,6 +20,7 @@ from accessionflow.api.staging import (
     prepare_build_dir,
     prune_empty_dirs,
 )
+from accessionflow.api.step import Step
 from accessionflow.helpers.logging import logger
 from accessionflow.model.accession import Accession
 
@@ -31,13 +32,13 @@ __all__ = [
     "UNPROCESSED_NAME_DEFAULT",
     "ERROR_NAME_DEFAULT",
     "UNPROCESSED_MANIFEST",
+    "AbandonClaim",
+    "ClaimInputFiles",
     "ClaimedFiles",
-    "abandon_claim",
-    "claim_input_files",
-    "finish_claim",
+    "FinishClaim",
+    "ReserveRunUid",
     "make_run_uid",
     "RUN_UID_ATTEMPTS",
-    "create_run_directory",
     "write_error_record",
 ]
 
@@ -47,7 +48,7 @@ __all__ = [
 PROCESSING_NAME_DEFAULT = "__processing__"
 
 # The subdirectories of the output directory that the CLI moves a run directory to by
-# default, when files are left (finish_claim) or the run fails (abandon_claim). The
+# default, when files are left (FinishClaim) or the run fails (AbandonClaim). The
 # combiner moves the run accessions of a group that fails to the same error directory
 UNPROCESSED_NAME_DEFAULT = "__unprocessed__"
 ERROR_NAME_DEFAULT = "__error__"
@@ -114,7 +115,7 @@ def make_run_uid(
 
 @attrs.frozen(hash=False)
 class ClaimedFiles:
-    """The files a run has claimed, as returned by `claim_input_files`
+    """The files a run has claimed, as returned by `ClaimInputFiles`
 
     Attributes
     ----------
@@ -193,33 +194,44 @@ class ClaimedFiles:
 RUN_UID_ATTEMPTS = 5
 
 
-def create_run_directory(output_dir: Path) -> tuple[str, Path]:
-    """Makes a new run's UID (`make_run_uid`) and creates its build directory
-    exclusively (`prepare_build_dir`), making another UID if another run has already
-    taken it. Used by the collate and combine composites
+@attrs.define
+class ReserveRunUid(Step):
+    """Reserves an unused UID for a run, which names everything the run creates, by
+    creating the run's build directory, ``<output_dir>/__build__/<run_uid>/``,
+    exclusively (`prepare_build_dir`). If another run has already taken the UID, it
+    makes another (`make_run_uid`). Used by the collate and combine composites. Its
+    configuration needs no checks
 
     Parameters
     ----------
     output_dir : Path
         the directory the run delivers to, which holds the build directories
-
-    Returns
-    -------
-    tuple[str, Path]
-        the run's UID, and its build directory
-
-    Raises
-    ------
-    RuntimeError
-        if every one of `RUN_UID_ATTEMPTS` UIDs is taken
     """
-    for _ in range(RUN_UID_ATTEMPTS):
-        run_uid = make_run_uid()
-        try:
-            return run_uid, prepare_build_dir(output_dir, run_uid, exclusive=True)
-        except FileExistsError:
-            logger.debug("Run UID '%s' is taken, making another", run_uid)
-    raise RuntimeError(f"Couldn't make an unused run UID in '{output_dir}'")
+
+    output_dir: Path = attrs.field(converter=Path)
+
+    def act(self) -> tuple[str, Path]:
+        """Makes the run's UID and creates its build directory
+
+        Returns
+        -------
+        tuple[str, Path]
+            the run's UID, and its build directory
+
+        Raises
+        ------
+        RuntimeError
+            if every one of `RUN_UID_ATTEMPTS` UIDs is taken
+        """
+        for _ in range(RUN_UID_ATTEMPTS):
+            run_uid = make_run_uid()
+            try:
+                return run_uid, prepare_build_dir(
+                    self.output_dir, run_uid, exclusive=True
+                )
+            except FileExistsError:
+                logger.debug("Run UID '%s' is taken, making another", run_uid)
+        raise RuntimeError(f"Couldn't make an unused run UID in '{self.output_dir}'")
 
 
 def write_error_record(directory: Path, error: BaseException | str) -> Path:
@@ -241,12 +253,8 @@ def write_error_record(directory: Path, error: BaseException | str) -> Path:
     return path
 
 
-def claim_input_files(
-    input_files: ty.Sequence[Path],
-    working_dir: Path,
-    run_uid: str,
-    source_roots: ty.Sequence[Path] | None = None,
-) -> ClaimedFiles:
+@attrs.define
+class ClaimInputFiles(Step):
     """Moves the files to collate into the run's own directory in the processing area,
     ``working_dir / run_uid / files``, so that the rest of the run works on a fixed set of
     files while the input directory keeps changing. A file that arrives after the files
@@ -272,80 +280,94 @@ def claim_input_files(
     claiming the same file at the same time can both copy it, so runs that may overlap
     need the input on the same file system as the processing area.
 
+    Its configuration needs no checks: whether the files are in the source roots depends
+    on the files, so `act` checks it.
+
     Parameters
     ----------
-    input_files : Sequence[Path]
-        the files to claim, e.g. from `list_input_files`. Ignored on a retry, which uses
-        the saved plan
     working_dir : Path
-        the directory the run's own directory is made in, ``working_dir / run_uid``,
+        the directory each run's own directory is made in, ``working_dir / run_uid``,
         e.g. ``<output_dir>/__processing__`` (`PROCESSING_NAME_DEFAULT`)
-    run_uid : str
-        the run's UID, from `make_run_uid`, which names its directory
-    source_roots : Sequence[Path], optional
-        the directories the files were listed from. Every file must be in one of them.
-        By default, the directory of each file
-
-    Returns
-    -------
-    ClaimedFiles
-        the files now in the run directory, with their original paths. With no files to
-        claim, an empty record, and nothing is created
-
-    Raises
-    ------
-    ValueError
-        if ``run_uid`` isn't a valid directory name, a file isn't in any of the source
-        roots, or the roots have no common directory. Nothing is moved
     """
-    check_run_uid(run_uid, "claim directory")
-    run_dir = Path(working_dir).absolute() / run_uid
-    if (run_dir / CLAIMED_MANIFEST).exists():
-        plan = _read_plan(run_dir)
-        planned = {entry["original"] for entry in plan["files"]}
-        if planned != {str(Path(p).absolute()) for p in input_files}:
-            logger.debug(
-                "Retrying the claim of run '%s' with its saved plan, which differs "
-                "from the files given",
-                run_uid,
-            )
-    else:
-        plan = _make_plan(input_files, source_roots)
-        if not plan["files"]:
-            return ClaimedFiles._from_plan(run_dir, plan)
-        _write_plan(run_dir, plan)
 
-    n_copied = 0
-    for entry in plan["files"]:
-        n_copied += _claim_one(
-            Path(entry["original"]), run_dir / CLAIMED_FILES_DIRNAME / entry["claimed"]
-        )
-    claimed = ClaimedFiles._from_plan(run_dir, plan)
-    if n_copied:
-        logger.warning(
-            "%s of %s files were copied into '%s' from a different file system, "
-            "which is slower than moving them and not atomic. To move them, put the "
-            "input on the same file system as the processing area (by default the "
-            "output directory).",
-            n_copied,
+    working_dir: Path = attrs.field(converter=Path)
+
+    def act(
+        self,
+        input_files: ty.Sequence[Path],
+        run_uid: str,
+        source_roots: ty.Sequence[Path] | None = None,
+    ) -> ClaimedFiles:
+        """Claims the files into ``working_dir / run_uid / files``
+
+        Parameters
+        ----------
+        input_files : Sequence[Path]
+            the files to claim, e.g. from `list_input_files`. Ignored on a retry, which
+            uses the saved plan
+        run_uid : str
+            the run's UID, from `ReserveRunUid`, which names its directory
+        source_roots : Sequence[Path], optional
+            the directories the files were listed from. Every file must be in one of
+            them. By default, the directory of each file
+
+        Returns
+        -------
+        ClaimedFiles
+            the files now in the run directory, with their original paths. With no
+            files to claim, an empty record, and nothing is created
+
+        Raises
+        ------
+        ValueError
+            if ``run_uid`` isn't a valid directory name, a file isn't in any of the
+            source roots, or the roots have no common directory. Nothing is moved
+        """
+        check_run_uid(run_uid, "claim directory")
+        run_dir = self.working_dir.absolute() / run_uid
+        if (run_dir / CLAIMED_MANIFEST).exists():
+            plan = _read_plan(run_dir)
+            planned = {entry["original"] for entry in plan["files"]}
+            if planned != {str(Path(p).absolute()) for p in input_files}:
+                logger.debug(
+                    "Retrying the claim of run '%s' with its saved plan, which differs "
+                    "from the files given",
+                    run_uid,
+                )
+        else:
+            plan = _make_plan(input_files, source_roots)
+            if not plan["files"]:
+                return ClaimedFiles._from_plan(run_dir, plan)
+            _write_plan(run_dir, plan)
+
+        n_copied = 0
+        for entry in plan["files"]:
+            n_copied += _claim_one(
+                Path(entry["original"]),
+                run_dir / CLAIMED_FILES_DIRNAME / entry["claimed"],
+            )
+        claimed = ClaimedFiles._from_plan(run_dir, plan)
+        if n_copied:
+            logger.warning(
+                "%s of %s files were copied into '%s' from a different file system, "
+                "which is slower than moving them and not atomic. To move them, put the "
+                "input on the same file system as the processing area (by default the "
+                "output directory).",
+                n_copied,
+                len(plan["files"]),
+                run_dir,
+            )
+        logger.info(
+            "Claimed %s of %s files into '%s'",
+            len(claimed.files),
             len(plan["files"]),
             run_dir,
         )
-    logger.info(
-        "Claimed %s of %s files into '%s'",
-        len(claimed.files),
-        len(plan["files"]),
-        run_dir,
-    )
-    return claimed
+        return claimed
 
 
-def finish_claim(
-    claimed: ClaimedFiles,
-    unprocessed_dir: Path,
-    failed: ty.Sequence[tuple[Accession, str]] = (),
-    ignored: ty.Sequence[FileSet] = (),
-) -> list[Path]:
+@attrs.define
+class FinishClaim(Step):
     """Finishes a run's claim once its accessions have been staged. If no claimed files
     are left, the run directory is removed. Otherwise the whole run directory, with its
     plan, is moved to ``unprocessed_dir / run_uid``, after recording why each file was
@@ -363,78 +385,106 @@ def finish_claim(
     input. It can be retried: once the run directory has been moved, a second call
     returns the files it moved.
 
+    Its configuration needs no checks.
+
     Parameters
     ----------
-    claimed : ClaimedFiles
-        the run's claimed files, from `claim_input_files`
     unprocessed_dir : Path
         where a run directory with files left in it is moved to
-    failed : Sequence[tuple[Accession, str]], optional
-        the accessions that failed to stage, each with its error message
-    ignored : Sequence[FileSet], optional
-        the file-sets of ignored datatypes, dropped by `drop_ignored_filesets`
-
-    Returns
-    -------
-    list[Path]
-        the files left, at their paths in the unprocessed directory, sorted. Empty if
-        none were left
     """
-    run_dir = claimed.run_dir
-    dest = Path(unprocessed_dir) / run_dir.name
-    if not run_dir.exists():
-        return _files_in(dest / CLAIMED_FILES_DIRNAME)
-    leftovers = _tidy_run_dir(claimed)
-    if not leftovers:
-        shutil.rmtree(run_dir)
-        return []
-    reasons = _leftover_reasons(claimed, leftovers, failed, ignored)
-    (run_dir / UNPROCESSED_MANIFEST).write_text(json.dumps(reasons, indent=2))
-    moved_dir = _move_run_dir(run_dir, Path(unprocessed_dir))
-    counts: dict[str, int] = {}
-    for entry in reasons:
-        counts[entry["reason"]] = counts.get(entry["reason"], 0) + 1
-    logger.warning(
-        "Moved %s files that weren't staged (%s) to '%s'",
-        len(leftovers),
-        ", ".join(f"{n} {reason}" for reason, n in sorted(counts.items())),
-        moved_dir,
-    )
-    return _files_in(moved_dir / CLAIMED_FILES_DIRNAME)
+
+    unprocessed_dir: Path = attrs.field(converter=Path)
+
+    def act(
+        self,
+        claimed: ClaimedFiles,
+        failed: ty.Sequence[tuple[Accession, str]] = (),
+        ignored: ty.Sequence[FileSet] = (),
+    ) -> list[Path]:
+        """Removes the run directory, or moves it to the unprocessed directory
+
+        Parameters
+        ----------
+        claimed : ClaimedFiles
+            the run's claimed files, from `ClaimInputFiles`
+        failed : Sequence[tuple[Accession, str]], optional
+            the accessions that failed to stage, each with its error message
+        ignored : Sequence[FileSet], optional
+            the file-sets of ignored datatypes, dropped by `drop_ignored_filesets`
+
+        Returns
+        -------
+        list[Path]
+            the files left, at their paths in the unprocessed directory, sorted. Empty
+            if none were left
+        """
+        run_dir = claimed.run_dir
+        dest = self.unprocessed_dir / run_dir.name
+        if not run_dir.exists():
+            return _files_in(dest / CLAIMED_FILES_DIRNAME)
+        leftovers = _tidy_run_dir(claimed)
+        if not leftovers:
+            shutil.rmtree(run_dir)
+            return []
+        reasons = _leftover_reasons(claimed, leftovers, failed, ignored)
+        (run_dir / UNPROCESSED_MANIFEST).write_text(json.dumps(reasons, indent=2))
+        moved_dir = _move_run_dir(run_dir, self.unprocessed_dir)
+        counts: dict[str, int] = {}
+        for entry in reasons:
+            counts[entry["reason"]] = counts.get(entry["reason"], 0) + 1
+        logger.warning(
+            "Moved %s files that weren't staged (%s) to '%s'",
+            len(leftovers),
+            ", ".join(f"{n} {reason}" for reason, n in sorted(counts.items())),
+            moved_dir,
+        )
+        return _files_in(moved_dir / CLAIMED_FILES_DIRNAME)
 
 
-def abandon_claim(
-    claimed: ClaimedFiles, error_dir: Path, error: BaseException | str
-) -> Path:
+@attrs.define
+class AbandonClaim(Step):
     """Moves the claim of a run that failed after the claim, e.g. on a file no datatype
     recognised, to ``error_dir / run_uid``, with the error recorded in its
     ``error.json`` (`ERROR_MANIFEST`), so its files can be dealt with and the
-    processing area doesn't keep them. Call it when the run raises, then re-raise.
+    processing area doesn't keep them. Act when the run raises, then re-raise.
+
+    Its configuration needs no checks.
 
     Parameters
     ----------
-    claimed : ClaimedFiles
-        the run's claimed files, from `claim_input_files`
     error_dir : Path
         where the run directory is moved to
-    error : BaseException or str
-        the error the run failed with
-
-    Returns
-    -------
-    Path
-        the run directory's new path, or where it would have been if the run claimed
-        nothing
     """
-    run_dir = claimed.run_dir
-    dest = Path(error_dir) / run_dir.name
-    if not run_dir.exists():
-        return dest
-    _tidy_run_dir(claimed)
-    write_error_record(run_dir, error)
-    moved_dir = _move_run_dir(run_dir, Path(error_dir))
-    logger.error("Moved the claim of failed run '%s' to '%s'", run_dir.name, moved_dir)
-    return moved_dir
+
+    error_dir: Path = attrs.field(converter=Path)
+
+    def act(self, claimed: ClaimedFiles, error: BaseException | str) -> Path:
+        """Moves the run directory to the error directory, with the error recorded
+
+        Parameters
+        ----------
+        claimed : ClaimedFiles
+            the run's claimed files, from `ClaimInputFiles`
+        error : BaseException or str
+            the error the run failed with
+
+        Returns
+        -------
+        Path
+            the run directory's new path, or where it would have been if the run
+            claimed nothing
+        """
+        run_dir = claimed.run_dir
+        dest = self.error_dir / run_dir.name
+        if not run_dir.exists():
+            return dest
+        _tidy_run_dir(claimed)
+        write_error_record(run_dir, error)
+        moved_dir = _move_run_dir(run_dir, self.error_dir)
+        logger.error(
+            "Moved the claim of failed run '%s' to '%s'", run_dir.name, moved_dir
+        )
+        return moved_dir
 
 
 def _tidy_run_dir(claimed: ClaimedFiles) -> list[Path]:

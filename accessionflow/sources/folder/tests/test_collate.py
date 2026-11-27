@@ -10,7 +10,7 @@ import pytest
 from fileformats.application import Json, Zip
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
-from fileformats.generic import DirectoryOf
+from fileformats.generic import Directory, DirectoryOf
 from fileformats.medimage import DicomDir, DicomSeries
 from fileformats.text import Csv
 from medimages4tests.dummy.dicom.pet.wholebody.siemens.biograph_vision.vr20b import (
@@ -22,6 +22,7 @@ from accessionflow.api.collate import (
     CLAIMED_MANIFEST,
     ERROR_MANIFEST,
     UNPROCESSED_MANIFEST,
+    BuildFilesets,
     list_input_files,
 )
 from accessionflow.api.collate import claim as claim_module
@@ -30,7 +31,6 @@ from accessionflow.helpers.arg_types import IDSpec, MetadataTable, PathMetadataP
 from accessionflow.helpers.run_uid import RUN_UID_RE
 from accessionflow.model.accession import Accession
 from accessionflow.model.resource import Resource
-from accessionflow.sources.folder.api import collate_api
 from accessionflow.sources.folder.api.collate_api import collate
 
 LABEL_FIELDS = {"project": "project", "subject": "sess", "session": "visit"}
@@ -153,6 +153,36 @@ def test_accession_that_cant_be_labelled(dirs: Dirs, tmp_path: Path) -> None:
     assert entry["original"] == str(dirs.inbox / "s2" / "b.json")
 
 
+def _missing_column_table(tmp_path: Path) -> MetadataTable:
+    path = tmp_path / "tables" / "bad.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("Other,visit\ns1,v1\n")
+    return MetadataTable(str(path), "accession", "Session=sess")
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["contradicting datatypes", "generic directory", "table column", "constant label"],
+)
+def test_bad_configuration_fails_before_anything_is_created(
+    dirs: Dirs, tmp_path: Path, case: str
+) -> None:
+    """Every step's configuration is checked before the run UID is reserved, so a bad
+    one in any step leaves the input as it was and creates nothing"""
+    _write(dirs.inbox, {"s1/a.json": "{}"})
+    options: dict[str, ty.Any] = {
+        "contradicting datatypes": {"ignore_datatypes": [Json]},  # BuildFilesets
+        "generic directory": {"datatypes": [Directory]},  # BuildFilesets
+        "table column": {"metadata_tables": [_missing_column_table(tmp_path)]},
+        "constant label": {"constant_labels": {"site": "X"}},  # MoveAccessions
+    }[case]
+    with pytest.raises(ValueError):
+        _run(dirs, **options)
+    assert _files_under(dirs.inbox) == [dirs.inbox / "s1" / "a.json"]
+    assert not dirs.output.exists()
+    assert not dirs.error.exists()
+
+
 def test_run_that_raises_is_moved_to_the_error_dir(dirs: Dirs, tmp_path: Path) -> None:
     _write(dirs.inbox, {"s1/a.json": "{}", "s1/notes.txt": "x"})
     with pytest.raises(FormatMismatchError) as excinfo:
@@ -209,21 +239,21 @@ def test_files_that_arrive_during_a_run_wait_for_the_next(
     """The race test: a file added to the input directory after the listing stays there
     and is collated by the next run"""
     _write(dirs.inbox, {"s1/a.json": "{}"})
-    real_collect = collate_api.build_filesets
+    real_act = BuildFilesets.act
 
-    def arrive_then_collect(*args: ty.Any, **kwargs: ty.Any) -> ty.Any:
+    def arrive_then_act(self: BuildFilesets, *args: ty.Any, **kwargs: ty.Any) -> ty.Any:
         _write(dirs.inbox, {"s2/late.json": "{}"})
-        return real_collect(*args, **kwargs)
+        return real_act(self, *args, **kwargs)
 
     table = _visit_table(tmp_path, "s1", "s2")
-    monkeypatch.setattr(collate_api, "build_filesets", arrive_then_collect)
+    monkeypatch.setattr(BuildFilesets, "act", arrive_then_act)
     assert _run(dirs, metadata_tables=[table]) == []
     assert [p.relative_to(dirs.inbox).as_posix() for p in _files_under(dirs.inbox)] == [
         "s2/late.json"
     ]
     assert [n.split("_")[0] for n in _delivered(dirs)] == ["P.s1.v1"]
 
-    monkeypatch.setattr(collate_api, "build_filesets", real_collect)
+    monkeypatch.setattr(BuildFilesets, "act", real_act)
     assert _run(dirs, metadata_tables=[table]) == []
     assert sorted(n.split("_")[0] for n in _delivered(dirs)) == ["P.s1.v1", "P.s2.v1"]
     assert _files_under(dirs.inbox) == []

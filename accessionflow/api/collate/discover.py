@@ -106,7 +106,7 @@ def list_input_files(
 def list_source_roots(
     input_paths: ty.Sequence[str | Path], input_files: ty.Sequence[Path]
 ) -> list[Path]:
-    """The directories the files were listed from, for `claim_input_files`, so that
+    """The directories the files were listed from, for `ClaimInputFiles`, so that
     the top-level entries of an input directory are classified as they were in it
 
     Parameters

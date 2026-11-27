@@ -45,7 +45,7 @@ def warn_if_hardlinks_unavailable(
     Once collate claims its input, the accessions' files are in the processing area,
     which by default is on the same file system as the output directory, so this only
     warns if the processing area has been put elsewhere. Input on another file system
-    is copied by the claim instead, which `claim_input_files` warns about.
+    is copied by the claim instead, which `ClaimInputFiles` warns about.
 
     Parameters
     ----------
@@ -156,7 +156,7 @@ def remove_claimed_files(accession: Accession, claimed: ClaimedFiles) -> list[Pa
     """Deletes an accession's files from the run's processing area, once it has been
     staged. A file is deleted, and so is the directory of a directory datatype. Paths
     that are already gone are skipped, so it can be retried. Directories left empty are
-    for `finish_claim` to remove.
+    for `FinishClaim` to remove.
 
     Parameters
     ----------
@@ -229,7 +229,7 @@ def move_to_target(
     output_dir : Path
         the target directory the accession is moved into
     claimed : ClaimedFiles
-        the run's claimed files, from `claim_input_files`
+        the run's claimed files, from `ClaimInputFiles`
     copy_mode : FileSet.CopyMode, optional
         how the files are saved, by default hard-linked if possible, otherwise copied
     collation_map : dict[type[FileSet], FileSet.CopyCollation], optional

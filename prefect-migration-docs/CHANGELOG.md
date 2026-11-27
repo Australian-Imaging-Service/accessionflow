@@ -280,6 +280,22 @@ contract, so each entry says "CLI unchanged".
 
 ### Changed
 
+- 2026-11-27, Phase 1, step classes: the steps of a collate run are classes on the new
+  base class `accessionflow.api.step.Step`, made with their configuration, which
+  `check_configuration()` checks, and run with `act(...)`, which never checks it (see
+  Step API). The folder `collate` makes its eight steps, checks every one, and then
+  runs them, so a bad configuration in any step fails before anything is created. Its
+  signature is unchanged. Two changes in behaviour:
+  - Constant labels that aren't label levels now fail the run in
+    `MoveAccessions.check_configuration`, before the claim. Before, each accession
+    failed with the error as it was labelled.
+  - Empty `label_fields` fail the same way.
+
+  Tests: `api/tests/test_step.py`, the configuration tests in
+  `api/tests/collate/test_composites.py`, and
+  `test_bad_configuration_fails_before_anything_is_created` in
+  `sources/folder/tests/test_collate.py`. The tests of the eight functions call the
+  steps. CLI unchanged. PR: pending.
 - 2026-11-26, documents, `ROADMAP.md` only: adds the Phase 1 section "Store-neutral
   labels" (steps N1–N5), the next step of Phase 1, before Phase 2. Collate will label
   every accession with project, subject and session only, with no `--store` and no
@@ -1351,6 +1367,30 @@ left for the next combine.
 `helpers/tests/test_run_uid.py` and `model/tests/test_labels.py`.
 
 #### Dated entries
+
+- 2026-11-27, Phase 1, step classes:
+  - added: `accessionflow.api.step.Step`, the base class of a step:
+    `check_configuration()`, the private hooks `_check_configuration()` and
+    `_require_checked()`, and the abstract `act(...)`
+  - added, in `accessionflow.api.collate`, the eight step classes, each replacing a
+    function:
+    - `ReserveRunUid(output_dir).act() -> (run_uid, build_dir)`, replacing
+      `create_run_directory(output_dir)`
+    - `ClaimInputFiles(working_dir).act(input_files, run_uid, source_roots=None) -> ClaimedFiles`
+    - `BuildFilesets(datatypes, ignore_datatypes=(), recursive=False, allow_unrecognised=()).act(claimed) -> ClassifiedFilesets`.
+      Its check runs `check_datatypes` and `plan_recursion`, so `act` no longer takes
+      a `RecursionPlan`
+    - `ApplyFilesetMetadata(dont_read_metadata=(), path_metadata=(), path_metadata_regex=(), metadata_tables=()).act(filesets, claimed) -> list[FileSet]`.
+      Its check runs `merge_path_metadata` and `load_metadata_tables`
+    - `BuildAccessions(accession_uid_field, acquisition_id_field=(), resource_field=(), on_resource_clash="error", metadata_tables=()).act(filesets, run_uid=None) -> list[Accession]`
+    - `MoveAccessions(output_dir, label_fields, *, acquisition_field, constant_labels, store_type, copy_mode, collation_map, conversion_map, raise_errors).act(accessions, build_dir, claimed) -> list[tuple[Accession, str]]`
+    - `FinishClaim(unprocessed_dir).act(claimed, failed=(), ignored=()) -> list[Path]`
+    - `AbandonClaim(error_dir).act(claimed, error) -> Path`
+  - removed: the functions `create_run_directory`, `claim_input_files`,
+    `build_filesets`, `apply_fileset_metadata`, `build_accessions`,
+    `move_accessions`, `finish_claim` and `abandon_claim`. `check_datatypes`,
+    `plan_recursion`, `merge_path_metadata`, `load_metadata_tables` and the smaller
+    steps stay functions
 
 - 2026-11-26, Phase 1, removals:
   - renamed: `accessionflow.sources.folder.api.collate_api.collate_files` is
