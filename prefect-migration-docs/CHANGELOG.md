@@ -1382,6 +1382,22 @@ left for the next combine.
 
 #### Dated entries
 
+- 2026-11-27, Phase 1, step clean-up, directory ownership:
+  - changed: `ReserveRunUid(working_dir).act() -> run_uid`, replacing
+    `ReserveRunUid(output_dir).act() -> (run_uid, build_dir)`. It reserves the UID by
+    creating the claim's run directory, `<working_dir>/<run_uid>/`, exclusively. Its
+    `clean_up(run_uid, error=None)` removes that directory if it's empty, replacing
+    `clean_up(build_dir)`
+  - changed: `MoveAccessions.act(accessions, run_uid, claimed)`, replacing
+    `act(accessions, build_dir, claimed)`. It creates the build directory itself
+    (`prepare_build_dir`, reused on a retry), and its new `clean_up(run_uid,
+    error=None)` removes it
+  - added: `reserve_run_uid(parent_dir) -> (run_uid, run_dir)` in
+    `accessionflow.api.collate`, which makes an unused UID by creating
+    `parent_dir/<run_uid>` exclusively, retrying up to `RUN_UID_ATTEMPTS` times
+  - added: `run_build_dir(output_dir, run_uid) -> Path` in `accessionflow.api.staging`
+  - removed: `prepare_build_dir`'s `exclusive` argument. Use `reserve_run_uid`
+
 - 2026-11-27, Phase 1, step clean-up:
   - added: `Step.clean_up(*args, error=None)`, which disposes of what `act` created
     once the run has ended, given the run data that names it and the run's error. It
@@ -1569,6 +1585,12 @@ left for the next combine.
 
 ### Staging layout
 
+- 2026-11-27, Phase 1, step clean-up: a new collate run reserves its UID by creating
+  its directory in the processing area, `<working_dir>/<run_uid>/`, instead of its
+  build directory, `<output_dir>/__build__/<run_uid>/`, which is now created when the
+  accessions are moved. A run with nothing to claim leaves an empty processing area
+  (`__processing__`) behind, but no run directory. The combiner still reserves its UID
+  by its build directory. No need to drain staged data. CLI unchanged.
 - 2026-11-26, Phase 1, removals: `from_paths`' run-UID form, `<6 hex>YYYYMMDDHHMMSS`,
   is no longer recognised in a directory name. Unlabelled accessions staged by an
   earlier version (`_.<uid>`) are still labelled by `label`, and the names it gives

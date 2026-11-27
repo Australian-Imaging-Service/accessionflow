@@ -10,7 +10,13 @@ import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 
-from accessionflow.api.staging import for_each_accession
+from accessionflow.api.staging import (
+    BUILD_NAME_DEFAULT,
+    for_each_accession,
+    prepare_build_dir,
+    remove_build_dir,
+    run_build_dir,
+)
 from accessionflow.api.step import Step
 from accessionflow.helpers.arg_types import (
     ClashSpec,
@@ -23,7 +29,7 @@ from accessionflow.helpers.arg_types import (
 from accessionflow.model.accession import Accession
 
 from .assign import assign_labels
-from .claim import ClaimedFiles, ReserveRunUid
+from .claim import ClaimedFiles, reserve_run_uid
 from .classify import (
     RecursionPlan,
     check_datatypes,
@@ -303,6 +309,11 @@ class MoveAccessions(Step):
     run directory. Pass the failures to `FinishClaim` as ``failed``, so that their files
     are recorded as failed in the unprocessed directory.
 
+    Each accession is built in the run's build directory,
+    ``<output_dir>/__build__/<run_uid>/`` (`run_build_dir`), which `act` creates, and is
+    then renamed into place, so the target directory never holds a part-built one.
+    `clean_up` removes the build directory.
+
     Parameters
     ----------
     output_dir : Path
@@ -351,7 +362,7 @@ class MoveAccessions(Step):
     def act(
         self,
         accessions: ty.Sequence[Accession],
-        build_dir: Path,
+        run_uid: str,
         claimed: ClaimedFiles,
     ) -> list[tuple[Accession, str]]:
         """Labels and delivers the accessions
@@ -360,8 +371,9 @@ class MoveAccessions(Step):
         ----------
         accessions : Sequence[Accession]
             the accessions to deliver, from `BuildAccessions`
-        build_dir : Path
-            the run's build directory, from `ReserveRunUid`
+        run_uid : str
+            the run's UID, which names its build directory and the accessions'
+            directories
         claimed : ClaimedFiles
             the run's claim, from `ClaimInputFiles`
 
@@ -377,6 +389,8 @@ class MoveAccessions(Step):
             if `check_configuration` hasn't been called
         """
         self._require_checked()
+        # A retry of the run reuses the build directory of its first attempt
+        build_dir = prepare_build_dir(self.output_dir, run_uid)
         warn_if_hardlinks_unavailable(
             accessions, build_dir, self.copy_mode, self.conversion_map
         )
@@ -403,6 +417,19 @@ class MoveAccessions(Step):
             accessions, deliver, "Delivering accessions", raise_errors=self.raise_errors
         )
 
+    def clean_up(self, run_uid: str, error: BaseException | None = None) -> None:
+        """Removes the run's build directory, however the run ended, unless it still
+        holds files, e.g. from a save that failed part way (`remove_build_dir`)
+
+        Parameters
+        ----------
+        run_uid : str
+            the run's UID, as given to `act`
+        error : BaseException, optional
+            the error the run raised, which doesn't change what is removed
+        """
+        remove_build_dir(run_build_dir(self.output_dir, run_uid))
+
 
 def combine_run_accessions(
     runs_dir: Path,
@@ -424,11 +451,12 @@ def combine_run_accessions(
     2. Lists the run accessions, grouped by their labels (`list_run_accessions`), and
        selects the quiet groups (`select_quiet_groups`). If none is quiet, nothing is
        created.
-    3. Reserves the combine run's UID and build directory (`ReserveRunUid`).
+    3. Reserves the combine run's UID by creating its build directory,
+       ``<output_dir>/__build__/<run_uid>/`` (`reserve_run_uid`).
     4. For each quiet group: `combine_accessions`, `deliver_combined` and
        `remove_run_accessions`. A group that fails has its run accessions moved to
        ``<error_dir>/<labels>_<run_uid>/`` (`abandon_group`).
-    5. Removes the build directory, however the run ends (`ReserveRunUid.clean_up`).
+    5. Removes the build directory, however the run ends (`remove_build_dir`).
 
     Errors are returned rather than logged: the caller summarises them.
 
@@ -471,12 +499,9 @@ def combine_run_accessions(
     groups = select_quiet_groups(list_run_accessions(runs_dir), quiet_period, now)
     if not groups:
         return []
-    reserve = ReserveRunUid(output_dir)
-    reserve.check_configuration()
-
     with ExitStack() as stack:
-        run_uid, build_dir = reserve.act()
-        reserve.register_clean_up(stack, build_dir)
+        run_uid, build_dir = reserve_run_uid(output_dir / BUILD_NAME_DEFAULT)
+        stack.callback(remove_build_dir, build_dir)
 
         def combine(group: RunAccessionGroup) -> Path:
             try:

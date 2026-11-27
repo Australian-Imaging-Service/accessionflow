@@ -26,7 +26,7 @@ from accessionflow.api.collate import (
 )
 from accessionflow.api.collate import composites as composites_module
 from accessionflow.api.collate import save as save_module
-from accessionflow.api.staging import prepare_build_dir, remove_build_dir
+from accessionflow.api.staging import run_build_dir
 from accessionflow.api.tests.collate.collect import checked
 from accessionflow.exceptions import LabelsNotAssignedError
 from accessionflow.helpers.arg_types import IDSpec, MetadataTable, PathMetadataRegex
@@ -390,7 +390,7 @@ def _collect_sessions(
         claimed,
         collected.accessions,
         output_dir,
-        prepare_build_dir(output_dir, RUN_UID),
+        run_build_dir(output_dir, RUN_UID),
     )
 
 
@@ -412,13 +412,14 @@ def test_move_accessions_one_of_each_case(
         return real_save(accession, *args, **kw)
 
     monkeypatch.setattr(save_module, "save_to_build_dir", save_fails_for_s2)
-    failed = checked(
+    move = checked(
         MoveAccessions(
             output_dir,
             LABEL_FIELDS,
             constant_labels={"project": "P"},
         )
-    ).act(accessions, build_dir, claimed)
+    )
+    failed = move.act(accessions, RUN_UID, claimed)
 
     assert len(failed) == 2
     assert all(a is b for (a, _), b in zip(failed, [s2, s3], strict=True))
@@ -443,7 +444,8 @@ def test_move_accessions_one_of_each_case(
     assert "disk full" in reasons["files/s2/s2a.json"]["error"]
     assert reasons["files/s3-novisit/s3a.json"]["accession"] == "s3-novisit"
     assert "['visit']" in reasons["files/s3-novisit/s3a.json"]["error"]
-    assert remove_build_dir(build_dir) == []
+    move.clean_up(RUN_UID)
+    assert not build_dir.exists()
     assert not any((tmp_path / "inbox").rglob("*.*"))  # all were claimed
 
 
@@ -454,19 +456,22 @@ def _reasons(moved_run_dir: Path) -> dict[str, dict[str, ty.Any]]:
 
 def test_move_accessions_all(tmp_path: Path) -> None:
     claimed, accessions, output_dir, build_dir = _collect_sessions(tmp_path, "s1", "s2")
-    failed = checked(
+    move = checked(
         MoveAccessions(
             output_dir,
             LABEL_FIELDS,
             constant_labels={"project": "P"},
         )
-    ).act(accessions, build_dir, claimed)
+    )
+    failed = move.act(accessions, RUN_UID, claimed)
     assert failed == []
+    assert build_dir.is_dir()  # act creates it
     assert sorted(p.name for p in output_dir.iterdir() if p != build_dir.parent) == [
         f"P.s1.v1_{RUN_UID}",
         f"P.s2.v1_{RUN_UID}",
     ]
-    assert remove_build_dir(build_dir) == []
+    move.clean_up(RUN_UID)
+    assert not build_dir.exists()
     assert not claimed.files_dir.exists() or not any(
         p.is_file() for p in claimed.files_dir.rglob("*")
     )
@@ -484,7 +489,7 @@ def test_move_accessions_raise_errors(tmp_path: Path) -> None:
                 constant_labels={"project": "P"},
                 raise_errors=True,
             )
-        ).act(accessions, build_dir, claimed)
+        ).act(accessions, RUN_UID, claimed)
     assert (output_dir / f"P.s1.v1_{RUN_UID}").is_dir()
     assert (claimed.files_dir / "s3-novisit" / "s3a.json").exists()
 
@@ -509,10 +514,25 @@ def test_move_accessions_warns_once_before_moving(
             constant_labels={"project": "P"},
             copy_mode=copy_mode,
         )
-    ).act(accessions, build_dir, claimed)
+    ).act(accessions, RUN_UID, claimed)
     assert len(calls) == 1
     assert list(calls[0][0]) == accessions
     assert calls[0][1:3] == (build_dir, copy_mode)
+
+
+def test_move_accessions_clean_up(tmp_path: Path) -> None:
+    """The build directory is removed however the run ended, unless a save left files
+    in it"""
+    move = MoveAccessions(tmp_path / "out", LABEL_FIELDS)
+    build_dir = run_build_dir(tmp_path / "out", RUN_UID)
+    move.clean_up(RUN_UID)  # nothing to remove yet
+    (build_dir / "empty").mkdir(parents=True)
+    move.clean_up(RUN_UID, error=RuntimeError("failed"))
+    assert not build_dir.exists()
+    (build_dir / "partial").mkdir(parents=True)
+    (build_dir / "partial" / "file.json").write_text("{}")
+    move.clean_up(RUN_UID)
+    assert (build_dir / "partial" / "file.json").exists()
 
 
 # The steps' configuration checks --------------------------------------------------
@@ -560,7 +580,7 @@ def test_check_configuration_raises_for_a_bad_configuration(
         (BuildFilesets([Json]), (None,)),
         (ApplyFilesetMetadata(), ([], None)),
         (BuildAccessions([IDSpec("sess")]), ([],)),
-        (MoveAccessions(Path("out"), LABEL_FIELDS), ([], Path("build"), None)),
+        (MoveAccessions(Path("out"), LABEL_FIELDS), ([], RUN_UID, None)),
     ],
 )
 def test_act_refuses_an_unchecked_step(step: ty.Any, args: tuple[ty.Any, ...]) -> None:
@@ -571,7 +591,7 @@ def test_act_refuses_an_unchecked_step(step: ty.Any, args: tuple[ty.Any, ...]) -
 def test_checked_steps_pickle(tmp_path: Path) -> None:
     table = _table(tmp_path, "Session,visit", "accession", "Session=sess")
     steps = [
-        ReserveRunUid(tmp_path / "out"),
+        ReserveRunUid(tmp_path / "proc"),
         ClaimInputFiles(tmp_path / "proc", tmp_path / "error"),
         BuildFilesets([Json], [Plain], recursive=True),
         ApplyFilesetMetadata(

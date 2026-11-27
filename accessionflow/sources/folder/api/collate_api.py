@@ -74,23 +74,24 @@ def collate(
 
     1. Makes each step with its configuration, and checks every step's configuration
        (`Step.check_configuration`) before anything is changed.
-    2. Reserves the run's UID and its build directory (`ReserveRunUid`), with
-       another UID if one is taken.
-    3. Claims the files into ``<working_dir>/<run_uid>/`` (`ClaimInputFiles`). A
-       file that arrives after they were listed stays in the input, for the next run.
+    2. Reserves the run's UID by creating its directory, ``<working_dir>/<run_uid>/``
+       (`ReserveRunUid`), with another UID if one is taken.
+    3. Claims the files into the run's directory (`ClaimInputFiles`). A file that
+       arrives after they were listed stays in the input, for the next run.
     4. Turns the claimed files into file-sets (`BuildFilesets`), adds their
        metadata (`ApplyFilesetMetadata`) and groups them into accessions
        (`BuildAccessions`).
-    5. Labels and moves each accession to ``<output_dir>/<labels>_<run_uid>/``
-       (`MoveAccessions`).
+    5. Labels each accession, builds it in ``<output_dir>/__build__/<run_uid>/`` and
+       moves it to ``<output_dir>/<labels>_<run_uid>/`` (`MoveAccessions`).
     6. Moves the files that weren't delivered (unrecognised, ignored, or of an
        accession that failed) to ``<unprocessed_dir>/<run_uid>/`` (`FinishClaim`).
 
     Each step's clean-up (`Step.clean_up`) is registered as the step acts, and runs
     when the run ends, in reverse order. If a step raises, including the claim part
     way, the run's claimed files are moved to ``<error_dir>/<run_uid>/``
-    (`ClaimInputFiles.clean_up`) and the error is raised. The build directory is
-    removed either way (`ReserveRunUid.clean_up`). An interrupt (e.g. Ctrl-C) leaves
+    (`ClaimInputFiles.clean_up`) and the error is raised. Either way, the build
+    directory is removed (`MoveAccessions.clean_up`), and so is the run's directory if
+    nothing is left in it (`ReserveRunUid.clean_up`). An interrupt (e.g. Ctrl-C) leaves
     the claim in the working directory.
 
     Errors are returned rather than logged: the caller summarises them (e.g. with
@@ -188,7 +189,7 @@ def collate(
     RuntimeError
         if no unused run UID could be made. Nothing has been claimed
     """
-    reserve = ReserveRunUid(output_dir)
+    reserve = ReserveRunUid(working_dir)
     claim = ClaimInputFiles(working_dir, error_dir)
     build_filesets = BuildFilesets(
         datatypes,
@@ -235,8 +236,8 @@ def collate(
         step.check_configuration()
 
     with ExitStack() as stack:
-        run_uid, build_dir = reserve.act()
-        reserve.register_clean_up(stack, build_dir)
+        run_uid = reserve.act()
+        reserve.register_clean_up(stack, run_uid)
         # Before the claim acts, so that a claim that raises part way is moved too
         claim.register_clean_up(stack, run_uid)
         claimed = claim.act(input_files, run_uid, source_roots)
@@ -246,8 +247,9 @@ def collate(
         filesets = apply_metadata.act(classified.filesets, claimed)
         build_accessions.register_clean_up(stack)
         accessions = build_accessions.act(filesets, run_uid)
-        move.register_clean_up(stack)
-        failed = move.act(accessions, build_dir, claimed)
+        # Before the move acts, so that a build directory left part way is removed too
+        move.register_clean_up(stack, run_uid)
+        failed = move.act(accessions, run_uid, claimed)
         finish.register_clean_up(stack)
         finish.act(claimed, failed, classified.ignored)
     return [message for _, message in failed]

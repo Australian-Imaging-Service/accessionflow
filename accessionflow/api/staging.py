@@ -23,6 +23,7 @@ __all__ = [
     "prepare_build_dir",
     "prune_empty_dirs",
     "remove_build_dir",
+    "run_build_dir",
     "move_into_place",
     "for_each_accession",
 ]
@@ -55,14 +56,30 @@ def check_run_uid(run_uid: str, purpose: str) -> None:
         raise ValueError(f"Invalid run UID for a {purpose}: {run_uid!r}")
 
 
-def prepare_build_dir(output_dir: Path, run_uid: str, exclusive: bool = False) -> Path:
-    """Creates the build directory of one run of a stage. Each run builds in its own
-    subdirectory of ``BUILD_NAME_DEFAULT``, so that runs writing to the same output
-    directory at the same time don't collide.
+def run_build_dir(output_dir: Path, run_uid: str) -> Path:
+    """The build directory of one run of a stage, ``output_dir / BUILD_NAME_DEFAULT /
+    run_uid``, whether or not it exists
 
-    A new run creates it exclusively, so that a UID another run has already taken is
-    caught: the run then makes another UID. A retry of a run reuses the directory its
-    first attempt created.
+    Parameters
+    ----------
+    output_dir : Path
+        the stage's output (staging) directory
+    run_uid : str
+        the UID of the run, which names its build directory
+
+    Returns
+    -------
+    Path
+        the run's build directory
+    """
+    return Path(output_dir) / BUILD_NAME_DEFAULT / run_uid
+
+
+def prepare_build_dir(output_dir: Path, run_uid: str) -> Path:
+    """Creates the build directory of one run of a stage (`run_build_dir`). Each run
+    builds in its own subdirectory of ``BUILD_NAME_DEFAULT``, so that runs writing to
+    the same output directory at the same time don't collide. A retry of a run reuses
+    the directory its first attempt created.
 
     Parameters
     ----------
@@ -71,9 +88,6 @@ def prepare_build_dir(output_dir: Path, run_uid: str, exclusive: bool = False) -
     run_uid : str
         the UID of the run, which names its build directory. It must be a single,
         non-hidden path component that doesn't start with ``__``
-    exclusive : bool, optional
-        raise ``FileExistsError`` if the run's build directory already exists, for a
-        new run. By default, an existing directory is reused, for a retry
 
     Returns
     -------
@@ -84,16 +98,10 @@ def prepare_build_dir(output_dir: Path, run_uid: str, exclusive: bool = False) -
     ------
     ValueError
         if ``run_uid`` isn't a valid directory name
-    FileExistsError
-        if ``exclusive`` and the run's build directory already exists
     """
     check_run_uid(run_uid, "build directory")
-    build_dir = Path(output_dir) / BUILD_NAME_DEFAULT / run_uid
-    if exclusive:
-        build_dir.parent.mkdir(parents=True, exist_ok=True)
-        build_dir.mkdir()
-    else:
-        build_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = run_build_dir(output_dir, run_uid)
+    build_dir.mkdir(parents=True, exist_ok=True)
     return build_dir
 
 

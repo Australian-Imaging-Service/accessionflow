@@ -283,7 +283,7 @@ def test_run_uid_clash_makes_another(
 ) -> None:
     _write(dirs.inbox, {"s1/a.json": "{}"})
     taken, free = "20261126010203_aaaaaa", "20261126010203_bbbbbb"
-    (dirs.output / BUILD_NAME_DEFAULT / taken).mkdir(parents=True)
+    (dirs.working / taken).mkdir(parents=True)  # taken by another run
     uids = iter([taken, free])
     monkeypatch.setattr(claim_module, "make_run_uid", lambda: next(uids))
     assert _run(dirs, metadata_tables=[_visit_table(tmp_path, "s1")]) == []
@@ -295,12 +295,13 @@ def test_every_run_uid_taken(
 ) -> None:
     _write(dirs.inbox, {"s1/a.json": "{}"})
     taken = "20261126010203_aaaaaa"
-    (dirs.output / BUILD_NAME_DEFAULT / taken).mkdir(parents=True)
+    (dirs.working / taken).mkdir(parents=True)  # taken by another run
     monkeypatch.setattr(claim_module, "make_run_uid", lambda: taken)
     with pytest.raises(RuntimeError, match="unused run UID"):
         _run(dirs, metadata_tables=[_visit_table(tmp_path, "s1")])
     assert (dirs.inbox / "s1" / "a.json").exists()
-    assert not dirs.working.exists()
+    assert [p.name for p in dirs.working.iterdir()] == [taken]
+    assert not (dirs.output / BUILD_NAME_DEFAULT).exists()
 
 
 def test_source_roots_keep_top_level_directories_whole(
@@ -345,12 +346,11 @@ def test_no_input_files(dirs: Dirs) -> None:
     dirs.inbox.mkdir()
     assert _run(dirs) == []
     assert _delivered(dirs) == []
-    assert not dirs.working.exists()
+    # The run's directory was reserved, then removed as nothing was claimed
+    assert list(dirs.working.iterdir()) == []
     assert not dirs.unprocessed.exists()
     assert not dirs.error.exists()
-    assert not (dirs.output / BUILD_NAME_DEFAULT).exists() or not any(
-        (dirs.output / BUILD_NAME_DEFAULT).iterdir()
-    )
+    assert list((dirs.output / BUILD_NAME_DEFAULT).iterdir()) == []
 
 
 def test_bad_path_metadata_pattern_changes_nothing(dirs: Dirs) -> None:

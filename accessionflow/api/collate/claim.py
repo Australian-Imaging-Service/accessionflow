@@ -17,9 +17,7 @@ from fileformats.core import FileSet, to_mime
 
 from accessionflow.api.staging import (
     check_run_uid,
-    prepare_build_dir,
     prune_empty_dirs,
-    remove_build_dir,
 )
 from accessionflow.api.step import Step
 from accessionflow.helpers.logging import logger
@@ -40,6 +38,7 @@ __all__ = [
     "claim_run_dir",
     "has_claim_plan",
     "make_run_uid",
+    "reserve_run_uid",
     "RUN_UID_ATTEMPTS",
     "write_error_record",
 ]
@@ -50,8 +49,9 @@ __all__ = [
 PROCESSING_NAME_DEFAULT = "__processing__"
 
 # The subdirectories of the output directory that the CLI moves a run directory to by
-# default, when files are left (FinishClaim) or the run fails (ClaimInputFiles.clean_up). The
-# combiner moves the run accessions of a group that fails to the same error directory
+# default, when files are left (FinishClaim) or the run fails
+# (ClaimInputFiles.clean_up). The combiner moves the run accessions of a group that
+# fails to the same error directory
 UNPROCESSED_NAME_DEFAULT = "__unprocessed__"
 ERROR_NAME_DEFAULT = "__error__"
 
@@ -92,8 +92,8 @@ def make_run_uid(
     runs started in the same second still get different ones. It never holds a ``.``
     or a ``-``, which separate it from the labels in a staged directory's name.
 
-    Make it once per run. A new run creates its build directory exclusively
-    (``prepare_build_dir(..., exclusive=True)``) and makes another UID if that one is
+    Make it once per run. A new run reserves its UID by creating a directory named
+    after it exclusively (`reserve_run_uid`), and makes another UID if that one is
     taken, so a clash is caught. A retry of the run passes the same UID on, rather than
     making a new one, so that it finds the directories the first attempt made.
 
@@ -250,57 +250,91 @@ class ClaimedFiles:
 RUN_UID_ATTEMPTS = 5
 
 
-@attrs.define
-class ReserveRunUid(Step):
-    """Reserves an unused UID for a run, which names everything the run creates, by
-    creating the run's build directory, ``<output_dir>/__build__/<run_uid>/``,
-    exclusively (`prepare_build_dir`). If another run has already taken the UID, it
-    makes another (`make_run_uid`). Used by the collate and combine composites. Its
-    configuration needs no checks
+def reserve_run_uid(parent_dir: Path) -> tuple[str, Path]:
+    """Makes an unused UID for a new run (`make_run_uid`) and reserves it by creating
+    ``parent_dir / run_uid`` exclusively. If another run has already taken the UID, it
+    makes another, up to `RUN_UID_ATTEMPTS` times. A retry of a run doesn't call it: it
+    reuses the UID and the directory of its first attempt.
 
     Parameters
     ----------
-    output_dir : Path
-        the directory the run delivers to, which holds the build directories
+    parent_dir : Path
+        the directory the run's directory is created in, created if it doesn't exist,
+        e.g. the processing area (`ReserveRunUid`), or the combiner's build directories
+
+    Returns
+    -------
+    tuple[str, Path]
+        the run's UID, and the directory created for it
+
+    Raises
+    ------
+    RuntimeError
+        if every one of `RUN_UID_ATTEMPTS` UIDs is taken
+    """
+    parent_dir = Path(parent_dir)
+    parent_dir.mkdir(parents=True, exist_ok=True)
+    for _ in range(RUN_UID_ATTEMPTS):
+        run_uid = make_run_uid()
+        check_run_uid(run_uid, "run directory")
+        run_dir = parent_dir / run_uid
+        try:
+            run_dir.mkdir()
+        except FileExistsError:
+            logger.debug("Run UID '%s' is taken, making another", run_uid)
+        else:
+            return run_uid, run_dir
+    raise RuntimeError(f"Couldn't make an unused run UID in '{parent_dir}'")
+
+
+@attrs.define
+class ReserveRunUid(Step):
+    """Reserves an unused UID for a run, which names everything the run creates, by
+    creating the run's directory in the processing area, ``working_dir / run_uid``,
+    exclusively (`reserve_run_uid`). If another run has already taken the UID, it
+    makes another. `ClaimInputFiles` claims the run's files into the directory, and
+    `clean_up` removes it if it was left empty. Its configuration needs no checks
+
+    Parameters
+    ----------
+    working_dir : Path
+        the directory each run's own directory is made in, e.g.
+        ``<output_dir>/__processing__`` (`PROCESSING_NAME_DEFAULT`)
     """
 
-    output_dir: Path = attrs.field(converter=Path)
+    working_dir: Path = attrs.field(converter=Path)
 
-    def act(self) -> tuple[str, Path]:
-        """Makes the run's UID and creates its build directory
+    def act(self) -> str:
+        """Makes the run's UID and creates its directory, `claim_run_dir`
 
         Returns
         -------
-        tuple[str, Path]
-            the run's UID, and its build directory
+        str
+            the run's UID
 
         Raises
         ------
         RuntimeError
             if every one of `RUN_UID_ATTEMPTS` UIDs is taken
         """
-        for _ in range(RUN_UID_ATTEMPTS):
-            run_uid = make_run_uid()
-            try:
-                return run_uid, prepare_build_dir(
-                    self.output_dir, run_uid, exclusive=True
-                )
-            except FileExistsError:
-                logger.debug("Run UID '%s' is taken, making another", run_uid)
-        raise RuntimeError(f"Couldn't make an unused run UID in '{self.output_dir}'")
+        run_uid, _ = reserve_run_uid(self.working_dir.absolute())
+        return run_uid
 
-    def clean_up(self, build_dir: Path, error: BaseException | None = None) -> None:
-        """Removes the run's build directory, however the run ended, unless it still
-        holds files, e.g. from a save that failed part way (`remove_build_dir`)
+    def clean_up(self, run_uid: str, error: BaseException | None = None) -> None:
+        """Removes the run's directory if it is empty, e.g. when nothing was claimed.
+        A directory that holds a claim, e.g. after an interrupt, is left, and so is
+        one that has gone: `FinishClaim` or `ClaimInputFiles.clean_up` moved it
 
         Parameters
         ----------
-        build_dir : Path
-            the run's build directory, from `act`
+        run_uid : str
+            the run's UID, from `act`
         error : BaseException, optional
             the error the run raised, which doesn't change what is removed
         """
-        remove_build_dir(build_dir)
+        run_dir = claim_run_dir(self.working_dir, run_uid)
+        if run_dir.is_dir() and not any(run_dir.iterdir()):
+            run_dir.rmdir()
 
 
 def write_error_record(directory: Path, error: BaseException | str) -> Path:
@@ -327,7 +361,8 @@ class ClaimInputFiles(Step):
     """Moves the files to collate into the run's own directory in the processing area,
     ``working_dir / run_uid / files``, so that the rest of the run works on a fixed set of
     files while the input directory keeps changing. A file that arrives after the files
-    were listed stays where it is, for the next run.
+    were listed stays where it is, for the next run. The run's directory is the one
+    `ReserveRunUid` created, or is created if it doesn't exist.
 
     Each file keeps its path relative to the common directory of the source roots, so
     directory datatypes and file names that repeat across directories survive. On one

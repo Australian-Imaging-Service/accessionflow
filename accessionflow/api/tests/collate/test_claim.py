@@ -24,7 +24,10 @@ from accessionflow.api.collate import (
     claim_run_dir,
     has_claim_plan,
     make_run_uid,
+    reserve_run_uid,
 )
+from accessionflow.api.collate import claim as claim_module
+from accessionflow.helpers.run_uid import RUN_UID_RE
 from accessionflow.model.accession import Accession
 
 NOW = datetime(2026, 11, 24, 1, 2, 3, tzinfo=UTC)
@@ -662,10 +665,53 @@ def test_clean_up_moves_a_claim_that_stopped_partway(
     assert not claim_run_dir(tmp_path / "proc", RUN_UID).exists()
 
 
-def test_reserve_run_uid_clean_up_removes_the_build_dir(tmp_path: Path) -> None:
-    reserve = ReserveRunUid(tmp_path / "out")
-    _, build_dir = reserve.act()
-    (build_dir / "empty").mkdir()
-    reserve.clean_up(build_dir, error=_error("failed"))
-    assert not build_dir.exists()
-    reserve.clean_up(build_dir)  # again, with nothing left
+def test_reserve_run_uid(tmp_path: Path) -> None:
+    parent = tmp_path / "proc"  # doesn't exist yet
+    run_uid, run_dir = reserve_run_uid(parent)
+    assert re.fullmatch(RUN_UID_RE, run_uid)
+    assert run_dir == parent / run_uid
+    assert run_dir.is_dir()
+
+
+def test_reserve_run_uid_makes_another_if_taken(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    uids = iter([RUN_UID, RUN_UID, "20261124010204_def456"])
+    monkeypatch.setattr(claim_module, "make_run_uid", lambda: next(uids))
+    assert reserve_run_uid(tmp_path)[0] == RUN_UID
+    # A new run can't take a UID that is in use, so it makes another
+    assert reserve_run_uid(tmp_path)[0] == "20261124010204_def456"
+
+
+def test_reserve_run_uid_gives_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / RUN_UID).mkdir()
+    monkeypatch.setattr(claim_module, "make_run_uid", lambda: RUN_UID)
+    with pytest.raises(RuntimeError, match="unused run UID"):
+        reserve_run_uid(tmp_path)
+
+
+def test_reserve_run_uid_step(tmp_path: Path) -> None:
+    reserve = ReserveRunUid(tmp_path / "proc")
+    run_uid = reserve.act()
+    run_dir = claim_run_dir(tmp_path / "proc", run_uid)
+    assert run_dir.is_dir()
+    # Removed if nothing was claimed into it
+    reserve.clean_up(run_uid, error=_error("failed"))
+    assert not run_dir.exists()
+    reserve.clean_up(run_uid)  # again, with nothing left
+
+
+def test_reserve_run_uid_clean_up_keeps_a_claim(tmp_path: Path) -> None:
+    reserve = ReserveRunUid(tmp_path / "proc")
+    run_uid = reserve.act()
+    inbox = tmp_path / "inbox"
+    files = _tree(inbox, "a.txt")
+    claimed = ClaimInputFiles(tmp_path / "proc", tmp_path / "error").act(
+        files, run_uid, [inbox]
+    )
+    assert claimed.run_dir == claim_run_dir(tmp_path / "proc", run_uid)
+    # An interrupted run leaves its claim to be retried
+    reserve.clean_up(run_uid, error=KeyboardInterrupt())
+    assert has_claim_plan(claimed.run_dir)

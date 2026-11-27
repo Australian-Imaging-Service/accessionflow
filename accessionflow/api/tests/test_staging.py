@@ -24,17 +24,6 @@ def test_prepare_build_dir_creates_it(tmp_path: Path) -> None:
     assert prepare_build_dir(output_dir, "run2").parent == build_dir.parent
 
 
-def test_prepare_build_dir_exclusive(tmp_path: Path) -> None:
-    output_dir = tmp_path / "staged"  # doesn't exist yet
-    build_dir = prepare_build_dir(output_dir, "run1", exclusive=True)
-    assert build_dir.is_dir()
-    # A new run can't take a UID that is in use...
-    with pytest.raises(FileExistsError):
-        prepare_build_dir(output_dir, "run1", exclusive=True)
-    # ...but a retry of the run reuses its directory
-    assert prepare_build_dir(output_dir, "run1") == build_dir
-
-
 @pytest.mark.parametrize("run_uid", ["", "a/b", ".x", "__x", ".."])
 def test_prepare_build_dir_rejects_invalid_run_uid(
     tmp_path: Path, run_uid: str

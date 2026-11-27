@@ -17,6 +17,7 @@ from .claim import (
     claim_run_dir,
     has_claim_plan,
     make_run_uid,
+    reserve_run_uid,
 )
 from .classify import (
     RecursionPlan,
@@ -106,6 +107,7 @@ __all__ = [
     "list_source_roots",
     "load_metadata_tables",
     "make_run_uid",
+    "reserve_run_uid",
     "MoveAccessions",
     "merge_path_metadata",
     "move_to_target",

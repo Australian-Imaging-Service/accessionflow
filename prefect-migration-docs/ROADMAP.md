@@ -327,7 +327,7 @@ principle 12):
 
 | Step class | Was |
 | --- | --- |
-| `ReserveRunUid` | `create_run_directory` |
+| `ReserveRunUid` | `create_run_directory`. Since [Step clean-up](#step-clean-up), it reserves the UID in the working directory |
 | `ClaimInputFiles` | `claim_input_files` |
 | `BuildFilesets` | `build_filesets`, with `check_datatypes` and `plan_recursion` as its check |
 | `ApplyFilesetMetadata` | `apply_fileset_metadata`, with `merge_path_metadata` and `load_metadata_tables` as its check |
@@ -337,7 +337,8 @@ principle 12):
 | `AbandonClaim` | `abandon_claim`. Folded into `ClaimInputFiles.clean_up` by [Step clean-up](#step-clean-up) |
 
 The folder `collate` makes the eight steps, checks every one, and then runs them. The
-combiner's steps are still functions, apart from its use of `ReserveRunUid`.
+combiner's steps are still functions. It used `ReserveRunUid` until
+[Step clean-up](#step-clean-up), and now reserves its UID with `reserve_run_uid`.
 
 ### Step clean-up
 
@@ -353,13 +354,20 @@ removed the build directory in a `finally`, which the combiner repeated. Now:
   arguments are known by then, so an `act` that raises part way is cleaned up too.
   Every step is registered, including those whose clean-up does nothing, so a step
   that gains one needs no change to the composites.
-- `ReserveRunUid.clean_up(build_dir)` removes the build directory.
+- Each directory belongs to the step that uses it:
+  - `ReserveRunUid(working_dir)` reserves the run's UID by creating the claim's run
+    directory, `<working_dir>/<run_uid>/`, exclusively (`reserve_run_uid`). Its
+    `clean_up(run_uid)` removes the directory if it's left empty.
+  - `MoveAccessions.act(accessions, run_uid, claimed)` creates the build directory,
+    `<output_dir>/__build__/<run_uid>/`, and its `clean_up(run_uid)` removes it.
 - `ClaimInputFiles(working_dir, error_dir).clean_up(run_uid)` moves a claim to the
   error directory if the run raised an `Exception`, finding it from its plan.
   `AbandonClaim` is removed.
 
 The stack runs the clean-ups in reverse order, and one that raises doesn't stop the
-others. The combiner's per-group `abandon_group` stays in its group function until its
+others. The combiner reserves its UID by creating its build directory with
+`reserve_run_uid`, and removes it with a callback on its stack. Its per-group
+`abandon_group` stays in its group function until its
 steps are classes.
 
 ### Store-neutral labels
