@@ -1998,13 +1998,14 @@ def test_upload_snapshots_display_in_xnat(
         [
             str(labelled_dir),
             str(packaged_dir),
-            "image/png+set-of",
             "--output-resource",
+            "image/png+set-of",
+            "copy",
             "photos",
-            "image/png+set-of",
             "--output-resource",
-            "snapshots",
+            "image/png+set-of",
             "medimage/vnd.xnat.snapshots",
+            "snapshots",
             "--raise-errors",
         ],
     )

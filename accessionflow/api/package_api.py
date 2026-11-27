@@ -1,6 +1,8 @@
 import os
+import re
 import shutil
 import traceback
+import types
 import typing as ty
 from pathlib import Path
 
@@ -23,12 +25,21 @@ from accessionflow.stores.xnat.scan_types import (
 
 from .collate_api import BUILD_NAME_DEFAULT
 
-OutputResources = ty.Mapping[str, tuple[type[FileSet], ty.Mapping[str, ty.Any]]]
+# Each label maps to (source datatype, target datatype, options, path regex).
+# A None target means copy; a None regex means no path filter.
+OutputResources = ty.Mapping[
+    str,
+    tuple[
+        type[FileSet] | types.UnionType,
+        type[FileSet] | None,
+        ty.Mapping[str, ty.Any],
+        re.Pattern[str] | None,
+    ],
+]
 
 
 def _package_session(
     session: Accession,
-    source_datatype: type[FileSet],
     output_resources: OutputResources,
     on_resource_clash: OnResourceClash,
 ) -> Accession:
@@ -41,83 +52,115 @@ def _package_session(
     packaged = session.new_empty()
     packaged.metadata.update(dict(session.metadata))
     study_uids: set[str] = set()
-    makes_dicom_sample = any(
-        issubclass(target_datatype, DicomImage)
-        for target_datatype, _options in output_resources.values()
-    )
 
     for scan in session.acquisitions.values():
         matched = False
         for resource in scan.resources.values():
-            if isinstance(resource.fileset, source_datatype):
-                matched = True
-                if makes_dicom_sample and isinstance(resource.fileset, DicomCollection):
-                    source_uid = resource.metadata.get("StudyInstanceUID")
-                    source_uids = (
-                        {str(uid) for uid in source_uid if uid}
-                        if isinstance(source_uid, (list, tuple, set))
-                        else {str(source_uid)}
-                        if source_uid
-                        else set()
-                    )
-                    if len(source_uids) != 1:
-                        raise ValueError(
-                            f"DICOM series in scan {scan.id!r} must contain exactly "
-                            "one StudyInstanceUID before packaging"
+            # Match the fileset path, or its parent when the fileset has multiple paths,
+            # using the same path selection as accession metadata extraction.
+            matching_outputs = [
+                (label, target_datatype, options)
+                for label, (
+                    source_type,
+                    target_datatype,
+                    options,
+                    pattern,
+                ) in output_resources.items()
+                if isinstance(resource.fileset, source_type)
+                and (
+                    pattern is None
+                    or pattern.match(
+                        str(
+                            getattr(resource.fileset, "fspath", resource.fileset.parent)
                         )
-                    study_uids.update(source_uids)
-                for label, (target_datatype, options) in output_resources.items():
-                    logger.info(
-                        "Converting %s/%s resource from %s to %s as '%s'",
-                        scan.id,
-                        resource.name,
-                        resource.fileset.mime_like,
-                        target_datatype.mime_like,
-                        label,
                     )
-                    converted = target_datatype.convert(
-                        resource.fileset, **dict(options)
-                    )
-                    if isinstance(converted, DicomImage):
-                        sop_class_uid = converted.metadata.get("SOPClassUID")
-                        study_uid = converted.metadata.get("StudyInstanceUID")
-                        if not sop_class_uid or not study_uid:
-                            raise ValueError(
-                                f"DICOM sample for scan {scan.id!r} is missing "
-                                "SOPClassUID or StudyInstanceUID"
-                            )
-                        study_uids.add(str(study_uid))
-                        expected_label = xnat_resource_label_from_sop_class(
-                            str(sop_class_uid)
-                        )
-                        if label not in ("auto", expected_label):
-                            raise ValueError(
-                                f"DICOM sample for scan {scan.id!r} must use XNAT "
-                                f"resource label {expected_label!r}, not {label!r}; "
-                                "use the 'auto' output label to select it per scan"
-                            )
-                        output_label = expected_label
-                    elif label == "auto":
-                        raise ValueError(
-                            "The 'auto' output label requires a DICOM image target"
-                        )
-                    else:
-                        output_label = label
-                    packaged.add_resource(
-                        scan.id,
-                        scan.type,
-                        output_label,
-                        converted,
-                        attached=scan.attached,
-                        on_clash=on_resource_clash,
-                        metadata=dict(resource.metadata),
-                    )
-            else:
+                )
+            ]
+            # Preserve resources that no output rule selects.
+            if not matching_outputs:
                 packaged.add_resource(
                     scan.id,
                     scan.type,
                     resource.name,
                     resource.fileset,
+                    attached=scan.attached,
+                    on_clash=on_resource_clash,
+                    metadata=dict(resource.metadata),
+                )
+                continue
+            # Only matching outputs determine whether this resource produces a DICOM sample.
+            makes_dicom_sample = any(
+                target_datatype is not None and issubclass(target_datatype, DicomImage)
+                for _, target_datatype, _ in matching_outputs
+            )
+            matched = True
+            if makes_dicom_sample and isinstance(resource.fileset, DicomCollection):
+                source_uid = resource.metadata.get("StudyInstanceUID")
+                source_uids = (
+                    {str(uid) for uid in source_uid if uid}
+                    if isinstance(source_uid, (list, tuple, set))
+                    else {str(source_uid)}
+                    if source_uid
+                    else set()
+                )
+                if len(source_uids) != 1:
+                    raise ValueError(
+                        f"DICOM series in scan {scan.id!r} must contain exactly "
+                        "one StudyInstanceUID before packaging"
+                    )
+                study_uids.update(source_uids)
+            for label, target_datatype, options in matching_outputs:
+                # Add the original fileset without conversion; packaged.save() copies it later.
+                if target_datatype is None:
+                    packaged.add_resource(
+                        scan.id,
+                        scan.type,
+                        label,
+                        resource.fileset,
+                        attached=scan.attached,
+                        on_clash=on_resource_clash,
+                        metadata=dict(resource.metadata),
+                    )
+                    continue
+                logger.info(
+                    "Converting %s/%s resource from %s to %s as '%s'",
+                    scan.id,
+                    resource.name,
+                    resource.fileset.mime_like,
+                    target_datatype.mime_like,
+                    label,
+                )
+                converted = target_datatype.convert(resource.fileset, **dict(options))
+                if isinstance(converted, DicomImage):
+                    sop_class_uid = converted.metadata.get("SOPClassUID")
+                    study_uid = converted.metadata.get("StudyInstanceUID")
+                    if not sop_class_uid or not study_uid:
+                        raise ValueError(
+                            f"DICOM sample for scan {scan.id!r} is missing "
+                            "SOPClassUID or StudyInstanceUID"
+                        )
+                    study_uids.add(str(study_uid))
+                    expected_label = xnat_resource_label_from_sop_class(
+                        str(sop_class_uid)
+                    )
+                    if label not in ("auto", expected_label):
+                        raise ValueError(
+                            f"DICOM sample for scan {scan.id!r} must use XNAT "
+                            f"resource label {expected_label!r}, not {label!r}; "
+                            "use the 'auto' output label to select it per scan"
+                        )
+                    output_label = expected_label
+                elif label == "auto":
+                    raise ValueError(
+                        "The 'auto' output label requires a DICOM image target"
+                    )
+                else:
+                    output_label = label
+                packaged.add_resource(
+                    scan.id,
+                    scan.type,
+                    output_label,
+                    converted,
                     attached=scan.attached,
                     on_clash=on_resource_clash,
                     metadata=dict(resource.metadata),
@@ -197,7 +240,6 @@ def _input_drift(
 def package(
     input_dir: Path,
     output_dir: Path,
-    source_datatype: type[FileSet],
     output_resources: OutputResources,
     on_resource_clash: OnResourceClash = "error",
     raise_errors: bool = False,
@@ -211,14 +253,17 @@ def package(
     this stage can be placed after deidentification. All output conversions are
     independent and receive the original source fileset.
     """
-    if not issubclass(source_datatype, FileSet):
-        raise TypeError("source_datatype must be a FileSet type")
     if not output_resources:
         raise ValueError("At least one output resource must be specified")
-    for label, (datatype, _options) in output_resources.items():
+    for label, (source_type, datatype, options, pattern) in output_resources.items():
         if not label:
             raise ValueError("Output resource labels cannot be empty")
-        if not issubclass(datatype, FileSet):
+        if not all(
+            isinstance(member, type) and issubclass(member, FileSet)
+            for member in (ty.get_args(source_type) or (source_type,))
+        ):
+            raise TypeError(f"Source datatype for {label!r} must be a FileSet type")
+        if datatype is not None and not issubclass(datatype, FileSet):
             raise TypeError(f"Output datatype for {label!r} must be a FileSet type")
 
     listings = [LocalSessionListing(p) for p in list_session_dirs(input_dir)]
@@ -240,27 +285,11 @@ def package(
             # at the end compares against both.
             read_states = _file_states(listing.cache_path)
             read_files = _session_files(session, listing.cache_path)
-            if not any(
-                isinstance(resource.fileset, source_datatype)
-                for scan in session.acquisitions.values()
-                for resource in scan.resources.values()
-            ):
-                # Nothing to convert. The session still has to reach the
-                # upload stage, which reads this stage's output: it passes
-                # through as it is.
-                logger.info(
-                    "Passing '%s' through unchanged: it has no %s scan resources",
-                    listing.name,
-                    source_datatype.mime_like,
-                )
-                packaged = session
-            else:
-                packaged = _package_session(
-                    session,
-                    source_datatype=source_datatype,
-                    output_resources=output_resources,
-                    on_resource_clash=on_resource_clash,
-                )
+            packaged = _package_session(
+                session,
+                output_resources=output_resources,
+                on_resource_clash=on_resource_clash,
+            )
 
             final_dir = output_dir / packaged.staging_dirname()
             build_dir = output_dir / BUILD_NAME_DEFAULT

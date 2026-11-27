@@ -40,6 +40,8 @@ class Fields(Metadata):
         """
         extracted: dict[str, str] = {}
         for field_name, spec in specs.items():
+            if not isinstance(spec, IDSpec):
+                spec = IDSpec(spec)
             try:
                 extracted[field_name] = spec.get_value(metadata, escape=False)
             except (AccessionParseError, IndexError, ValueError, TypeError) as e:
