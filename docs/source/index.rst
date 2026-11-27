@@ -65,6 +65,7 @@ folder store and then in XNAT, then see:
 * :ref:`Stages <stages>` — attaching, labelling, de-identifying and packaging
 * :ref:`Data stores <stores>` — depositing in XNAT or a folder store
 * :doc:`deployment` — running an accession flow continuously with Docker or Kubernetes
+* :doc:`push` — copying staged accessions from an edge node to a central staging area
 * :doc:`reference/cli` — the full command-line reference
 
 
@@ -146,6 +147,7 @@ This work is licensed under the
     :hidden:
 
     deployment
+    push
 
 .. toctree::
     :maxdepth: 2
